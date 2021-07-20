@@ -16,6 +16,7 @@ def ParamsCopy(save_dir, ParamData):
     RandNum = random.randint(0,100)
     today=datetime.date.today()
 
+    # set config params file pathdir and copy file name
     FilePath = os.path.dirname(os.path.abspath(__file__))
     ParamFilePath = FilePath + "/config/LISM_test.yaml"
     print(ParamFilePath)

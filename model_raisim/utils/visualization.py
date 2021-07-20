@@ -24,6 +24,7 @@ def phaseplot(x, dx, flag):
 
     elif flag == 2:
         fig.suptitle('Knee Joint Torque-Velocity phase space', fontsize = 20)
+
     norm = plt.Normalize(dydx.min(), dydx.max())  
     print(type(norm))
     lc = LineCollection(segments, cmap='viridis', norm=norm)
@@ -146,7 +147,6 @@ def DataProcess(data):
     print(JointTorque_2.shape)
     # print(Ballvel.shape)
     # print(JointTorque_1[0:1000])
-
 
     # ============================================ data visualization ===============================================
     # plot joint torque-velocity figure

@@ -19,18 +19,21 @@ import FileSave
 
 def DriControl(ParamData):
 
+    # get enviroment and controller params
     EnvParam = ParamData["environment"]
     CtlParam = ParamData["controller"]
     g = -gravity[2]
     flag = 0
 
-    BallState = np.array([[0.0, 0.0]])
-    EndFootState = np.array([[0.0, 0.0]])
-    ForceState = np.array([[0.0, 0.0]])
-    JointTorque = np.array([[0.0, 0.0]])
-    JointVelSaved = np.array([[0.0, 0.0]])
+    # set ball, arm end foot, contact force and joint state saved array
+    BallState = np.array([[0.0, 0.0]])          # the pos and vel state of ball
+    EndFootState = np.array([[0.0, 0.0]])       # the pos and vel state of endfoot
+    ForceState = np.array([[0.0, 0.0]])         # the calculate force and real contact force betweem ball an foot
+    JointTorque = np.array([[0.0, 0.0]])        # the torque of two joint
+    JointVelSaved = np.array([[0.0, 0.0]])      # the angular vel of two joint
     T = np.array([0.0])
 
+    ## ================ simulation calculate part ==================== 
     for i in range(EnvParam["sim_time"]):
         # v_ref = xbox.trigger_r.value * (-4) - 3
         # v_ref = xbox.trigger_r.value * (-7) - 5
@@ -40,25 +43,29 @@ def DriControl(ParamData):
         # if i == 0:
         #     server.startRecordingVideo("v10_with-x_1x.mp4")
 
+        # ger ball, foot, joint state in real time
         BallPos = LISM.getFramePosition(BallFrameId)
         BallVel = LISM.getFrameVelocity(BallFrameId)
         JointPos, JointVel = LISM.getState()
         FootPos = LISM.getFramePosition(FootFrameId)
         FootVel = LISM.getFrameVelocity(FootFrameId)
 
+        # set P, D params to zeros every cirlce
         jointPgain = np.array([0, 0, 0])
         jointDgain = np.array([0, 0, 0])
         LISM.setPdGains(jointPgain, jointDgain)
 
-        # pos, vel and force data get
+        # pos, vel and force data save
         t = i * EnvParam["t_step"]
         T = np.concatenate([T, [t]], axis = 0)
         BallState = np.concatenate([BallState, [[BallPos[2], BallVel[2]]]], axis = 0)
         EndFootState = np.concatenate([EndFootState, [[FootPos[2], FootVel[2]]]], axis = 0)
         # JointVelSaved = np.concatenate([JointVelSaved, [[JointVel[1], JointVel[2]]]], axis = 0)
 
+        # get contact group 
         ContactPoint = LISM.getContacts()
 
+        # wether the contact occurs berween ball and arm end foot
         contact_flag = False
         for c in ContactPoint:
             contact_flag = c.getlocalBodyIndex() == LISM.getBodyIdx("lower_r")
@@ -70,6 +77,7 @@ def DriControl(ParamData):
             EnvParam["con_flag"] = 1
             print("the contact vel of ball", BallVel[2])
 
+        ## do this control method when contact occurs
         # if contact_flag == 1 and BallVel[2] >= CtlParam["v_ref"]:
         if contact_flag == 1 and BallVel[2] >= v_ref:
     
@@ -79,6 +87,7 @@ def DriControl(ParamData):
 
             LISM.setPdGains(jointPgain, jointDgain)
 
+            # get joint and foot pos, vel
             JointPos, JointVec = LISM.getState()
             FootPos = LISM.getFramePosition(FootFrameId)
             FootVel = LISM.getFrameVelocity(FootFrameId)
@@ -93,26 +102,28 @@ def DriControl(ParamData):
                                 [a21, a22]])
             # print(Jacobin_F)
             
+            ## if ball is uplifting do this control
             if BallVel[2] > 0:
             # ContactPointVel = LISM.getContactPointVel(ContactPoint[0].getlocalBodyIndex())
-                ContactPointVel = ContactPoint[0].getImpulse()
-                ContactForce = ContactPointVel / t_step
+                ContactPointVel = ContactPoint[0].getImpulse()      # get contact impulse
+                ContactForce = ContactPointVel / t_step             # the contact force can be get by impluse / dt
+
+                # apply z and x direction force 
                 EndForce = - CtlParam["K_virz"] * (FootPos[2] - CtlParam["x_ref_FD"]) - CtlParam["K_errv_up"] * (FootVel[2] - 0)
-                # EndForce = - 2000 * (FootPos[2] - FootPosInit[2])
                 EndForce_x = - CtlParam["K_virx"] * (FootPos[0] - FootPosInit[0])
 
+            ## if ball is uplifting do this control
             if BallVel[2] <= 0:
-            # ContactPointVel = LISM.getContactPointVel(ContactPoint[0].getlocalBodyIndex())
                 ContactPointVel = ContactPoint[0].getImpulse()
                 ContactForce = ContactPointVel / t_step
                 # EndForce = - CtlParam["K_virz"] * (FootPos[2] - CtlParam["x_ref_FD"]) - CtlParam["K_errv_down"] * (FootVel[2] - CtlParam["v_ref"])
                 EndForce = - CtlParam["K_virz"] * (FootPos[2] - CtlParam["x_ref_FD"]) - CtlParam["K_errv_down"] * (FootVel[2] - v_ref)
-                # EndForce = - 2000 * (FootPos[2] - FootPosInit[2])
                 EndForce_x = - CtlParam["K_virx"] * (FootPos[0] - FootPosInit[0])
 
             JointForce_z = EndForce
             JointForce_x = EndForce_x
 
+            # transform the end foot force to joint torque by jacobin matrix
             Torque_1 = (Jacobin_F[0, 0] * JointForce_x + Jacobin_F[0, 1] * JointForce_z)
             Torque_2 = (Jacobin_F[1, 0] * JointForce_x + Jacobin_F[1, 1] * JointForce_z)
 
@@ -131,26 +142,29 @@ def DriControl(ParamData):
             JointVelSaved = np.concatenate([JointVelSaved, [[JointVel[1], JointVel[2]]]], axis = 0)
             
         # elif BallPos[2] < (CtlParam["x_ref"]-0.1275):
+        ## do PD control if ball is free motioning
         else:
             if flag == 1:
                 print("the leave pos and vel of ball", FootPos[2], BallVel[2])
                 print("*********************************************************")
+
+            # set pd control target quantity
             LISM.setGeneralizedForce([0, 0, 0])
             jointNominalConfig = np.array([0, 0.0, -1.57])
             jointVelocityTarget = np.zeros([LISM.getDOF()])
-            # jointPgain = np.array([0, 1000, 1000])
-            # jointDgain = np.array([0, 10, 10])
 
+            # set PD control coef
             jointPgain = np.array([0, 40, 40])
             jointDgain = np.array([0, 0.8, 0.8])
             
             LISM.setPdGains(jointPgain, jointDgain)
             LISM.setPdTarget(jointNominalConfig, jointVelocityTarget)
             
+            # force data save in free motion
             force = LISM.getGeneralizedForce()
             ForceState = np.concatenate([ForceState, [[0.0, 0.0]]], axis = 0)
-            # JointTorque = np.concatenate([JointTorque, [[force[1], force[2]]]], axis = 0)
-            JointTorque = np.concatenate([JointTorque, [[0.0, 0.0]]], axis = 0)
+            JointTorque = np.concatenate([JointTorque, [[force[1], force[2]]]], axis = 0)
+            # JointTorque = np.concatenate([JointTorque, [[0.0, 0.0]]], axis = 0)
             JointVelSaved = np.concatenate([JointVelSaved, [[0.0, 0.0]]], axis = 0)
             
             # print("Joint position: ", JointPos)
@@ -159,11 +173,6 @@ def DriControl(ParamData):
             flag = 0
             EnvParam["con_flag"] = 0
             EnvParam["fun_flag"] = 0
-
-        # else:
-        #     ForceState = np.concatenate([ForceState, [[0.0, 0.0]]], axis = 0)
-        #     JointTorque = np.concatenate([JointTorque, [[0.0, 0.0]]], axis = 0)
-        #     JointVelSaved = np.concatenate([JointVelSaved, [[0.0, 0.0]]], axis = 0)
         
         world.integrate()
 
@@ -171,7 +180,7 @@ def DriControl(ParamData):
 
 
 if __name__ == "__main__":
-    # get params data
+    # get params config data
     FilePath = os.path.dirname(os.path.abspath(__file__))
     ParamFilePath = FilePath + "/config/LISM_test.yaml"
     ParamFile = open(ParamFilePath, "r", encoding="utf-8")
@@ -183,11 +192,13 @@ if __name__ == "__main__":
 
     # raisim world config setting
     world = raisim.World()
-    t_step = ParamData["environment"]["t_step"]
-    print(type(t_step))
+
+    # set simulation step
+    t_step = ParamData["environment"]["t_step"] 
     world.setTimeStep(t_step)
     ground = world.addGround(0)
-    # world.setDefaultMaterial(1, 1, 1)
+    
+    # set material collision property
     world.setMaterialPairProp("rubber", "rub", 1, 0, 0)
     world.setMaterialPairProp("default", "rub", 1, 0.85, 0.0001)
     gravity = world.getGravity()
@@ -224,6 +235,7 @@ if __name__ == "__main__":
     # file save
     Data = FileSave.DataSave(BallState, EndFootState, ForceState, JointTorque, JointVelSaved, T, ParamData)
 
+    # data visulization
     visualization.DataProcess(Data)
 
     # print("force, ", ForceState[0:100, 1])
