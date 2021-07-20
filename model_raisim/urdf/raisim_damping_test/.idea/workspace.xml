@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CMakeRunConfigurationManager" shouldGenerate="true" shouldDeleteObsolete="true">
+    <generated>
+      <config projectName="raisim_examples" targetName="raisimExample" />
+    </generated>
+  </component>
+  <component name="CMakeSettings" AUTO_RELOAD="true">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="18781a4e-c9e5-4054-b753-1723aa514de8" name="Default Changelist" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug" />
+  <component name="ProjectId" id="1pJbwqysNddgKYzGTmDLaF0p8hr" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showExcludedFiles" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/cmake-build-debug" />
+    </key>
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/cmake-build-debug" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="raisimExample" type="CMakeRunConfiguration" factoryName="Application" PASS_PARENT_ENVS_2="true" PROJECT_NAME="raisim_examples" TARGET_NAME="raisimExample" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="raisim_examples" RUN_TARGET_NAME="raisimExample">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="ServiceViewManager">
+    <option name="viewStates">
+      <list>
+        <serviceView>
+          <treeState>
+            <expand />
+            <select />
+          </treeState>
+        </serviceView>
+      </list>
+    </option>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="18781a4e-c9e5-4054-b753-1723aa514de8" name="Default Changelist" comment="" />
+      <created>1614904381114</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1614904381114</updated>
+      <workItem from="1614904382636" duration="11559000" />
+      <workItem from="1615026157644" duration="3379000" />
+      <workItem from="1616473984568" duration="17614000" />
+      <workItem from="1616556123202" duration="11076000" />
+      <workItem from="1616661976453" duration="2104000" />
+      <workItem from="1616742409716" duration="3602000" />
+      <workItem from="1616899796807" duration="12000" />
+      <workItem from="1616914532101" duration="3698000" />
+      <workItem from="1616942615186" duration="354000" />
+      <workItem from="1616944938765" duration="15000" />
+      <workItem from="1617085035718" duration="3918000" />
+      <workItem from="1618145792913" duration="595000" />
+      <workItem from="1618224079670" duration="676000" />
+      <workItem from="1618240503491" duration="38000" />
+      <workItem from="1618902463243" duration="5686000" />
+      <workItem from="1618932876091" duration="655000" />
+      <workItem from="1621428027654" duration="618000" />
+    </task>
+    <servers />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="602" y="271" width="424" height="484" key="FileChooserDialogImpl" timestamp="1618915260688">
+      <screen x="65" y="24" width="1855" height="1056" />
+    </state>
+    <state x="602" y="271" width="424" height="484" key="FileChooserDialogImpl/65.24.1855.1056@65.24.1855.1056" timestamp="1618915260688" />
+    <state width="1809" height="198" key="GridCell.Tab.0.bottom" timestamp="1621428645067">
+      <screen x="65" y="24" width="1855" height="1056" />
+    </state>
+    <state width="1809" height="198" key="GridCell.Tab.0.bottom/65.24.1855.1056@65.24.1855.1056" timestamp="1621428645067" />
+    <state width="1809" height="198" key="GridCell.Tab.0.center" timestamp="1621428645067">
+      <screen x="65" y="24" width="1855" height="1056" />
+    </state>
+    <state width="1809" height="198" key="GridCell.Tab.0.center/65.24.1855.1056@65.24.1855.1056" timestamp="1621428645067" />
+    <state width="1809" height="198" key="GridCell.Tab.0.left" timestamp="1621428645067">
+      <screen x="65" y="24" width="1855" height="1056" />
+    </state>
+    <state width="1809" height="198" key="GridCell.Tab.0.left/65.24.1855.1056@65.24.1855.1056" timestamp="1621428645067" />
+    <state width="1809" height="198" key="GridCell.Tab.0.right" timestamp="1621428645067">
+      <screen x="65" y="24" width="1855" height="1056" />
+    </state>
+    <state width="1809" height="198" key="GridCell.Tab.0.right/65.24.1855.1056@65.24.1855.1056" timestamp="1621428645067" />
+    <state width="1809" height="344" key="GridCell.Tab.1.bottom" timestamp="1614920932820">
+      <screen x="65" y="24" width="1855" height="1056" />
+    </state>
+    <state width="1809" height="344" key="GridCell.Tab.1.bottom/65.24.1855.1056@65.24.1855.1056" timestamp="1614920932820" />
+    <state width="1809" height="344" key="GridCell.Tab.1.center" timestamp="1614920932820">
+      <screen x="65" y="24" width="1855" height="1056" />
+    </state>
+    <state width="1809" height="344" key="GridCell.Tab.1.center/65.24.1855.1056@65.24.1855.1056" timestamp="1614920932820" />
+    <state width="1809" height="344" key="GridCell.Tab.1.left" timestamp="1614920932820">
+      <screen x="65" y="24" width="1855" height="1056" />
+    </state>
+    <state width="1809" height="344" key="GridCell.Tab.1.left/65.24.1855.1056@65.24.1855.1056" timestamp="1614920932820" />
+    <state width="1809" height="344" key="GridCell.Tab.1.right" timestamp="1614920932820">
+      <screen x="65" y="24" width="1855" height="1056" />
+    </state>
+    <state width="1809" height="344" key="GridCell.Tab.1.right/65.24.1855.1056@65.24.1855.1056" timestamp="1614920932820" />
+  </component>
+</project>

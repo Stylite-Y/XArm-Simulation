@@ -1,0 +1,72 @@
+<mujocoinclude>
+<!-- =================================================
+    Copyright 2021 Yanyan Yuan
+    Model   :: LISNM_Arm (MuJoCoV2.0)
+    Author  :: Yanyan Yuan (yuanyan_hy@zju.edu.cn)
+    source  :: https://github.com/stylite-y/LISM
+    License :: Under Apache License, Version 2.0 (the "License");
+    Description :: this file is LISM_Arm whole body model .xml file
+====================================================== -->
+
+    <body name="Motor1" childclass="LISM" pos="0.05 0.1 0.9">
+        <geom class="LISM_viz" mesh="motor1" material="greyblack"/>
+        <geom class="LISM_col" type="cylinder" size="0.048 0.0215" mass="0.45" quat="0.707107 0 0.707107 0" pos="0.0215 0 0"/>
+
+        <body name="Motor2" pos="0.046 0 0">
+            <joint name="motor1_motor2" range="-2.8973 2.8973" class="LISM_arm" axis="1 0 0"/>
+            <geom class="LISM_viz" mesh="motor2" quat="0 1 0 0" material="greyblack"/> 
+            <geom class="LISM_col" type="cylinder" size="0.023 0.009" mass="0.1" pos="0.009 0 0" quat="0.707107 0 0.707107 0"/>
+            <geom class="LISM_col" type="cylinder" size="0.048 0.023" mass="0.4" pos="0.064 0 0" quat="0.707107 0.707107 0 0"/>
+
+            <body name="Motor3" pos="0.064 0.032 0">
+                <joint name="motor2_motor3" range="-1.7628 1.7628" class="LISM_arm" axis="0 1 0"/>
+                <geom class="LISM_viz" mesh="motor3" material="greyblack"/>
+                <geom class="LISM_col" type="cylinder" size="0.048 0.0245" mass="0.5" pos="0 0.018 0" quat="0.707107 0.707107 0 0"/>
+
+                <body name="Upper" pos="0 0.032 0">
+                    <joint name="motor3_upper" range="-2.8973 2.8973" class="LISM_forearm" axis="0 1 0"/>
+                    <geom class="LISM_viz" mesh="upper" material="grey"/>
+                    <geom class="LISM_col" type="cylinder" size="0.021 0.015" mass="1.48" pos="0 0.023 0" quat="0.707107 0.707107 0 0"/>
+                    <geom class="LISM_col" type="cylinder" size="0.055 0.135" mass="2.7063" pos="0 0.085 -0.095"/>
+
+                    <body name="Lower" pos="0 0.085 -0.28">
+                        <joint name="upper_lower" range="-1.6573 2.1127" class="LISM_forearm" axis="0 1 0"/>
+                        <!-- <body name="LISM0_link6" pos="0 0 0" quat="0.707107 0.707107 0 0"> -->
+                        <!-- <joint name="LISM0_joint6" range="-0.0873 3.8223" class="LISM_forearm"/> -->
+                        <geom class="LISM_viz" mesh="lower" material="grey"/>
+                        <geom class="LISM_col" type="cylinder" size="0.045 0.105" mass="0.64" pos="0 0 -0.160"/>
+
+                        <body name="Wrist" pos="0 0 -0.27">
+                            <joint name="lower_wrist_x" axis="1 0 0" range="-2.8973 2.8973" class="LISM_forearm"/>
+                            <joint name="lower_wrist_y" axis="0 1 0" range="-2.8973 2.8973" class="LISM_forearm"/>
+                            <joint name="lower_wrist_z" axis="0 0 1" range="-2.8973 2.8973" class="LISM_forearm"/>
+                            <!-- <body name="LISM0_link7" pos="0.088 0 0" quat="0.707107 0.707107 0 0"> -->
+                            <!-- <joint name="LISM0_joint7" range="-2.9671 2.9671" class="LISM_forearm"/> -->
+                            <geom class="LISM_viz" mesh="wrist" material="greyblack"/>
+                            <geom class="LISM_col" type="box" size="0.045 0.045 0.070" mass="0.46" pos="0 0 -0.070"/>
+                            <!-- <geom pos="0 0 0.107" quat="0.92388 0 0 -0.382683" class="LISM_viz" mesh="hand_viz"/>
+                            <geom pos="0 0 0.107" quat="0.92388 0 0 -0.382683" class="LISM_col" mesh="hand_col" mass="0.81909"/> -->
+                            <!-- <site name='end_effector' pos='0 0 .210' size='0.01' euler='0 0 -0.785398'/> -->
+
+                            <body name="LISM_leftfinger" pos="0 0 -0.143" childclass='LISM_gripper'>
+                                <!-- <inertial pos="-1.57863e-05 0.0118731 0.0434103" quat="0.705868 0.0310348 -0.0314925 0.706962" mass="0.0927059" diaginertia="6.57134e-05 6.09611e-05 1.09932e-05" /> -->
+                                <joint name="gripper_left"  axis="0 1 0" type="slide" range="0 0.04" class="LISM_gripper"/>
+                                <geom class="LISM_viz" mesh="gripper" euler="3.14 0 0" material="greyblack"/>
+                                <geom quat="0 0 0 1" class="LISM_col" mesh="gripper" mass="0.01" euler="3.14 0 0"/>
+                                <!-- <geom class="LISM_col" mesh="finger_col"/> -->
+                            </body>
+
+                            <body name="LISM_rightfinger" pos="0 0 -0.143" childclass='LISM_gripper'>
+                                <!-- <inertial pos="1.57863e-05 -0.0118731 0.0434103" quat="0.705868 -0.0310348 0.0314925 0.706962" mass="0.0927059" diaginertia="6.57134e-05 6.09611e-05 1.09932e-05" /> -->
+                                <joint name="gripper_right" axis="0 -1 0" type="slide" range="0 0.04" class="LISM_gripper"/>
+                                <geom quat="0 0 0 1" class="LISM_viz" mesh="gripper" euler="0 3.14 0" material="greyblack"/>
+                                <geom quat="0 0 0 1" class="LISM_col" mesh="gripper" mass="0.01" euler="0 3.14 0"/>
+                                <!-- <geom class="LISM_col" mesh="finger_col"/> -->
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+        </body>
+    </body>
+</mujocoinclude>

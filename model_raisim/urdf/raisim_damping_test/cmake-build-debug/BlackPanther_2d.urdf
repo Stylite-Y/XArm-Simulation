@@ -1,0 +1,179 @@
+<?xml version="1.0" ?>
+<robot name="BlackPanther_2d">
+
+    <link name="world"/>
+
+    <link name="link1"/>
+
+<!--    <joint name="worldTolink1" type="fixed">-->
+
+<!--        <parent link="world"/>-->
+
+<!--        <child link="link1"/>-->
+
+<!--        <origin xyz="0 0 0"/>-->
+
+<!--    </joint>-->
+
+    <link name="root_x">
+        <inertia>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.01"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertia>
+    </link>
+
+    <link name="root_z">
+        <inertia>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.01"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertia>
+    </link>
+
+    <link name="body">
+        <!-- contain 4 abad motor's mass and inertia -->
+        <inertia>
+            <origin rpy="0 0 0" xyz="0 0 -0.003"/>
+            <mass value="5.88"/>
+            <inertia ixx="0.016269" ixy="0" ixz="0" iyy="0.1508" iyz="0" izz="0.060989"/>
+        </inertia>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <box size="0.3 0.2 0.1"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <joint name="link1Toroot_x" type="continuous">
+        <parent link="link1"/>
+        <child link="root_x"/>
+        <origin xyz="0 0 0"/>
+        <axis xyz="1 0 0"/>
+    </joint>
+
+    <joint name="root_xToroot_z" type="continuous">
+        <parent link="root_x"/>
+        <child link="root_z"/>
+        <origin xyz="0 0 0"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+
+    <joint name="root_zTobody" type="continuous">
+        <parent link="root_z"/>
+        <child link="body"/>
+        <origin xyz="0 0 0"/>
+        <axis xyz="0 1 0"/>
+    </joint>
+</robot>
+<!-- 
+    <link name="FU">
+        <inertial>
+            <mass value="1.272"/>
+            <origin xyz="0.0 0.0 -0.01865"/>
+            <inertia ixx="0.001724" ixy="0.0" ixz="0.0" iyy="0.003914" iyz="0.000228" izz="0.000468"/>
+        </inertial>
+    </link>
+
+    <joint name="body2FU" type="continuous">
+        <axis xyz="0 -1 0"/>
+        <origin rpy="0 0 0" xyz="0.212 0 0"/>
+        <parent link="body"/>
+        <child link="FU"/>
+        <limit effort="36" lower="-6.28" upper="6.28" velocity="40"/>
+        <dynamics damping="0.02" rotor_inertia="0.007416"/>
+    </joint>
+
+    <link name="FL">
+        <inertial>
+            <mass value="0.128"/>
+            <origin xyz="0.0 0.0 -0.0865"/>
+            <inertia ixx="0.000716" ixy="0" ixz="0.0" iyy="0.001442" iyz="0" izz="0.000012"/>
+        </inertial>
+    </link>
+
+    <joint name="FU2FL" type="continuous">
+        <axis xyz="0 -1 0"/>
+        <origin rpy="0.0 0 0.0" xyz="0.0 0.0 -0.201"/>
+        <parent link="FU"/>
+        <child link="FL"/>
+        <limit effort="54" lower="-6.28" upper="6.28" velocity="27"/>
+        <dynamics damping="0.02" rotor_inertia="0.017932"/>
+    </joint>
+
+    <link name="F_hoof">
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <sphere radius="0.0275"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.1"/>
+            <inertia ixx="0.000025" ixy="0" ixz="0" iyy="0.00005" iyz="0" izz="0.000025"/>
+        </inertial>
+    </link>
+
+    <joint name="FL2F_hoof" type="fixed">
+        <parent link="FL"/>
+        <child link="F_hoof"/>
+        <origin xyz="0 0 -0.19"/>
+    </joint>
+
+    <!-- ==================================================== -->
+
+    <link name="HU">
+        <inertial>
+            <mass value="1.272"/>
+            <origin xyz="0.0 0.0 -0.01865"/>
+            <inertia ixx="0.001724" ixy="0.0" ixz="0.0" iyy="0.003914" iyz="0.000228" izz="0.000468"/>
+        </inertial>
+    </link>
+
+    <joint name="body2HU" type="continuous">
+        <axis xyz="0 -1 0"/>
+        <origin rpy="0 0 0" xyz="-0.212 0 0"/>
+        <parent link="body"/>
+        <child link="HU"/>
+        <limit effort="36" lower="-6.28" upper="6.28" velocity="40"/>
+        <dynamics damping="0.02" rotor_inertia="0.007416"/>
+    </joint>
+
+    <link name="HL">
+        <inertial>
+            <mass value="0.128"/>
+            <origin xyz="0.0 0.0 -0.0865"/>
+            <inertia ixx="0.000716" ixy="0" ixz="0.0" iyy="0.001442" iyz="0" izz="0.000012"/>
+        </inertial>
+    </link>
+
+    <joint name="HU2HL" type="continuous">
+        <axis xyz="0 -1 0"/>
+        <origin rpy="0.0 0 0.0" xyz="0.0 0.0 -0.201"/>
+        <parent link="HU"/>
+        <child link="HL"/>
+        <limit effort="54" lower="-6.28" upper="6.28" velocity="27"/>
+        <dynamics damping="0.02" rotor_inertia="0.017932"/>
+    </joint>
+
+    <link name="H_hoof">
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <sphere radius="0.0275"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.1"/>
+            <inertia ixx="0.000025" ixy="0" ixz="0" iyy="0.00005" iyz="0" izz="0.000025"/>
+        </inertial>
+    </link>
+
+    <joint name="HL2H_hoof" type="fixed">
+        <parent link="HL"/>
+        <child link="H_hoof"/>
+        <origin xyz="0 0 -0.19"/>
+    </joint> -->
+
+</robot>

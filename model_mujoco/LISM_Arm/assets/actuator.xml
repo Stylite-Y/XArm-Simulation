@@ -1,0 +1,22 @@
+<mujocoinclude>
+<!-- =================================================
+    Copyright 2021 Yanyan Yuan
+    Model   :: LISNM_Arm (MuJoCoV2.0)
+    Author  :: Yanyan Yuan (yuanyan_hy@zju.edu.cn)
+    source  :: https://github.com/stylite-y/LISM
+    License :: Under Apache License, Version 2.0 (the "License");
+    Description :: this file is the definition of actuator settings .xml file
+====================================================== -->
+
+    <actuator>
+        <position name="LISM_joint1" joint="motor1_motor2" class="LISM" kp="870" forcerange="-87 87" ctrlrange="-2.9671 2.9671"/> <!-- velocity="2.1750" -->
+        <position name="LISM_joint2" joint="motor2_motor3" class="LISM" kp="870" forcerange="-87 87" ctrlrange="-1.8326 1.8326"/> <!-- velocity="2.1750" -->
+        <position name="LISM_joint3" joint="motor3_upper" class="LISM" kp="870" forcerange="-87 87" ctrlrange="-2.9671 2.9671"/> <!-- velocity="2.1750" -->
+        <position name="LISM_joint4" joint="upper_lower" class="LISM" kp="870" forcerange="-87 87" ctrlrange="-3.1416 0.0"/> <!-- velocity="2.1750" -->
+        <position name="LISM_joint5" joint="lower_wrist_x" class="LISM" kp="120" forcerange="-12 12" ctrlrange="-2.9671 2.9671"/> <!-- velocity="2.6100" -->
+        <position name="LISM_joint6" joint="lower_wrist_y" class="LISM" kp="120" forcerange="-12 12" ctrlrange="-1.66 2.1817"/> <!-- velocity="2.6100" -->
+        <position name="LISM_joint7" joint="lower_wrist_z" class="LISM" kp="120" forcerange="-12 12" ctrlrange="-2.9671 2.9671"/> <!-- velocity="2.9671" -->
+        <position name="r_gripper_gripper_joint" joint="gripper_left" class="LISM_gripper" kp="500" forcerange="-70 70" ctrlrange="0 0.04"/> <!-- velocity=".2" -->
+        <position name="l_gripper_gripper_joint" joint="gripper_right" class="LISM_gripper" kp="500" forcerange="-70 70" ctrlrange="0 0.04"/> <!-- velocity=".2" -->
+    </actuator>
+</mujocoinclude>

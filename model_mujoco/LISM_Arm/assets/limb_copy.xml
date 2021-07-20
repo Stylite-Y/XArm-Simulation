@@ -1,0 +1,158 @@
+<!-- NOTE: the joint limits and references have not been set. If using -->
+<!-- this to control a real ur5, make sure they align with the values -->
+<!-- used in the real arm firmware -->
+<!-- Masses and center-of-masses taken from: www.universal-robots.com/
+        how-tos-and-faqs/faq/ur-faq/
+        parameters-for-calculations-of-kinematics-and-dynamics-45257/ -->
+<!-- Principle moments of inertia not provided, set all to 0.1. -->
+<!-- Inertia parameters provided at link below, not sure of accuracy so not used:
+        http://hades.mech.northwestern.edu/images/4/49/UR5-URDF.pdf -->
+<mujoco model="ur5">
+    <compiler angle="radian" balanceinertia="true"/>
+
+    <default>
+        <light castshadow="false" diffuse="1 1 1" />
+        <camera fovy="60" />
+    </default>
+
+    <custom>
+        <numeric name="START_ANGLES" data="0 -.67 -.67 0 0 0"/>
+        <numeric name="N_GRIPPER_JOINTS" data="0" />
+        <text name="google_id" data="1SjWRUl-D1FZ5fB2cy4jF4X9wTsQ5LWzo"/>
+    </custom>
+
+    <asset> 
+
+        <!--LIMS arm mesh files-->
+        <mesh file="../meshes/griper.STL" scale="0.001 0.001 0.001"/>
+        <mesh file="../meshes/lower-limb.STL" scale="0.001 0.001 0.001"/>
+        <mesh file="../meshes/upper.STL" scale="0.001 0.001 0.001"/>
+        <mesh file="../meshes/motor1.STL" scale="0.001 0.001 0.001"/>
+        <!-- <mesh file="motor1-2.STL"/> -->
+        <mesh file="../meshes/motor2.STL" scale="0.001 0.001 0.001"/>
+        <mesh file="../meshes/motor3.STL" scale="0.001 0.001 0.001"/>
+        <mesh file="../meshes/wrist_roll.STL" scale="0.001 0.001 0.001"/>
+
+        <texture name="floor_tile" file="../meshes/floor_tile.png" width="3000" height="3000" type="2d"/>
+        <material name="tile" texture="floor_tile" specular="0" shininess="0" reflectance="0" emission="1" />
+        <material name="silver" specular="1" shininess="0.5" reflectance="1" emission="0.25" rgba="0.82 0.82 0.82 1"/>
+        <material name="grey" specular="1" shininess="0.5" reflectance="1" emission="0.1" rgba="0.5 0.5 0.5 1"/>
+        <material name="blue" specular="1" shininess="0.5" reflectance="1" emission="0" rgba="0.0196 0.7058 1 1"/>
+        <material name="black" specular="1" shininess="0.5" reflectance="1" emission="0" rgba="0.219 0.239 0.239 1"/>
+    </asset>
+
+    <worldbody>
+        <!-- <geom name="floor_grey_tile" pos="0 0 -0.1" size="0.75 0.75 0.05" type="plane" material="tile"/> -->
+
+        <!-- <body name="hand" pos="0 0 -0.15" mocap="true">
+            <geom type="box" size=".002 .004 .006" rgba="0 .9 0 .5" contype="2" conaffinity="2"/>
+        </body>
+
+        <body name="target" pos="0 0 -0.15" mocap="true">
+            <geom name="target" type="sphere" size="0.05" rgba=".9 0 0 .5" contype="4" conaffinity="4"/>
+        </body>
+
+        <body name="target_orientation" pos="0 0 -0.15" mocap="true">
+            <geom type="box" size=".02 .04 .06" rgba=".9 0 0 .5" contype="8" conaffinity="8"/>
+        </body>
+
+        <body name="path_planner" pos="0 0 -0.15" mocap="true">
+            c
+        </body>
+
+        <body name="path_planner_orientation" pos="0 0 -0.15" mocap="true">
+            <geom type="box" size=".02 .04 .06" rgba="0 1 1 .5" contype="16" conaffinity="16"/>
+        </body>
+
+        <body name="obstacle" pos="0 0 -0.15" mocap="true">
+            <geom type="sphere" size="0.05" rgba="0 0 1 1"/> -->
+        <!-- </body> -->
+
+        <light directional="true" pos="-0.5 0.5 3" dir="0 0 -1" />
+
+
+        <body name="motor1" pos="0 0 0">
+            <geom name="motor1" type="mesh" mesh="motor1" pos="0 0 0"/>
+            <!-- <inertial pos="0 0 0" mass="0.4" diaginertia="0.00035 0.00057 0.00057"/> -->
+            <geom name="box" type="box" size="0.15 0.15 0.01" pos="0 0 -0.09"/>
+
+            
+
+            <body name="fix_pillar" pos="0 0 0.3"> 
+                <!-- <joint name="fix" type="slide" axis="0 1 0" pos="0 0 0"/> -->
+                <!-- <inertial pos="0 -0.02561 0.00193" mass="0.01" diaginertia="1 1 1"/> -->
+                <geom name="fix_pillar" type="cylinder" pos="0 0 0" size="0.04 0.4" material="black" quat="0.707107 0 0.707107 0"/>
+                <geom name="test" type="box" pos="0 0 0" size=" 0.1 0.1 0.1"/>
+                <!-- <body name="aixs" pos="0 0 -0.3">
+                    <geom name="test2" type="box" pos="0 0 0" size=" 0.1 0.1 0.1"/>
+                </body> -->
+            </body>
+
+            <body name="motor2" pos="0.032 0 0">
+                <joint name="motor1_motor2" axis="1 0 0" pos="0 0 0"/>
+                <!-- <inertial pos="0 -0.02561 0.00193" mass="0.6" diaginertia="0.00036 0.00246 0.000462"/> -->
+                <geom name="motor2" type="mesh" mesh="motor2" pos="0 0 0" euler="3.14 0 0" material="blue"/>
+
+                <body name="motor3" pos="0.064 0.032 0">
+                    <joint name="motor2_motor3" axis="0 1 0" pos="0 0 0"/>
+                    <!-- <inertial pos="0 -0.02561 0.00193" mass="0.6" diaginertia="0.00069 0.00066 0.00066"/> -->
+                    <geom name="motor3" type="mesh" mesh="motor3" pos="0 0 0" euler="0 0 0" material="blue"/>
+
+                    <body name="upper" pos="0 0.032 0">
+                        <joint name="motor3_upper" axis="0 1 0" pos="0 0 0"/>
+                        <!-- <inertial pos="0 -0.02561 0.00193" mass="1.48" diaginertia="0.1 0.1 0.1"/> -->
+                        <geom name="upper" type="mesh" mesh="upper" pos="0 0 0" euler="0 0 0" material="blue"/>
+
+                        <body name="lower" pos="0 0.085 -0.280">
+                            <joint name="upper_lower" axis="0 1 0" pos="0 0 0"/>
+                            <!-- <inertial pos="0 -0.02561 0.00193" mass="0.64" diaginertia="1 1 0.1"/> -->
+                            <geom name="lower" type="mesh" mesh="lower-limb" pos="0 0 0" euler="0 0 0" material="blue"/>
+
+                            <body name="wrist" pos="0 0 -0.270">
+                                <joint name="lower_wrist_x" axis="1 0 0" pos="0 0 0" damping="0.01"/>
+                                <joint name="lower_wrist_y" axis="0 1 0" pos="0 0 0" damping="0.01"/>
+                                <joint name="lower_wrist_z" axis="0 0 1" pos="0 0 0" damping="0.01"/>
+                                <!-- <inertial pos="0 -0.02561 0.00193" mass="0.46" diaginertia="1 1 1"/> -->
+                                <geom name="wrist" type="mesh" mesh="wrist_roll" pos="0 0 0" euler="0 0 0" material="blue"/>
+
+                                <!-- <body name="gripper_left" pos="0 0 -0.143">
+                                    <joint name="gripper_left" type="slide" axis="0 1 0" pos="0 0 0"/>
+                                    <inertial pos="0 -0.02561 0.00193" mass="0.01" diaginertia="1 1 1"/>
+                                    <geom name="gripper_left" type="mesh" mesh="griper" pos="0 0 0" euler="3.14 0 0" material="blue"/>
+                                </body>
+
+                                <body name="gripper_right" pos="0 0 -0.143">
+                                    <joint name="gripper_right" type="slide" axis="0 1 0" pos="0 0 0"/>
+                                    <inertial pos="0 -0.02561 0.00193" mass="0.01" diaginertia="1 1 1"/>
+                                    <geom name="gripper_right" type="mesh" mesh="griper" pos="0 0 0" euler="0 3.14 0" material="blue"/>
+                                </body> -->
+                            </body>
+                        </body>
+                    </body>
+                    
+                </body>
+            </body>
+        </body>
+    </worldbody>
+
+    <actuator>
+        <!-- <motor name="motor1_act" joint="motor1_motor2"/>
+        <motor name="motor2_act" joint="motor2_motor3"/>
+        <motor name="motor3_act" joint="motor3_upper"/>
+        <motor name="upper_act" joint="upper_lower"/>
+        <motor name="lower_act" joint="lower_wrist"/>
+        <motor name="griper_left_act" joint="gripper_left"/> 
+        <motor name="griper_right_act" joint="gripper_right"/>  -->
+
+        <position name="motor1_act" joint="motor1_motor2"/>
+        <position name="motor2_act" joint="motor2_motor3"/>
+        <position name="motor3_act" joint="motor3_upper"/>
+        <position name="upper_act" joint="upper_lower"/>
+        <position name="lower_act_x" joint="lower_wrist_x"/>
+        <position name="lower_act_y" joint="lower_wrist_y"/>
+        <position name="lower_act_z" joint="lower_wrist_z"/>
+        <!-- <position name="griper_left_act" joint="gripper_left"/>  -->
+        <!-- <position name="griper_right_act" joint="gripper_right"/>  -->
+    </actuator>
+
+</mujoco>

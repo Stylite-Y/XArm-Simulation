@@ -1,0 +1,24 @@
+<mujoco model="LISN_Arm">
+<!-- =================================================
+    Copyright 2021 Yanyan Yuan
+    Model   :: LISNM_Arm (MuJoCoV2.0)
+    Author  :: Yanyan Yuan (yuanyan_hy@zju.edu.cn)
+    source  :: https://github.com/stylite-y/LISM
+    License :: Under Apache License, Version 2.0 (the "License");
+    Description :: this file is LISM_Arm .xml run file
+    Parameter :: 
+                basic_scene.xml: the definition of sky-background , ground and other geom
+                assets.xml     : the definition of default simulation engine settings, assets, default class and sensor
+                limb.xml       : the definition of LISM arm whole body model
+                actuator.xml   : the definition of actuator settings
+====================================================== -->
+    <include file="assets/basic_scene.xml"/>
+    <include file="assets/assets.xml"/>
+    <compiler meshdir=""/>
+
+    <worldbody>
+        <include file="assets/limb.xml"/>
+    </worldbody>
+
+    <include file='assets/actuator.xml'/>
+</mujoco>
