@@ -1,0 +1,27 @@
+environment:
+  t_step: 0.0001
+  sim_time: 20000
+  UpperArmLength: 0.2
+  LowerArmLength: 0.2
+  con_flag: 0
+  fun_flag: 0
+  mass: 0.5
+
+controller:
+  v_int: 5
+  v_ref: -6
+  x_ref_FD: 0.35
+  x_ref: 0.4
+  x_top: 0.6
+  f_up: 15.0
+  Pgain: 40.0
+  Dgain: 0.8
+  K_virx: 10000.0
+  # 11m/s
+  K_virz: 500.0
+  K_errv_up: 5.0
+  K_errv_down: 20.0
+
+  # K_virz: 120.0
+  # K_errv_up: 5.0
+  # K_errv_down: 25.0

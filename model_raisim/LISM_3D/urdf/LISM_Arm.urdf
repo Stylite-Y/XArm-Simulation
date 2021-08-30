@@ -1,0 +1,353 @@
+<?xml version="1.0" ?>
+<robot name="LISM_Arm">
+
+    <!-- Basic colors -->
+    <material name="black">
+        <color rgba="0.0 0.0 0.0 1.0"/>
+    </material>
+    <material name="greyblack">
+        <color rgba="0.1765 0.1765 0.1765 1"/>
+    </material>
+    <material name="blue">
+        <color rgba="0.0 0.0 0.8 1.0"/>
+    </material>
+    <material name="green">
+        <color rgba="0.0 0.8 0.0 1.0"/>
+    </material>
+    <material name="grey">
+        <color rgba="0.3 0.3 0.3 1"/>
+    </material>
+    <material name="silver">
+        <color rgba="0.8 0.8 0.8 1"/>
+    </material>
+    <material name="red">
+        <color rgba="0.8 0.0 0.0 1.0"/>
+    </material>
+    <material name="white">
+        <color rgba="1.0 1.0 1.0 1.0"/>
+    </material>
+
+    <!-- Material for the visual primitives -->
+    <material name="anymal_material">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+    </material>
+
+    <!--base of fixing arm-->
+    <link name="base_plate">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0"/>
+            <geometry>
+                <box size="0.3 0.3 0.02"/>
+            </geometry>
+            <material name="silver"/>
+        </visual>
+        
+    </link>
+
+    <joint name="base_fix" type="fixed">
+        <axis xyz="1 0 0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <parent link="base_plate"/>
+        <child link="fix_pillar"/>
+    </joint>
+
+    <link name="fix_pillar">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.5"/>
+            <geometry>
+                <cylinder length="1" radius="0.05"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+    </link>
+
+    <joint name="fix_plate" type="fixed">
+        <axis xyz="1 0 0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <parent link="fix_pillar"/>
+        <child link="arm_plate"/>
+    </joint>
+
+    <link name="arm_plate">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.9"/>
+            <geometry>
+                <box size="0.1 0.2 0.1"/>
+            </geometry>
+            <material name="silver"/>
+        </visual>
+    </link>
+
+    <joint name="plate_arm" type="fixed">
+        <axis xyz="1 0 0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <parent link="arm_plate"/>
+        <child link="motor1"/>
+    </joint>
+
+    <!--motor1 link-->
+    <link name="motor1">
+        <visual>
+            <origin rpy="3.14 0.0 0.0" xyz="0.05 0.1 0.9"/>
+            <geometry>
+                <mesh filename="../meshes/dae/motor1.dae" scale="0.001 0.001 0.001"/>
+            </geometry>
+            <material name="greyblack"/>
+        </visual>
+        <inertial>
+            <mass value="0.45"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+            <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+        </inertial> 
+        <collision>
+            <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+            <geometry>
+                <cylinder length="0.0215" radius="0.048"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!--motor1 to motor2 joint-->
+    <joint name="motor1_motor2" type="continuous">
+        <axis xyz="1 0 0"/>
+        <origin rpy="0 0 0" xyz="0.05 0.1 0.9"/>
+        <parent link="motor1"/>
+        <child link="motor2"/>
+        <limit effort="200" lower="-3.14" upper="3.14" velocity="20"/>
+        <dynamics damping="0.01" friction="0.2"/>
+    </joint>
+
+    <!--motor2 link-->
+    <link name="motor2">
+        <visual>
+            <origin rpy="3.14 0.0 0.0" xyz="0.046 0 0"/>
+            <geometry>
+                <mesh filename="../meshes/dae/motor2.dae" scale="0.001 0.001 0.001"/>
+            </geometry>
+            <material name="greyblack"/>
+        </visual>
+        <inertial>
+            <mass value="0.5"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+            <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+        </inertial>
+        <collision>
+            <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+            <geometry>
+                <cylinder length="0.023" radius="0.048"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!--motor2 to motor3 joint-->
+    <joint name="motor2_motor3" type="continuous">
+        <axis xyz="0 1 0"/>
+        <origin rpy="0 0 0" xyz="0.046 0 0"/>
+        <parent link="motor2"/>
+        <child link="motor3"/>
+        <limit effort="200" lower="-3.14" upper="3.14" velocity="20"/>
+        <dynamics damping="0.01" friction="0.2"/>
+    </joint>
+
+    <!--motor3 link-->
+    <link name="motor3">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0.064 0.032 0"/>
+            <geometry>
+                <!-- <mesh filename="../meshes/dae/bp_lower.dae"/> -->
+                <mesh filename="../meshes/dae/motor3.dae" scale="0.001 0.001 0.001"/>
+            </geometry>
+            <material name="greyblack"/>
+        </visual>
+        <inertial>
+            <mass value="0.5"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+            <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+        </inertial>
+        <collision>
+            <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+            <geometry>
+                <cylinder length="0.0245" radius="0.048"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!--motor3 to upper limb joint-->
+    <joint name="motor3_upper" type="continuous">
+        <axis xyz="0 1 0"/>
+        <origin rpy="0 0 0" xyz="0.064 0.032 0"/>
+        <parent link="motor3"/>
+        <child link="upper"/>
+        <limit effort="200" lower="-3.14" upper="3.14" velocity="20"/>
+        <dynamics damping="0.01" friction="0.2"/>
+    </joint>
+
+    <!--upper limb link-->
+    <link name="upper">
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0.032 0"/>
+            <geometry>
+                <mesh filename="../meshes/dae/upper.dae" scale="0.001 0.001 0.001"/>
+            </geometry>
+            <material name="grey"/>
+        </visual>
+        <inertial>
+            <mass value="1.48"/>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+        </inertial>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <box size="0.045 0.055 0.135"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!--upper limb to lower limb joint-->
+    <joint name="upper_lower" type="continuous">
+        <axis xyz="0 1 0"/>
+        <origin rpy="0 0 0" xyz="0 0.032 0"/>
+        <parent link="upper"/>
+        <child link="lower"/>
+        <limit effort="200" lower="-3.14" upper="3.14" velocity="20"/>
+        <dynamics damping="0.01" friction="0.2"/>
+    </joint>
+
+    <!--lower limb link-->
+    <link name="lower">
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0.085 -0.28"/>
+            <geometry>
+                <mesh filename="../meshes/dae/lower-limb.dae" scale="0.001 0.001 0.001"/>
+            </geometry>
+            <material name="grey"/>
+        </visual>
+        <inertial>
+            <mass value="0.64"/>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+        </inertial>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <box size="0.045 0.045 0.105"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!--lower limb to wrist joint-->
+    <joint name="lower_wrist_x" type="continuous">
+        <axis xyz="1 0 0"/>
+        <origin rpy="0 0 0" xyz="0 0.085 -0.28"/>
+        <parent link="lower"/>
+        <child link="wrist"/>
+        <limit effort="200" lower="-3.14" upper="3.14" velocity="20"/>
+        <dynamics damping="0.01" friction="0.2"/>
+    </joint>
+
+    <joint name="lower_wrist_y" type="continuous">
+        <axis xyz="0 1 0"/>
+        <origin rpy="0 0 0" xyz="0 0.085 -0.28"/>
+        <parent link="lower"/>
+        <child link="wrist"/>
+        <limit effort="200" lower="-3.14" upper="3.14" velocity="20"/>
+        <dynamics damping="0.01" friction="0.2"/>
+    </joint>
+
+    <joint name="lower_wrist_z" type="continuous">
+        <axis xyz="0 0 1"/>
+        <origin rpy="0 0 0" xyz="0 0.085 -0.28"/>
+        <parent link="lower"/>
+        <child link="wrist"/>
+        <limit effort="200" lower="-3.14" upper="3.14" velocity="20"/>
+        <dynamics damping="0.01" friction="0.2"/>
+    </joint>
+
+    <!--wrist link-->
+    <link name="wrist">
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 -0.27"/>
+            <geometry>
+                <mesh filename="../meshes/dae/wrist_roll.dae" scale="0.001 0.001 0.001"/>
+            </geometry>
+            <material name="greyblack"/>
+        </visual>
+        <inertial>
+            <mass value="0.45"/>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+        </inertial>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <box size="0.045 0.045 0.07"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!--wrist to gripperleft joint-->
+    <joint name="wrist_gripperleft" type="continuous">
+        <axis xyz="1 0 0"/>
+        <origin rpy="0 0 0" xyz="0 0 -0.27"/>
+        <parent link="wrist"/>
+        <child link="gripperleft"/>
+        <limit effort="200" lower="-3.14" upper="3.14" velocity="20"/>
+        <dynamics damping="0.01" friction="0.2"/>
+    </joint>
+
+        <!--gripperleft link-->
+    <link name="gripperleft">
+        <visual>
+            <origin rpy="3.14 0 0" xyz="0 0 -0.143"/>
+            <geometry>
+                <mesh filename="../meshes/dae/gripper.dae" scale="0.001 0.001 0.001"/>
+            </geometry>
+            <material name="greyblack"/>
+        </visual>
+        <inertial>
+            <mass value="0.01"/>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+        </inertial>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <box size="0.005 0.1 0.33"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!--wrist to gripperight joint-->
+    <joint name="wrist_gripperight" type="continuous">
+        <axis xyz="1 0 0"/>
+        <origin rpy="0 0 0" xyz="0 0 -0.27"/>
+        <parent link="wrist"/>
+        <child link="gripperight"/>
+        <limit effort="200" lower="-3.14" upper="3.14" velocity="20"/>
+        <dynamics damping="0.01" friction="0.2"/>
+    </joint>
+
+    <!--gripperight link-->
+    <link name="gripperight">
+        <visual>
+            <origin rpy="0 3.14 0" xyz="0 0 -0.143"/>
+            <geometry>
+                <mesh filename="../meshes/dae/gripper.dae" scale="0.001 0.001 0.001"/>
+            </geometry>
+            <material name="greyblack"/>
+        </visual>
+        <inertial>
+            <mass value="0.45"/>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+        </inertial>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <box size="0.005 0.1 0.33"/>
+            </geometry>
+        </collision>
+    </link>
+
+</robot>
