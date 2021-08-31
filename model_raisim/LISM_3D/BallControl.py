@@ -33,47 +33,47 @@ def DataPlot(Data):
     T = Data['time']
     SumForce = ExternalForce
 
-    # plt.figure()
-    # plt.title('Ball motion in zx plane', fontsize = 20)
+    plt.figure()
+    plt.title('Ball motion in zx plane', fontsize = 20)
 
-    # plt.subplot(311)
-    # plt.plot(T, BallPosition[:, 0], label='Ball x-axis Position')
-    # plt.plot(T, BallPosition[:, 1], label='Ball y-axis Position')
-    # # plt.plot(T, BallVelocity[:, 0], label='Ball x-axis Velocity')
-    # plt.plot(T, BallPosition[:, 2], label='Ball z-axis Position')
-    # # plt.plot(T, line2, label='highest Velocity')
-    # plt.axis([0, max(T)*1.05, -max(BallPosition[:, 2])*2, max(BallPosition[:, 2])*2])
-    # plt.xlabel('time (s)')
-    # plt.ylabel('Ball Position (m)', fontsize = 15)
-    # plt.legend(loc='upper right', fontsize = 15)
-
-
-    # plt.subplot(312)
+    plt.subplot(311)
+    plt.plot(T, BallPosition[:, 0], label='Ball x-axis Position')
+    plt.plot(T, BallPosition[:, 1], label='Ball y-axis Position')
     # plt.plot(T, BallVelocity[:, 0], label='Ball x-axis Velocity')
-    # plt.plot(T, BallVelocity[:, 1], label='Ball y-axis Velocity')
-    # plt.plot(T, BallVelocity[:, 2], label='Ball z-axis Velocity')
+    plt.plot(T, BallPosition[:, 2], label='Ball z-axis Position')
+    # plt.plot(T, line2, label='highest Velocity')
+    plt.axis([0, max(T)*1.05, -max(BallPosition[:, 2])*2, max(BallPosition[:, 2])*2])
+    plt.xlabel('time (s)')
+    plt.ylabel('Ball Position (m)', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
 
-    # plt.axis([0, max(T)*1.05, -max(BallVelocity[:, 2])*2, max(BallVelocity[:, 2])*2])
-    # plt.xlabel('time (s)')
-    # plt.ylabel('Velocity (m/s)', fontsize = 15)
-    # plt.legend(loc='upper right', fontsize = 15)
 
-    # plt.subplot(313)
-    # plt.plot(T, ExternalForce[:, 0], label='Ball x-axis Force')
-    # plt.plot(T, ExternalForce[:, 1], label='Ball y-axis Force')
-    # plt.plot(T, ExternalForce[:, 2], label='Ball z-axis Force')
+    plt.subplot(312)
+    plt.plot(T, BallVelocity[:, 0], label='Ball x-axis Velocity')
+    plt.plot(T, BallVelocity[:, 1], label='Ball y-axis Velocity')
+    plt.plot(T, BallVelocity[:, 2], label='Ball z-axis Velocity')
 
-    # plt.axis([0, max(T)*1.05, -max(ExternalForce[:, 0])*2.5, max(ExternalForce[:, 0])*2.5])
-    # plt.xlabel('time (s)', fontsize = 15)
-    # plt.ylabel('Force (N)', fontsize = 15)
-    # plt.legend(loc='upper right', fontsize = 15)
+    plt.axis([0, max(T)*1.05, -max(BallVelocity[:, 2])*2, max(BallVelocity[:, 2])*2])
+    plt.xlabel('time (s)')
+    plt.ylabel('Velocity (m/s)', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
 
-    # plt.figure()
-    # plt.scatter(BallPosition[:, 0], BallPosition[:, 2], label='X-Z plane Ball motion trajectory')
-    # plt.xlabel('x-axis position (m)', fontsize = 15)
-    # plt.ylabel('z-axis position (m)', fontsize = 15)
-    # # plt.legend(loc='upper right')
-    # plt.title('X-Z plane Ball motion trajectory', fontsize = 20)
+    plt.subplot(313)
+    plt.plot(T, ExternalForce[:, 0], label='Ball x-axis Force')
+    plt.plot(T, ExternalForce[:, 1], label='Ball y-axis Force')
+    plt.plot(T, ExternalForce[:, 2], label='Ball z-axis Force')
+
+    plt.axis([0, max(T)*1.05, -max(ExternalForce[:, 0])*2.5, max(ExternalForce[:, 0])*2.5])
+    plt.xlabel('time (s)', fontsize = 15)
+    plt.ylabel('Force (N)', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
+
+    plt.figure()
+    plt.scatter(BallPosition[:, 0], BallPosition[:, 2], label='X-Z plane Ball motion trajectory')
+    plt.xlabel('x-axis position (m)', fontsize = 15)
+    plt.ylabel('z-axis position (m)', fontsize = 15)
+    # plt.legend(loc='upper right')
+    plt.title('X-Z plane Ball motion trajectory', fontsize = 20)
 
     # plt.figure()
     # plt.plot(BallPosition[:, 0], ExternalForce[:, 0], label='Ball x-axis Pos-Force')
@@ -92,30 +92,30 @@ def DataPlot(Data):
     # plt.legend(loc='upper right')
     plt.title('X-Y plane Ball motion trajectory', fontsize = 20)
 
-    plt.figure()
-    Num = len(Point1Vel)
-    index = np.linspace(0, Num, Num)
-    plt.subplot(211)
-    # Point1Vel[0, 1] = 6
-    # plt.scatter(index, Point1Pos[:, 0], label='Point 1 x-axis pos motion trajectory')
-    plt.scatter(index, Point1Pos[:, 1], label='Point 1 y-axis pos motion trajectory')
-    # plt.scatter(index, Point1Pos[:, 2], label='Point 1 z-axis pos motion trajectory')
+    # plt.figure()
+    # Num = len(Point1Vel)
+    # index = np.linspace(0, Num, Num)
+    # plt.subplot(211)
+    # # Point1Vel[0, 1] = 6
+    # # plt.scatter(index, Point1Pos[:, 0], label='Point 1 x-axis pos motion trajectory')
+    # plt.scatter(index, Point1Pos[:, 1], label='Point 1 y-axis pos motion trajectory')
+    # # plt.scatter(index, Point1Pos[:, 2], label='Point 1 z-axis pos motion trajectory')
 
-    plt.xlabel('Period', fontsize = 15)
-    plt.ylabel('axis position (m)', fontsize = 15)
-    # plt.axis([-0.5, Num + 0.5, -1.5, 1.5])
-    plt.legend(loc='upper right', fontsize = 15)
+    # plt.xlabel('Period', fontsize = 15)
+    # plt.ylabel('axis position (m)', fontsize = 15)
+    # # plt.axis([-0.5, Num + 0.5, -1.5, 1.5])
+    # plt.legend(loc='upper right', fontsize = 15)
 
-    plt.subplot(212)
-    # plt.scatter(index, Point1Vel[:, 0], label='Point 1 x-axis vel motion trajectory')
-    plt.scatter(index, Point1Vel[:, 1], label='Point 1 y-axis vel motion trajectory')
-    # plt.scatter(index, Point1Vel[:, 2], label='Point 1 z-axis vel motion trajectory')
+    # plt.subplot(212)
+    # # plt.scatter(index, Point1Vel[:, 0], label='Point 1 x-axis vel motion trajectory')
+    # plt.scatter(index, Point1Vel[:, 1], label='Point 1 y-axis vel motion trajectory')
+    # # plt.scatter(index, Point1Vel[:, 2], label='Point 1 z-axis vel motion trajectory')
 
-    plt.xlabel('Period', fontsize = 15)
-    plt.ylabel('axis velocity (m)', fontsize = 15)
-    # plt.axis([-0.5, Num + 0.5, -1.5, 1.5])
-    plt.legend(loc='upper right', fontsize = 15)
-    # plt.title('Point1 motion trajectory', fontsize = 20)
+    # plt.xlabel('Period', fontsize = 15)
+    # plt.ylabel('axis velocity (m)', fontsize = 15)
+    # # plt.axis([-0.5, Num + 0.5, -1.5, 1.5])
+    # plt.legend(loc='upper right', fontsize = 15)
+    # # plt.title('Point1 motion trajectory', fontsize = 20)
 
     # fig = plt.figure()
     # ax = fig.gca(projection='3d')
@@ -201,7 +201,7 @@ def DriControl(ParamData):
     Point2State = np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
     Point3State = np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
         
-    for i in range(100000):
+    for i in range(20000):
         time.sleep(0.0001)
 
         BallPos, BallVel = ball1.getState()
@@ -250,7 +250,7 @@ def DriControl(ParamData):
                     YForce = - zy_ratio * ZForce
                 elif index == 1:
                     XForce = - x_coef * zx_ratio * ZForce
-                    YForce = - y_coef * zy_ratio * ZForce
+                    YForce = 0
                 elif index == 2:
                     XForce = x_coef * zx_ratio * ZForce
                     YForce = - y_coef * zy_ratio * ZForce
@@ -285,7 +285,7 @@ def DriControl(ParamData):
                 # XForce = x_coef * (K_xd * (np.abs(BallPos[0] - x_ref)) + 50 * (v_xref - x_coef * BallVel[0]))
                 # YForce = y_coef * (K_xd * (np.abs(BallPos[1] - y_ref)) + 60 * (v_yref - y_coef * BallVel[1]))
                 XForce = x_coef * 50 * (v_xref - x_coef * BallVel[0])
-                YForce = y_coef * 100 * (v_yref - y_coef * BallVel[1])
+                YForce = y_coef * 50 * (v_yref - y_coef * BallVel[1])
                 ZForce = - K_zd * (BallPos[2] - z_ref) - K_zvdown * (BallVel[2]- v_zref)
                 # print("x pos and vel is ", BallPos[0], BallVel[0])
 
