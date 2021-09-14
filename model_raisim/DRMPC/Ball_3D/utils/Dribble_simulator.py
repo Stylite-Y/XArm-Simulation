@@ -19,12 +19,12 @@ def Dribble_simulator(model):
 
     simulator.set_param(**params_simulator)
 
-    tvp_template = simulator.get_tvp_template()
+    # tvp_template = simulator.get_tvp_template()
 
-    def tvp_fun(t_ind):
-        return tvp_template
+    # def tvp_fun(t_ind):
+    #     return tvp_template
 
-    simulator.set_tvp_fun(tvp_fun)
+    # simulator.set_tvp_fun(tvp_fun)
 
     # p_template = simulator.get_p_template()
 

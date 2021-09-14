@@ -45,10 +45,10 @@ def Dribble_model():
     u_z = model.set_variable(var_type='_u', var_name='u_z', shape=(1, 1))
 
     # time vary reference
-    xtraj = model.set_variable(var_type='_tvp', var_name='xtraj')
-    ztraj = model.set_variable(var_type='_tvp', var_name='ztraj')
-    ytraj = model.set_variable(var_type='_tvp', var_name='ytraj')
-    TrajIndex = model.set_variable(var_type='_tvp', var_name='TrajIndex')
+    # xtraj = model.set_variable(var_type='_tvp', var_name='xtraj')
+    # ztraj = model.set_variable(var_type='_tvp', var_name='ztraj')
+    # ytraj = model.set_variable(var_type='_tvp', var_name='ytraj')
+    # TrajIndex = model.set_variable(var_type='_tvp', var_name='TrajIndex')
 
     # x_reb = model.set_variable(var_type='_p', var_name='x_reb', shape=(1, 1))
     # x_ref = model.set_variable(var_type='_p', var_name='x_ref', shape=(1, 1))
@@ -59,9 +59,12 @@ def Dribble_model():
     model.set_rhs('z_b', dx_b[2])
 
     dx_b_next = vertcat(
-        u_x / m * tanh_sig(z_b - z_ref),
-        u_y / m * tanh_sig(z_b - z_ref),
-        -g + u_z / m * tanh_sig(z_b - z_ref) + (K_con * (-z_b + z_reb)) * tanh_sig(z_reb - z_b),
+        # u_x / m * tanh_sig(z_b - z_ref),
+        # u_y / m * tanh_sig(z_b - z_ref),
+        # -g + u_z / m * tanh_sig(z_b - z_ref) + (K_con * (-z_b + z_reb)) * tanh_sig(z_reb - z_b),
+        u_x / m,
+        u_y / m,
+        -g + u_z / m,
     )
 
     # dx_b_next = vertcat(
