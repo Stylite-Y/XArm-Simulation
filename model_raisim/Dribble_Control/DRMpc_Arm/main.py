@@ -73,6 +73,7 @@ def Dribble_MpcController():
     n_step = 3000
     for k in range(n_step):
         u0 = mpc.make_step(x0)
+        print(u0)
         y_next = simulator.make_step(u0)
         x0 = estimator.make_step(y_next)
 

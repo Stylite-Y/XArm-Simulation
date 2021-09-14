@@ -149,7 +149,11 @@ for k in range(n_step):
     #     # v2 = 16 * (t2 - 1 - t0)
     #     # s2 = 0.5 * 16 * (t2 - 1 - t0) ** 2
 
-    
+    current_time_data = mpc.data['_time']
+    current_time_mpc = mpc.t0
+    # print("current_time_data: ", current_time_data)
+    print("t_ind: ", t_ind)
+    # print("current_time_opt: ", mpc.data['t_wall_S'])
     u0 = mpc.make_step(x0)
     y_next = simulator.make_step(u0)
     x0 = estimator.make_step(y_next)
@@ -175,6 +179,8 @@ plt.show()
 # print(j)
 
 print("===========controller mpc position data===========")
+print("current_time_opt: ", mpc.data['t_wall_S'])
+print("current_time_data: ", mpc.data['_time'])
 print(mpc.data['_x', 'x_b'])
 print("===========controller mpc force data===========")
 # print(mpc.data['_u', 'u'])
