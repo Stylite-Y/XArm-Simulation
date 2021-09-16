@@ -28,7 +28,7 @@ def Dribble_model():
     K_zd = 300
     K_zvup = 5
     K_zvdown = 15
-    K_con = 10000
+    K_con = 1000
 
     model_type = 'continuous' # either 'discrete' or 'continuous'
     model = do_mpc.model.Model(model_type)
@@ -39,7 +39,9 @@ def Dribble_model():
     z_b = model.set_variable(var_type='_x', var_name='z_b', shape=(1, 1))
 
     # x2 = model.set_variable(var_type='_x', var_name='theta_dot', shape=(1, 1))
-    dx_b = model.set_variable(var_type='_x', var_name='dx_b', shape=(3, 1))
+    dx_b = model.set_variable(var_type='_x', var_name='dx_b', shape=(1, 1))
+    dy_b = model.set_variable(var_type='_x', var_name='dy_b', shape=(1, 1))
+    dz_b = model.set_variable(var_type='_x', var_name='dz_b', shape=(1, 1))
     u_x = model.set_variable(var_type='_u', var_name='u_x', shape=(1, 1))
     u_y = model.set_variable(var_type='_u', var_name='u_y', shape=(1, 1))
     u_z = model.set_variable(var_type='_u', var_name='u_z', shape=(1, 1))
@@ -54,24 +56,33 @@ def Dribble_model():
     # x_ref = model.set_variable(var_type='_p', var_name='x_ref', shape=(1, 1))
 
     # rhs
-    model.set_rhs('x_b', dx_b[0])
-    model.set_rhs('y_b', dx_b[1])
-    model.set_rhs('z_b', dx_b[2])
-
-    dx_b_next = vertcat(
-        # u_x / m * tanh_sig(z_b - z_ref),
-        # u_y / m * tanh_sig(z_b - z_ref),
-        # -g + u_z / m * tanh_sig(z_b - z_ref) + (K_con * (-z_b + z_reb)) * tanh_sig(z_reb - z_b),
-        u_x / m,
-        u_y / m,
-        -g + u_z / m,
-    )
+    model.set_rhs('x_b', dx_b)
+    model.set_rhs('y_b', dy_b)
+    model.set_rhs('z_b', dz_b)
 
     # dx_b_next = vertcat(
-    #     -g + u / m * logistic(x_b-x_ref) + (k_con * (-x_b + x_reb)) * logistic(x_reb-x_b)
+    #     u_x / m * tanh_sig(z_b - z_ref),
+    #     u_y / m * tanh_sig(z_b - z_ref),
+    #     -g + u_z / m * tanh_sig(z_b - z_ref),
+    #     # -g + u_z / m * tanh_sig(z_b - z_ref) + (K_con * (-z_b + z_reb)) * tanh_sig(z_reb - z_b),
+
+    #     # u_x / m,
+    #     # u_y / m,
+    #     # -g + u_z / m,
     # )
 
+    dx_b_next = vertcat(
+        u_x / m * tanh_sig(z_b - z_ref),
+    )
+    dy_b_next = vertcat(
+        u_y / m * tanh_sig(z_b - z_ref),
+    )
+    dz_b_next = vertcat(
+        -g + u_z / m * tanh_sig(z_b - z_ref),
+    )
     model.set_rhs('dx_b', dx_b_next)
+    model.set_rhs('dy_b', dy_b_next)
+    model.set_rhs('dz_b', dz_b_next)
 
     model.setup()
 

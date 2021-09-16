@@ -45,7 +45,7 @@ from Dribble_model import tanh_sig
 #     z_reftra = np.cos()
 #     return z_reftra
 
-def Dribble_mpc(model, xtra, ytra, v_xref, v_yref, index):
+def Dribble_mpc(model, xtra, ytra, v_xref, v_yref, v_zref):
     TraPoint_x = np.array([-0.2, -0.5, 0.1])
     TraPoint_y = np.array([0.0, 0.6, 0.6])
 
@@ -53,8 +53,8 @@ def Dribble_mpc(model, xtra, ytra, v_xref, v_yref, index):
 
     starttime = datetime.datetime.now()
     setup_mpc = {
-        'n_horizon': 10,
-        't_step': 0.01,
+        'n_horizon': 20,
+        't_step': 0.02,
         # 'n_robust': 1,
         # 'store_full_solution': True,  
         # 'open_loop': True,  
@@ -66,11 +66,16 @@ def Dribble_mpc(model, xtra, ytra, v_xref, v_yref, index):
     mpc.set_param(**setup_mpc)
     setp_endtime = datetime.datetime.now()
 
-    q1 = 1000
-    q2 = 1500
-    r1 = 0.2
-    r2 = 0.03
-    v_zref = -6
+    xq1 = 500
+    yq2 = 100
+    zq3 = 500
+    vxq1 = 500.0
+    vyq2 = 500.0
+    vzq3 = 1500.0
+    r1 = 10.0
+    r2 = 10.0
+    r3 = 50.0
+#     v_zref = -6
     z_ref = 0.5
 
     # x_reftra = X_TRA(xtra)
@@ -91,22 +96,27 @@ def Dribble_mpc(model, xtra, ytra, v_xref, v_yref, index):
     # lterm = q2 * (model.x['z_b']) ** 2
     # v_b = np.array([v_xref, v_yref, v_zref])
     setob_stime = datetime.datetime.now()
-    lterm = q1 * (model.x['x_b'] - xtra) ** 2 + q1 * (model.x['y_b'] - ytra) ** 2 + q1 * (model.x['z_b'] - z_ref) ** 2 + \
-            q1 * (model.x['dx_b', 0] - v_xref) ** 2 + q1 * (model.x['dx_b', 1] - v_yref) ** 2 + q2 * (model.x['dx_b', 2] - v_zref) ** 2 + \
-            r1 * (model.u['u_x']) ** 2 + r1 * (model.u['u_y']) ** 2 + r2 * (model.u['u_z']) ** 2
+#     lterm = xq1 * (model.x['x_b'] - xtra) ** 2 + yq2 * (model.x['y_b'] - ytra) ** 2 + zq3 * (model.x['z_b'] - z_ref) ** 2 + \
+#             vxq1 * (model.x['dx_b', 0] - v_xref) ** 2 + vyq2 * (model.x['dx_b', 1] - v_yref) ** 2 + vzq3 * (model.x['dx_b', 2] - v_zref) ** 2 + \
+#             r1 * (model.u['u_x']) ** 2 + r2 * (model.u['u_y']) ** 2 + r3 * (model.u['u_z']) ** 2
 
-    mterm = q1 * (model.x['x_b'] - xtra) ** 2 + q1 * (model.x['y_b'] - ytra) ** 2 + q1 * (model.x['z_b'] - z_ref) ** 2 + \
-            q1 * (model.x['dx_b', 0] - v_xref) ** 2 + q1 * (model.x['dx_b', 1] - v_yref) ** 2 + q2 * (model.x['dx_b', 2] - v_zref) ** 2
+#     mterm = xq1 * (model.x['x_b'] - xtra) ** 2 + yq2 * (model.x['y_b'] - ytra) ** 2 + zq3 * (model.x['z_b'] - z_ref) ** 2 + \
+#             vxq1 * (model.x['dx_b', 0] - v_xref) ** 2 + vyq2 * (model.x['dx_b', 1] - v_yref) ** 2 + vzq3 * (model.x['dx_b', 2] - v_zref) ** 2
     # lterm = q1 * (model.x['x_b'] - x_ref) ** 2 + q2 * (model.x['dx_b'] - v_ref) ** 2 + r * mod
+
+    lterm = vxq1 * (model.x['dx_b'] - v_xref) ** 2 + vyq2 * (model.x['dy_b'] - v_yref) ** 2 + vzq3 * (model.x['dz_b'] + 6) ** 2 + \
+            r1 * (model.u['u_x']) ** 2 + r2 * (model.u['u_y']) ** 2 + r3 * (model.u['u_z']) ** 2
+
+    mterm = vxq1 * (model.x['dx_b'] - v_xref) ** 2 + vyq2 * (model.x['dy_b'] - v_yref) ** 2 + vzq3 * (model.x['dz_b'] + 6) ** 2
 
     # mterm = (model.x['x_b']) ** 2
     # lterm = (model.x['x_b']) ** 2 + (model.u['u_x']) ** 2
 
     mpc.set_objective(mterm=mterm, lterm=lterm)
-    setob_endtime = datetime.datetime.now()
+#     setob_endtime = datetime.datetime.now()
     
     # mpc.set_rterm(u_x=1e-2, u_y=1e-2, u_z=1e-2)
-    setbound_stime = datetime.datetime.now()
+#     setbound_stime = datetime.datetime.now()
 
     mpc.bounds['lower', '_x', 'x_b'] = -1.5
     mpc.bounds['upper', '_x', 'x_b'] = 1.0
@@ -117,20 +127,20 @@ def Dribble_mpc(model, xtra, ytra, v_xref, v_yref, index):
     mpc.bounds['lower', '_x', 'z_b'] = 0.0
     mpc.bounds['upper', '_x', 'z_b'] = 1.0
 
-    mpc.bounds['lower', '_u', 'u_x'] = -500
-    mpc.bounds['upper', '_u', 'u_x'] = 500
+    mpc.bounds['lower', '_u', 'u_x'] = -500.0
+    mpc.bounds['upper', '_u', 'u_x'] = 500.0
 
-    mpc.bounds['lower', '_u', 'u_y'] = -500
-    mpc.bounds['upper', '_u', 'u_y'] = 500
+    mpc.bounds['lower', '_u', 'u_y'] = -500.0
+    mpc.bounds['upper', '_u', 'u_y'] = 500.0
 
     mpc.bounds['lower', '_u', 'u_z'] = -500.0
     mpc.bounds['upper', '_u', 'u_z'] = 0.0
 
     setbound_etime = datetime.datetime.now()
 
-    print("params set time: ", setp_endtime - starttime)
-    print("objective set time: ", setob_endtime - setob_stime)
-    print("bound set time: ", setbound_etime - setbound_stime)
+#     print("params set time: ", setp_endtime - starttime)
+#     print("objective set time: ", setob_endtime - setob_stime)
+#     print("bound set time: ", setbound_etime - setbound_stime)
 
     # tvp_template = mpc.get_tvp_template()
     # Period = 0.5
