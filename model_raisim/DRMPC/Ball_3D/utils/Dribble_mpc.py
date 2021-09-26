@@ -45,16 +45,14 @@ from Dribble_model import tanh_sig
 #     z_reftra = np.cos()
 #     return z_reftra
 
-def Dribble_mpc(model, xtra, ytra, v_xref, v_yref, v_zref):
-    TraPoint_x = np.array([-0.2, -0.5, 0.1])
-    TraPoint_y = np.array([0.0, 0.6, 0.6])
+def Dribble_mpc(model, sim_t_step, x_coef, y_coef, z_coef):
 
     mpc = do_mpc.controller.MPC(model)
 
     starttime = datetime.datetime.now()
     setup_mpc = {
-        'n_horizon': 20,
-        't_step': 0.02,
+        'n_horizon': 150,
+        't_step': sim_t_step,
         # 'n_robust': 1,
         # 'store_full_solution': True,  
         # 'open_loop': True,  
@@ -66,15 +64,15 @@ def Dribble_mpc(model, xtra, ytra, v_xref, v_yref, v_zref):
     mpc.set_param(**setup_mpc)
     setp_endtime = datetime.datetime.now()
 
-    xq1 = 500
-    yq2 = 100
-    zq3 = 500
-    vxq1 = 500.0
-    vyq2 = 500.0
-    vzq3 = 1500.0
-    r1 = 10.0
-    r2 = 10.0
-    r3 = 50.0
+    xq1 = 50.0
+    yq2 = 50.0
+    zq3 = 50.0
+    vxq1 = 150.0
+    vyq2 = 100.0
+    vzq3 = 100.0
+    r1 = 1.0
+    r2 = 1.0
+    r3 = 1.0
 #     v_zref = -6
     z_ref = 0.5
 
@@ -82,9 +80,9 @@ def Dribble_mpc(model, xtra, ytra, v_xref, v_yref, v_zref):
 
     # z_reftra = Z_TRA(xtra, ztra)
 
-    # mterm = q1 * (model.x['x_b'] - model.tvp['xtraj']) ** 2 + q1 * (model.x['y_b'] - model.tvp['ytraj']) ** 2 + q2 * (model.x['z_b'] - z_ref) ** 2
-    # lterm = q1 * (model.x['x_b'] - model.tvp['xtraj']) ** 2 + q1 * (model.x['y_b'] - model.tvp['ytraj']) ** 2 + q2 * (model.x['z_b'] - z_ref) ** 2 \
-    #          + r1 * (model.u['u_x']) ** 2 + r1 * (model.u['u_y']) ** 2 + r2 * (model.u['u_z']) ** 2
+    mterm = xq1 * (model.x['x_b'] - model.tvp['xtraj']) ** 2 + yq2 * (model.x['y_b'] - model.tvp['ytraj']) ** 2 + zq3 * (model.x['z_b'] - z_ref) ** 2
+    lterm = xq1 * (model.x['x_b'] - model.tvp['xtraj']) ** 2 + yq2 * (model.x['y_b'] - model.tvp['ytraj']) ** 2 + zq3 * (model.x['z_b'] - z_ref) ** 2 \
+             + r1 * (model.u['u_x']) ** 2 + r2 * (model.u['u_y']) ** 2 + r3 * (model.u['u_z']) ** 2
 
 
     # mterm = q1 * (model.x['x_b'] - model.tvp['xtraj']) ** 2 + q2 * (model.x['z_b'] - model.tvp['ztraj']) ** 2
@@ -96,21 +94,16 @@ def Dribble_mpc(model, xtra, ytra, v_xref, v_yref, v_zref):
     # lterm = q2 * (model.x['z_b']) ** 2
     # v_b = np.array([v_xref, v_yref, v_zref])
     setob_stime = datetime.datetime.now()
-#     lterm = xq1 * (model.x['x_b'] - xtra) ** 2 + yq2 * (model.x['y_b'] - ytra) ** 2 + zq3 * (model.x['z_b'] - z_ref) ** 2 + \
-#             vxq1 * (model.x['dx_b', 0] - v_xref) ** 2 + vyq2 * (model.x['dx_b', 1] - v_yref) ** 2 + vzq3 * (model.x['dx_b', 2] - v_zref) ** 2 + \
-#             r1 * (model.u['u_x']) ** 2 + r2 * (model.u['u_y']) ** 2 + r3 * (model.u['u_z']) ** 2
+    # lterm = xq1 * (model.x['x_b'] - xtra) ** 2 + yq2 * (model.x['y_b'] - ytra) ** 2 + zq3 * (model.x['z_b'] - z_ref) ** 2 + \
+    #         vxq1 * (model.x['dx_b'] - v_xref) ** 2 + vyq2 * (model.x['dy_b'] - v_yref) ** 2 + vzq3 * (model.x['dz_b'] - v_zref) ** 2 + \
+    #         r1 * (model.u['u_x']) ** 2 + r2 * (model.u['u_y']) ** 2 + r3 * (model.u['u_z']) ** 2
 
-#     mterm = xq1 * (model.x['x_b'] - xtra) ** 2 + yq2 * (model.x['y_b'] - ytra) ** 2 + zq3 * (model.x['z_b'] - z_ref) ** 2 + \
-#             vxq1 * (model.x['dx_b', 0] - v_xref) ** 2 + vyq2 * (model.x['dx_b', 1] - v_yref) ** 2 + vzq3 * (model.x['dx_b', 2] - v_zref) ** 2
-    # lterm = q1 * (model.x['x_b'] - x_ref) ** 2 + q2 * (model.x['dx_b'] - v_ref) ** 2 + r * mod
+    # mterm = xq1 * (model.x['x_b'] - xtra) ** 2 + yq2 * (model.x['y_b'] - ytra) ** 2 + zq3 * (model.x['z_b'] - z_ref) ** 2 + \
+    # #         vxq1 * (model.x['dx_b'] - v_xref) ** 2 + vyq2 * (model.x['dy_b'] - v_yref) ** 2 + vzq3 * (model.x['dz_b'] - v_zref) ** 2 
+    # lterm = vxq1 * (model.x['dx_b'] - v_xref) ** 2 + vyq2 * (model.x['dy_b'] - v_yref) ** 2 + vzq3 * (model.x['dz_b'] - v_zref) ** 2 + \
+    #         r1 * (model.u['u_x']) ** 2 + r2 * (model.u['u_y']) ** 2 + r3 * (model.u['u_z']) ** 2
 
-    lterm = vxq1 * (model.x['dx_b'] - v_xref) ** 2 + vyq2 * (model.x['dy_b'] - v_yref) ** 2 + vzq3 * (model.x['dz_b'] + 6) ** 2 + \
-            r1 * (model.u['u_x']) ** 2 + r2 * (model.u['u_y']) ** 2 + r3 * (model.u['u_z']) ** 2
-
-    mterm = vxq1 * (model.x['dx_b'] - v_xref) ** 2 + vyq2 * (model.x['dy_b'] - v_yref) ** 2 + vzq3 * (model.x['dz_b'] + 6) ** 2
-
-    # mterm = (model.x['x_b']) ** 2
-    # lterm = (model.x['x_b']) ** 2 + (model.u['u_x']) ** 2
+    # mterm = vxq1 * (model.x['dx_b'] - v_xref) ** 2 + vyq2 * (model.x['dy_b'] - v_yref) ** 2 + vzq3 * (model.x['dz_b'] - v_zref) ** 2
 
     mpc.set_objective(mterm=mterm, lterm=lterm)
 #     setob_endtime = datetime.datetime.now()
@@ -142,21 +135,22 @@ def Dribble_mpc(model, xtra, ytra, v_xref, v_yref, v_zref):
 #     print("objective set time: ", setob_endtime - setob_stime)
 #     print("bound set time: ", setbound_etime - setbound_stime)
 
-    # tvp_template = mpc.get_tvp_template()
+    tvp_template = mpc.get_tvp_template()
     # Period = 0.5
     # N = Period / setup_mpc['t_step']
 
-    # def tvp_fun(t_ind):
-    #     # ind = t_ind // setup_mpc['t_step']
-    #     # tvp_template['_tvp',:, 'xtraj'] = xtra + ind * 2 * math.pi / N
-    #     # tvp_template['_tvp',:, 'ztraj'] = 0.5 + 0.35 * np.cos(xtra)
+    def tvp_fun(t_ind):
+        # ind = t_ind // setup_mpc['t_step']
+        # tvp_template['_tvp',:, 'xtraj'] = xtra + ind * 2 * math.pi / N
+        # tvp_template['_tvp',:, 'ztraj'] = 0.5 + 0.35 * np.cos(xtra)
 
-    #     tvp_template['_tvp',:, 'xtraj'] = TraPoint_x[index]
-    #     tvp_template['_tvp',:, 'ztraj'] = TraPoint_y[index]
+        tvp_template['_tvp',:, 'xtraj'] = x_coef[0] + x_coef[1] * t_ind + x_coef[2] * t_ind ** 2 + x_coef[3] * t_ind ** 3
+        tvp_template['_tvp',:, 'ytraj'] = x_coef[0] + y_coef[1] * t_ind + y_coef[2] * t_ind ** 2 + y_coef[3] * t_ind ** 3
+        tvp_template['_tvp',:, 'ztraj'] = x_coef[0] + z_coef[1] * t_ind + z_coef[2] * t_ind ** 2 + z_coef[3] * t_ind ** 3
 
-    #     return tvp_template
+        return tvp_template
             
-    # mpc.set_tvp_fun(tvp_fun)
+    mpc.set_tvp_fun(tvp_fun)
 
     mpc.setup()
     setuptime = datetime.datetime.now()

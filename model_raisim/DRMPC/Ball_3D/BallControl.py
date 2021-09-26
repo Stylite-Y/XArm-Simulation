@@ -1,3 +1,4 @@
+from math import e
 import os
 import sys
 import numpy as np
@@ -6,11 +7,6 @@ import raisimpy as raisim
 import datetime
 import time
 import yaml
-import random
-import shutil
-import pickle
-import matplotlib
-import math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from xbox360controller import Xbox360Controller
@@ -34,6 +30,8 @@ from Dribble_simulator import Dribble_simulator
 
 
 # xbox = Xbox360Controller(0, axis_threshold=0.02)
+def tanh_sig(x):
+    return 0.5 + 0.5 * np.tanh(1000 * x)
 
 def DataPlot(Data):
 
@@ -155,19 +153,72 @@ def RefTra(t):
     xtra = 1
     return xtra
 
+def TriCal(PosInit, VelInit, PosTar, VelTar):
+    t = 0.2
+    pos_init = PosInit
+    v_init = VelInit
+
+    pos_tar = PosTar
+    v_tar = VelTar
+
+    b_x = np.array([pos_init[0], v_init[0], pos_tar[0], v_tar[0]])
+    b_y = np.array([pos_init[1], v_init[1], pos_tar[1], v_tar[1]])
+    b_z = np.array([pos_init[2], v_init[2], pos_tar[2], v_tar[2]])
+
+    A = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [1, t, t ** 2, t ** 3], [0, 1, 2 * t, 3 * t ** 2]])
+
+    x_coef = np.linalg.solve(A, b_x)
+    y_coef = np.linalg.solve(A, b_y)
+    z_coef = np.linalg.solve(A, b_z)
+    print("pos and vel: ", PosInit, VelInit, PosTar, VelTar)
+    print("x_coef, y_coef, z_coef: ", x_coef, y_coef, z_coef)
+    
+    return x_coef, y_coef, z_coef
+
 def MPCControl(Pos_init, Vel_init, xtra, ytra, v_xref, v_yref, index, mpc_flag):
     print("=========================================================================")
     show_animation = False
     store_results = False
 
-    # if mpc_flag == 0:
-    # mpc_starttime = datetime.datetime.now()
-    model = Dribble_model()
-    model_endtime = datetime.datetime.now()
-    mpc = Dribble_mpc(model, xtra, ytra, v_xref, v_yref, index)
-    mpc_endtime = datetime.datetime.now()
-    simulator = Dribble_simulator(model)
-    # simulator_endtime = datetime.datetime.now()
+    # model = Dribble_model()
+    # mpc = Dribble_mpc(model, xtra, ytra, v_xref, v_yref, index)
+    # mpc_endtime = datetime.datetime.now()
+    # simulator = Dribble_simulator(model)
+
+    model_type = 'continuous' # either 'discrete' or 'continuous'
+    model = do_mpc.model.Model(model_type)
+
+    # set variable of the dynamics system
+    x_b = model.set_variable(var_type='_x', var_name='x_b', shape=(1, 1))
+    y_b = model.set_variable(var_type='_x', var_name='y_b', shape=(1, 1))
+    z_b = model.set_variable(var_type='_x', var_name='z_b', shape=(1, 1))
+
+    # x2 = model.set_variable(var_type='_x', var_name='theta_dot', shape=(1, 1))
+    dx_b = model.set_variable(var_type='_x', var_name='dx_b', shape=(1, 1))
+    dy_b = model.set_variable(var_type='_x', var_name='dy_b', shape=(1, 1))
+    dz_b = model.set_variable(var_type='_x', var_name='dz_b', shape=(1, 1))
+    u_x = model.set_variable(var_type='_u', var_name='u_x', shape=(1, 1))
+    u_y = model.set_variable(var_type='_u', var_name='u_y', shape=(1, 1))
+    u_z = model.set_variable(var_type='_u', var_name='u_z', shape=(1, 1))
+
+    model.set_rhs('x_b', dx_b)
+    model.set_rhs('y_b', dy_b)
+    model.set_rhs('z_b', dz_b)
+    dx_b_next = vertcat(
+        tanh_sig(z_b - z_ref) * u_x / m,
+    )
+    dy_b_next = vertcat(
+        tanh_sig(z_b - z_ref) * u_y / m,
+    )
+    dz_b_next = vertcat(
+        -g + tanh_sig(z_b - z_ref) * u_z / m,
+    )
+    model.set_rhs('dx_b', dx_b_next)
+    model.set_rhs('dy_b', dy_b_next)
+    model.set_rhs('dz_b', dz_b_next)
+
+    model.setup()
+
 
     estimator = do_mpc.estimator.StateFeedback(model)
 
@@ -572,7 +623,7 @@ def SetPoint_MPCControl(ParamData):
     TraPoint_y = np.array([0.0, 0.6, 0.6])
 
     flag = 0
-    xref_flag = 0
+    m = 0.4
     z_ref = 0.5
     v_zref = -6.0
     v_xref = -6.0
@@ -584,6 +635,8 @@ def SetPoint_MPCControl(ParamData):
     ytra = 0.0
     # v_xref = 6
     index = 0
+    gravity = world.getGravity()
+    g = gravity[0]
 
     BallPos, BallVel = ball1.getState()
     # print("init ball pos: ", BallPos)
@@ -597,6 +650,37 @@ def SetPoint_MPCControl(ParamData):
 
     Point1Pos = np.array([[0.0, 0.0, 0.0]])
     Point1Vel = np.array([[0.0, 0.0, 0.0]])
+
+    model_type = 'continuous' # either 'discrete' or 'continuous'
+    model = do_mpc.model.Model(model_type)
+
+    x_b = model.set_variable(var_type='_x', var_name='x_b', shape=(1, 1))
+    y_b = model.set_variable(var_type='_x', var_name='y_b', shape=(1, 1))
+    z_b = model.set_variable(var_type='_x', var_name='z_b', shape=(1, 1))
+    dx_b = model.set_variable(var_type='_x', var_name='dx_b', shape=(1, 1))
+    dy_b = model.set_variable(var_type='_x', var_name='dy_b', shape=(1, 1))
+    dz_b = model.set_variable(var_type='_x', var_name='dz_b', shape=(1, 1))
+    u_x = model.set_variable(var_type='_u', var_name='u_x', shape=(1, 1))
+    u_y = model.set_variable(var_type='_u', var_name='u_y', shape=(1, 1))
+    u_z = model.set_variable(var_type='_u', var_name='u_z', shape=(1, 1))
+
+    model.set_rhs('x_b', dx_b)
+    model.set_rhs('y_b', dy_b)
+    model.set_rhs('z_b', dz_b)
+    dx_b_next = vertcat(
+        tanh_sig(z_b - z_ref) * u_x / m,
+    )
+    dy_b_next = vertcat(
+        tanh_sig(z_b - z_ref) * u_y / m,
+    )
+    dz_b_next = vertcat(
+        g + tanh_sig(z_b - z_ref) * u_z / m,
+    )
+    model.set_rhs('dx_b', dx_b_next)
+    model.set_rhs('dy_b', dy_b_next)
+    model.set_rhs('dz_b', dz_b_next)
+
+    model.setup()
         
     for i in range(20000):
         time.sleep(0.001)
@@ -619,6 +703,7 @@ def SetPoint_MPCControl(ParamData):
                     v_yref = - (2 * dy_ref / 3)/ z_ref * v_zref
                     xtra = TraPoint_x[index] - dx_ref / 3
                     ytra = TraPoint_y[index] + dy_ref / 3
+                    # break
 
                 elif index == 2:
                     v_xref = - (dx_ref / 3) / z_ref * v_zref
@@ -626,11 +711,65 @@ def SetPoint_MPCControl(ParamData):
                     xtra = TraPoint_x[index] - dx_ref / 3
                     ytra = TraPoint_y[index] + (2 * dy_ref) / 3
 
-                ## MPC controller setup
-                model = Dribble_model()
-                # model_endtime = datetime.datetime.now()
-                mpc = Dribble_mpc(model, xtra, ytra, v_xref, v_yref, v_zref)
-                simulator = Dribble_simulator(model)
+                # # MPC controller setup
+                # model = Dribble_model()
+                # # model_endtime = datetime.datetime.now()
+                # mpc = Dribble_mpc(model, xtra, ytra, v_xref, v_yref, v_zref)
+                # simulator = Dribble_simulator(model)
+                # estimator = do_mpc.estimator.StateFeedback(model)
+
+                mpc = do_mpc.controller.MPC(model)
+
+                setup_mpc = {
+                    'n_horizon': 150,
+                    't_step': 0.0005,
+                }
+                mpc.set_param(**setup_mpc)
+
+                xq1 = 2000.0
+                yq2 = 1000.0
+                zq3 = 1000.0
+                vxq1 = 2000.0
+                vyq2 = 1000.0
+                vzq3 = 2000.0
+                r1 = 0.001
+                r2 = 0.001
+                r3 = 0.0001
+
+                lterm = xq1 * (model.x['x_b'] - xtra) ** 2 + yq2 * (model.x['y_b'] - ytra) ** 2 + zq3 * (model.x['z_b'] - z_ref) ** 2 + \
+                        vxq1 * (model.x['dx_b'] - v_xref) ** 2 + vyq2 * (model.x['dy_b'] - v_yref) ** 2 + vzq3 * (model.x['dz_b'] - v_zref) ** 2 + \
+                        r1 * (model.u['u_x']) ** 2 + r2 * (model.u['u_y']) ** 2 + r3 * (model.u['u_z']) ** 2
+
+                mterm = xq1 * (model.x['x_b'] - xtra) ** 2 + yq2 * (model.x['y_b'] - ytra) ** 2 + zq3 * (model.x['z_b'] - z_ref) ** 2 + \
+                        vxq1 * (model.x['dx_b'] - v_xref) ** 2 + vyq2 * (model.x['dy_b'] - v_yref) ** 2 + vzq3 * (model.x['dz_b'] - v_zref) ** 2
+
+                mpc.set_objective(mterm=mterm, lterm=lterm)
+
+                mpc.bounds['lower', '_x', 'x_b'] = -1.5
+                mpc.bounds['upper', '_x', 'x_b'] = 1.0
+
+                mpc.bounds['lower', '_x', 'y_b'] = -0.5
+                mpc.bounds['upper', '_x', 'y_b'] = 1.5
+
+                mpc.bounds['lower', '_x', 'z_b'] = 0.0
+                mpc.bounds['upper', '_x', 'z_b'] = 1.0
+
+                mpc.bounds['lower', '_u', 'u_x'] = -500.0
+                mpc.bounds['upper', '_u', 'u_x'] = 500.0
+
+                mpc.bounds['lower', '_u', 'u_y'] = -500.0
+                mpc.bounds['upper', '_u', 'u_y'] = 500.0
+
+                mpc.bounds['lower', '_u', 'u_z'] = -500.0
+                mpc.bounds['upper', '_u', 'u_z'] = 0.0
+
+                mpc.setup()
+
+                simulator = do_mpc.simulator.Simulator(model)
+                simulator.set_param(t_step=0.0005)
+
+                simulator.setup()
+
                 estimator = do_mpc.estimator.StateFeedback(model)
 
                 flag = 1
@@ -639,7 +778,7 @@ def SetPoint_MPCControl(ParamData):
                 print("init pos: ", BallPos)
                 print("init vel: ", BallVel)
             # print("x_coef, y_coef: ", x_coef, y_coef)
-
+            
             x0  = np.concatenate([BallPos, BallVel])
             x0 = x0.reshape(-1, 1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
             simulator.x0 = x0
@@ -659,6 +798,7 @@ def SetPoint_MPCControl(ParamData):
             ZForce = Force[2, 0]
            
             print("**********************************************************************************************")
+            print("x0: ", x0)
             print("Force: ", Force[0, 0], Force[1, 0], Force[2, 0])
             print("Ball pos and vel is ", BallPos, BallVel)
             print("xtra, ytra, v_xref, v_yref, v_zref: ",  xtra, ytra, v_xref, v_yref, v_zref)
@@ -668,6 +808,7 @@ def SetPoint_MPCControl(ParamData):
             if flag == 1:
                 print("=======================================================================================")
                 print("free Ball pos and vel is ", BallPos, BallVel)
+                # break
                 if index == 1:
                     Point1Vel = np.concatenate([Point1Vel, [BallVel]], axis = 0)
                 flag = 0
@@ -706,6 +847,208 @@ def SetPoint_MPCControl(ParamData):
     # print(0)
     # return BallPosition, BallVelocity, ExternalForce, T
     return Data
+
+def TRI_MPCControl(ParamData):
+
+    TraPoint_x = np.array([-0.2, -0.5, 0.1])
+    TraPoint_y = np.array([0.0, 0.6, 0.6])
+
+    flag = 0
+    m = 0.4
+    z_ref = 0.5
+    v_zref = -6.0
+    v_xref = -6.0
+    v_yref = -6.0
+    dx_ref = 0.6
+    dy_ref = 0.6                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+
+    xtra = 0.0
+    ytra = 0.0
+    # v_xref = 6
+    index = 0
+    i_force = -1
+    gravity = world.getGravity()
+    g = gravity[0]
+    sim_t_step = ParamData["environment"]["t_step"]
+
+    BallPos, BallVel = ball1.getState()
+    # print("init ball pos: ", BallPos)
+
+    # set ball, arm end foot, contact force and joint state saved array
+    BallPosition = np.array([[0.0, 0.0, 0.0]])          # the pos and vel state of ball
+    BallVelocity = np.array([[0.0, 0.0, 0.0]])       # the pos and vel state of endfoot
+    ExternalForce = np.array([[0.0, 0.0, 0.0]])         # the calculate force and real contact force betweem ball an foot
+    SumForce = np.array([[0.0]])
+    T = np.array([0.0])
+
+    Point1Pos = np.array([[0.0, 0.0, 0.0]])
+    Point1Vel = np.array([[0.0, 0.0, 0.0]])
+
+    model_type = 'continuous' # either 'discrete' or 'continuous'
+    model = do_mpc.model.Model(model_type)
+
+    x_b = model.set_variable(var_type='_x', var_name='x_b', shape=(1, 1))
+    y_b = model.set_variable(var_type='_x', var_name='y_b', shape=(1, 1))
+    z_b = model.set_variable(var_type='_x', var_name='z_b', shape=(1, 1))
+    dx_b = model.set_variable(var_type='_x', var_name='dx_b', shape=(1, 1))
+    dy_b = model.set_variable(var_type='_x', var_name='dy_b', shape=(1, 1))
+    dz_b = model.set_variable(var_type='_x', var_name='dz_b', shape=(1, 1))
+    u_x = model.set_variable(var_type='_u', var_name='u_x', shape=(1, 1))
+    u_y = model.set_variable(var_type='_u', var_name='u_y', shape=(1, 1))
+    u_z = model.set_variable(var_type='_u', var_name='u_z', shape=(1, 1))
+
+    model.set_rhs('x_b', dx_b)
+    model.set_rhs('y_b', dy_b)
+    model.set_rhs('z_b', dz_b)
+    dx_b_next = vertcat(
+        tanh_sig(z_b - z_ref) * u_x / m,
+    )
+    dy_b_next = vertcat(
+        tanh_sig(z_b - z_ref) * u_y / m,
+    )
+    dz_b_next = vertcat(
+        g + tanh_sig(z_b - z_ref) * u_z / m,
+    )
+    model.set_rhs('dx_b', dx_b_next)
+    model.set_rhs('dy_b', dy_b_next)
+    model.set_rhs('dz_b', dz_b_next)
+
+    model.setup()
+        
+    for i in range(200000):
+        time.sleep(0.01)
+
+        BallPos, BallVel = ball1.getState()
+        BallPos = BallPos[0:3]
+        BallVel = BallVel[0:3]
+        
+        if BallPos[2] > z_ref:
+
+            if flag == 0:
+                if index == 0:
+                    v_xref = dx_ref / z_ref * v_zref
+                    v_yref = 0.0
+                    xtra = TraPoint_x[index] + dx_ref
+                    ytra = 0.0
+
+                elif index == 1:
+                    v_xref = - (dx_ref / 3) / z_ref * v_zref
+                    v_yref = - (2 * dy_ref / 3)/ z_ref * v_zref
+                    xtra = TraPoint_x[index] - dx_ref / 3
+                    ytra = TraPoint_y[index] + dy_ref / 3
+                    break
+
+                elif index == 2:
+                    v_xref = - (dx_ref / 3) / z_ref * v_zref
+                    v_yref = (2 * dy_ref / 3) / z_ref * v_zref
+                    xtra = TraPoint_x[index] - dx_ref / 3
+                    ytra = TraPoint_y[index] + (2 * dy_ref) / 3
+
+                flag = 1
+
+            # if i_force == -1:
+                PosTar = np.array([xtra, ytra, z_ref])
+                VelTar = np.array([v_xref, v_yref, v_zref])
+                x_coef, y_coef, z_coef = TriCal(BallPos, BallVel, PosTar, VelTar)
+
+                # i_init = i
+            
+                # # MPC controller setup
+                model = Dribble_model()
+                # model_endtime = datetime.datetime.now()
+                mpc = Dribble_mpc(model, sim_t_step, x_coef, y_coef, z_coef)
+                simulator = Dribble_simulator(model, sim_t_step)
+                estimator = do_mpc.estimator.StateFeedback(model)
+
+            x0  = np.concatenate([BallPos, BallVel])
+            x0 = x0.reshape(-1, 1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+            simulator.x0 = x0
+            
+            mpc.x0 = x0
+            estimator.x0 = x0
+
+            mpc.set_initial_guess()
+
+            mpc.reset_history()
+            Force = mpc.make_step(x0)
+            y_next = simulator.make_step(Force)
+            x0 = estimator.make_step(y_next)
+
+            XForce = Force[0, 0]
+            YForce = Force[1, 0]
+            ZForce = Force[2, 0]
+
+            # i_force = i - i_init
+            # t_now = i_force * sim_t_step
+            # Xa = 2 * x_coef[2] + 6 * x_coef[3] * (t_now)
+            # x_ref = x_coef[0] + x_coef[1] * (t_now) + x_coef[2] * (t_now) ** 2 + x_coef[3] * (t_now) ** 3
+            # xv_ref = x_coef[1] + 2 * x_coef[2] * (t_now) + 3 * x_coef[3] * (t_now) ** 2
+            # Ya = 2 * y_coef[2] + 6 * y_coef[3] * (t_now)
+            # Za = 2 * z_coef[2] + 6 * z_coef[3] * (t_now)
+            # ztest_ref = z_coef[0] + z_coef[1] * (t_now) + z_coef[2] * (t_now) ** 2 + z_coef[3] * (t_now) ** 3
+            # zv_ref = z_coef[1] + 2 * z_coef[2] * (t_now) + 3 * z_coef[3] * (t_now) ** 2
+
+            # XForce = m * Xa
+            # YForce = m * Ya
+            # ZForce = m * (- g + Za)
+
+            # if i_force >= 300:
+            #     i_force = -1
+            print("**********************************************************************************************")
+            # print("x0: ", x0)
+            # print("t_ref is: ", t_now, sim_t_step, i_force)
+            print("Force: ", XForce, YForce, ZForce)
+            # print("x ball ref pos and vel acc: ", x_ref, xv_ref, Xa)
+            # print("z ball ref pos and vel acc: ", ztest_ref, zv_ref, Za)
+            print("Ball pos and vel is ", BallPos, BallVel)
+            print("x_coef, y_coef, z_coef: ", x_coef, y_coef, z_coef)
+            print("xtra, ytra, v_xref, v_yref, v_zref: ",  xtra, ytra, v_xref, v_yref, v_zref)
+            
+        elif BallPos[2] <= z_ref:
+            
+            if flag == 1:
+                print("=======================================================================================")
+                print("free Ball pos and vel is ", BallPos, BallVel)
+                # break
+                if index == 1:
+                    Point1Vel = np.concatenate([Point1Vel, [BallVel]], axis = 0)
+                flag = 0
+                index = index + 1
+                if index == 3:
+                    index = 0
+
+                print("end pos: ", BallPos)
+                print("end vel: ", BallVel)
+
+            XForce = 0.0
+            YForce = 0.0
+            ZForce = 0.0
+
+        ball1.setExternalForce(0, [0, 0, 0], [XForce, YForce, ZForce])
+
+        t = i * t_step
+        T = np.concatenate([T, [t]], axis = 0)
+        BallPosition = np.concatenate([BallPosition, [BallPos]], axis = 0)
+        BallVelocity = np.concatenate([BallVelocity, [BallVel]], axis = 0)
+        ExternalForce = np.concatenate([ExternalForce, [[XForce, YForce, ZForce]]], axis = 0)
+        sumF = np.sqrt(XForce**2 +  YForce**2 + ZForce**2)
+        SumForce = np.concatenate([SumForce, [[sumF]]], axis = 0)
+        world.integrate()
+
+    T = T[1:,]
+    Point1Pos = Point1Pos[1:,]
+    Point1Vel = Point1Vel[1:,]
+    BallPosition = BallPosition[1:,]
+    BallVelocity = BallVelocity[1:,]
+    ExternalForce = ExternalForce[1:,]
+    SumForce = SumForce[1:,]
+
+    Data = {'BallPos': BallPosition, 'BallVel': BallVelocity, 'ExternalForce': ExternalForce, 'ResForce':SumForce, 'time': T, \
+            "Point1Pos":Point1Pos, "Point1Vel":Point1Vel}
+    # print(0)
+    # return BallPosition, BallVelocity, ExternalForce, T
+    return Data
+
 
 def XboxDriControl(ParamData):
 
@@ -850,7 +1193,6 @@ def XboxDriControl(ParamData):
     return Data 
 
 
-
 if __name__ == "__main__":
     # get params config data
     FilePath = os.path.dirname(os.path.abspath(__file__))
@@ -894,7 +1236,7 @@ if __name__ == "__main__":
 
     world.setMaterialPairProp("default", "steel", 0.0, 1.0, 0.001)
     world.setMaterialPairProp("default", "rub", 0.0, 1.0, 0.001)
-
+ 
     ## ======================= single object ====================
     # ball1 = world.addSphere(0.12, 0.8, "steel")
     # dummy_inertia = np.zeros([3, 3])
@@ -915,7 +1257,8 @@ if __name__ == "__main__":
     # Data = TRI_DriControl(ParamData)
     # Data = SetPoint_DriControl(ParamData)
     # Data = XboxDriControl(ParamData)
-    Data = SetPoint_MPCControl(ParamData)
+    # Data = SetPoint_MPCControl(ParamData)
+    Data = TRI_MPCControl(ParamData)
 
     # # file save
     # Data = FileSave.DataSave(BallState, EndFootState, ForceState, JointTorque, JointVelSaved, T, ParamData)
@@ -923,7 +1266,7 @@ if __name__ == "__main__":
     # # data visulization
     # Data = {'BallPos': BallPosition, 'BallVel': BallVelocity, 'ExternalForce': ExternalForce, 'time': T}
 
-    DataPlot(Data)
+    # DataPlot(Data)
 
     # print("force, ", ForceState[0:100, 1])
 

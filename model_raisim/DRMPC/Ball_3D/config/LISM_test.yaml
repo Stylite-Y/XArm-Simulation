@@ -1,5 +1,5 @@
 environment:
-  t_step: 0.0001
+  t_step: 0.0005
   sim_time: 50000
   UpperArmLength: 0.2
   LowerArmLength: 0.2

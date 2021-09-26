@@ -47,9 +47,9 @@ def Dribble_model():
     u_z = model.set_variable(var_type='_u', var_name='u_z', shape=(1, 1))
 
     # time vary reference
-    # xtraj = model.set_variable(var_type='_tvp', var_name='xtraj')
-    # ztraj = model.set_variable(var_type='_tvp', var_name='ztraj')
-    # ytraj = model.set_variable(var_type='_tvp', var_name='ytraj')
+    xtraj = model.set_variable(var_type='_tvp', var_name='xtraj')
+    ztraj = model.set_variable(var_type='_tvp', var_name='ztraj')
+    ytraj = model.set_variable(var_type='_tvp', var_name='ytraj')
     # TrajIndex = model.set_variable(var_type='_tvp', var_name='TrajIndex')
 
     # x_reb = model.set_variable(var_type='_p', var_name='x_reb', shape=(1, 1))
@@ -72,13 +72,13 @@ def Dribble_model():
     # )
 
     dx_b_next = vertcat(
-        u_x / m * tanh_sig(z_b - z_ref),
+        tanh_sig(z_b - z_ref) * u_x / m,
     )
     dy_b_next = vertcat(
-        u_y / m * tanh_sig(z_b - z_ref),
+        tanh_sig(z_b - z_ref) * u_y / m,
     )
     dz_b_next = vertcat(
-        -g + u_z / m * tanh_sig(z_b - z_ref),
+        -g + tanh_sig(z_b - z_ref) * u_z / m,
     )
     model.set_rhs('dx_b', dx_b_next)
     model.set_rhs('dy_b', dy_b_next)
