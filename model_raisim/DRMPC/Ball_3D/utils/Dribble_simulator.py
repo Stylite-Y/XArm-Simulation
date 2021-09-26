@@ -38,3 +38,33 @@ def Dribble_simulator(model, sim_t_step):
     simulator.setup()
 
     return simulator
+
+def template_simulator(model, sim_t_step):
+    """
+    --------------------------------------------------------------------------
+    template_simulator: tuning parameters
+    --------------------------------------------------------------------------
+    """
+    simulator = do_mpc.simulator.Simulator(model)
+
+    params_simulator = {
+        # Note: cvode doesn't support DAE systems.
+        'integration_tool': 'idas',
+        'abstol': 1e-10,
+        'reltol': 1e-10,
+        't_step': sim_t_step
+    }
+
+    simulator.set_param(**params_simulator)
+
+
+    tvp_template = simulator.get_tvp_template()
+
+    def tvp_fun(t_ind):
+        return tvp_template
+
+    simulator.set_tvp_fun(tvp_fun)
+
+    simulator.setup()
+
+    return simulator

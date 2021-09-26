@@ -87,3 +87,66 @@ def Dribble_model():
     model.setup()
 
     return model
+
+
+def template_model():
+    """
+    --------------------------------------------------------------------------
+    template_model: Variables / RHS / AUX
+    --------------------------------------------------------------------------
+    """
+    model_type = 'continuous' # either 'discrete' or 'continuous'
+    model = do_mpc.model.Model(model_type)
+
+    # Setpoint x:
+    # pos_set = model.set_variable('_tvp', 'pos_set')
+
+    m = 0.4
+    z_ref = 0.5
+    g = 9.81
+    # States struct (optimization variables):
+    x_b = model.set_variable(var_type='_x', var_name='x_b', shape=(1, 1))
+    y_b = model.set_variable(var_type='_x', var_name='y_b', shape=(1, 1))
+    z_b = model.set_variable(var_type='_x', var_name='z_b', shape=(1, 1))
+    dx_b = model.set_variable(var_type='_x', var_name='dx_b', shape=(1, 1))
+    dy_b = model.set_variable(var_type='_x', var_name='dy_b', shape=(1, 1))
+    dz_b = model.set_variable(var_type='_x', var_name='dz_b', shape=(1, 1))
+    ux = model.set_variable(var_type='_u', var_name='ux', shape=(1, 1))
+    uy = model.set_variable(var_type='_u', var_name='uy', shape=(1, 1))
+    uz = model.set_variable(var_type='_u', var_name='uz', shape=(1, 1))
+
+    xtraj = model.set_variable(var_type='_tvp', var_name='xtraj')
+    ytraj = model.set_variable(var_type='_tvp', var_name='ytraj')
+    ztraj = model.set_variable(var_type='_tvp', var_name='ztraj')
+    vxtraj = model.set_variable(var_type='_tvp', var_name='vxtraj')
+    vytraj = model.set_variable(var_type='_tvp', var_name='vytraj')
+    vztraj = model.set_variable(var_type='_tvp', var_name='vztraj')
+ 
+    # Differential equations
+    model.set_rhs('x_b', dx_b)
+    model.set_rhs('y_b', dy_b)
+    model.set_rhs('z_b', dz_b)
+
+    # model.set_rhs('dx_b', ux / m)
+    # model.set_rhs('dy_b', uy / m)
+    dx_b_next = vertcat(
+        tanh_sig(z_b - z_ref) * ux / m,
+    )
+    dy_b_next = vertcat(
+        tanh_sig(z_b - z_ref) * uy / m,
+    )
+    dz_b_next = vertcat(
+        -g + tanh_sig(z_b - z_ref) * uz / m,
+    )
+    model.set_rhs('dx_b', dx_b_next)
+    model.set_rhs('dy_b', dy_b_next)
+    model.set_rhs('dz_b', dz_b_next)
+
+    model.set_expression('xtvp', xtraj)
+    model.set_expression('ytvp', ytraj)
+    model.set_expression('ztvp', ztraj)
+
+    # Build the model
+    model.setup()
+
+    return model

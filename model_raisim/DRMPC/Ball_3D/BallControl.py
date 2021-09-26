@@ -22,11 +22,11 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)) + "/utils")
 print(os.path.abspath(os.path.dirname(__file__))) # get current file path
 # from ParamsCalculate import ControlParamCal
 # import visualization
-# import FileSave
+import FileSave
 
-from Dribble_model import Dribble_model
-from Dribble_mpc import Dribble_mpc
-from Dribble_simulator import Dribble_simulator
+from Dribble_model import template_model
+from Dribble_mpc import template_mpc
+from Dribble_simulator import template_simulator
 
 
 # xbox = Xbox360Controller(0, axis_threshold=0.02)
@@ -850,7 +850,8 @@ def SetPoint_MPCControl(ParamData):
 
 def TRI_MPCControl(ParamData):
 
-    TraPoint_x = np.array([-0.2, -0.5, 0.1])
+    # TraPoint_x = np.array([-0.2, -0.5, 0.1])
+    TraPoint_x = np.array([-0.2, -0.2])
     TraPoint_y = np.array([0.0, 0.6, 0.6])
 
     flag = 0
@@ -884,39 +885,8 @@ def TRI_MPCControl(ParamData):
     Point1Pos = np.array([[0.0, 0.0, 0.0]])
     Point1Vel = np.array([[0.0, 0.0, 0.0]])
 
-    model_type = 'continuous' # either 'discrete' or 'continuous'
-    model = do_mpc.model.Model(model_type)
-
-    x_b = model.set_variable(var_type='_x', var_name='x_b', shape=(1, 1))
-    y_b = model.set_variable(var_type='_x', var_name='y_b', shape=(1, 1))
-    z_b = model.set_variable(var_type='_x', var_name='z_b', shape=(1, 1))
-    dx_b = model.set_variable(var_type='_x', var_name='dx_b', shape=(1, 1))
-    dy_b = model.set_variable(var_type='_x', var_name='dy_b', shape=(1, 1))
-    dz_b = model.set_variable(var_type='_x', var_name='dz_b', shape=(1, 1))
-    u_x = model.set_variable(var_type='_u', var_name='u_x', shape=(1, 1))
-    u_y = model.set_variable(var_type='_u', var_name='u_y', shape=(1, 1))
-    u_z = model.set_variable(var_type='_u', var_name='u_z', shape=(1, 1))
-
-    model.set_rhs('x_b', dx_b)
-    model.set_rhs('y_b', dy_b)
-    model.set_rhs('z_b', dz_b)
-    dx_b_next = vertcat(
-        tanh_sig(z_b - z_ref) * u_x / m,
-    )
-    dy_b_next = vertcat(
-        tanh_sig(z_b - z_ref) * u_y / m,
-    )
-    dz_b_next = vertcat(
-        g + tanh_sig(z_b - z_ref) * u_z / m,
-    )
-    model.set_rhs('dx_b', dx_b_next)
-    model.set_rhs('dy_b', dy_b_next)
-    model.set_rhs('dz_b', dz_b_next)
-
-    model.setup()
-        
-    for i in range(200000):
-        time.sleep(0.01)
+    for i in range(10000):
+        time.sleep(0.0001)
 
         BallPos, BallVel = ball1.getState()
         BallPos = BallPos[0:3]
@@ -926,23 +896,29 @@ def TRI_MPCControl(ParamData):
 
             if flag == 0:
                 if index == 0:
-                    v_xref = dx_ref / z_ref * v_zref
+                    v_xref = dx_ref / (z_ref - 0.15) * v_zref
                     v_yref = 0.0
                     xtra = TraPoint_x[index] + dx_ref
                     ytra = 0.0
 
                 elif index == 1:
-                    v_xref = - (dx_ref / 3) / z_ref * v_zref
-                    v_yref = - (2 * dy_ref / 3)/ z_ref * v_zref
-                    xtra = TraPoint_x[index] - dx_ref / 3
-                    ytra = TraPoint_y[index] + dy_ref / 3
-                    break
+                    # v_xref = - (dx_ref / 3) / (z_ref - 0.15) * v_zref
+                    # v_yref = - (2 * dy_ref / 3)/ (z_ref - 0.15) * v_zref
+                    # xtra = TraPoint_x[index] - dx_ref / 3
+                    # ytra = TraPoint_y[index] + dy_ref / 3
+
+                    v_xref = - dx_ref / (z_ref - 0.15) * v_zref
+                    v_yref = 0.0
+                    xtra = TraPoint_x[index] - dx_ref
+                    ytra = 0.0
+                    # break
 
                 elif index == 2:
-                    v_xref = - (dx_ref / 3) / z_ref * v_zref
-                    v_yref = (2 * dy_ref / 3) / z_ref * v_zref
+                    v_xref = - (dx_ref / 3) / (z_ref - 0.15) * v_zref
+                    v_yref = (2 * dy_ref / 3) / (z_ref - 0.15) * v_zref
                     xtra = TraPoint_x[index] - dx_ref / 3
                     ytra = TraPoint_y[index] + (2 * dy_ref) / 3
+                    # break
 
                 flag = 1
 
@@ -954,10 +930,9 @@ def TRI_MPCControl(ParamData):
                 # i_init = i
             
                 # # MPC controller setup
-                model = Dribble_model()
-                # model_endtime = datetime.datetime.now()
-                mpc = Dribble_mpc(model, sim_t_step, x_coef, y_coef, z_coef)
-                simulator = Dribble_simulator(model, sim_t_step)
+                model = template_model()
+                mpc = template_mpc(model, sim_t_step, x_coef, y_coef, z_coef)
+                simulator = template_simulator(model, sim_t_step)
                 estimator = do_mpc.estimator.StateFeedback(model)
 
             x0  = np.concatenate([BallPos, BallVel])
@@ -969,7 +944,6 @@ def TRI_MPCControl(ParamData):
 
             mpc.set_initial_guess()
 
-            mpc.reset_history()
             Force = mpc.make_step(x0)
             y_next = simulator.make_step(Force)
             x0 = estimator.make_step(y_next)
@@ -1014,7 +988,7 @@ def TRI_MPCControl(ParamData):
                     Point1Vel = np.concatenate([Point1Vel, [BallVel]], axis = 0)
                 flag = 0
                 index = index + 1
-                if index == 3:
+                if index == 2:
                     index = 0
 
                 print("end pos: ", BallPos)
@@ -1266,7 +1240,7 @@ if __name__ == "__main__":
     # # data visulization
     # Data = {'BallPos': BallPosition, 'BallVel': BallVelocity, 'ExternalForce': ExternalForce, 'time': T}
 
-    # DataPlot(Data)
+    DataPlot(Data)
 
     # print("force, ", ForceState[0:100, 1])
 

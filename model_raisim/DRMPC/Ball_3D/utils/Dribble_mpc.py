@@ -73,7 +73,6 @@ def Dribble_mpc(model, sim_t_step, x_coef, y_coef, z_coef):
     r1 = 1.0
     r2 = 1.0
     r3 = 1.0
-#     v_zref = -6
     z_ref = 0.5
 
     # x_reftra = X_TRA(xtra)
@@ -106,10 +105,7 @@ def Dribble_mpc(model, sim_t_step, x_coef, y_coef, z_coef):
     # mterm = vxq1 * (model.x['dx_b'] - v_xref) ** 2 + vyq2 * (model.x['dy_b'] - v_yref) ** 2 + vzq3 * (model.x['dz_b'] - v_zref) ** 2
 
     mpc.set_objective(mterm=mterm, lterm=lterm)
-#     setob_endtime = datetime.datetime.now()
-    
-    # mpc.set_rterm(u_x=1e-2, u_y=1e-2, u_z=1e-2)
-#     setbound_stime = datetime.datetime.now()
+
 
     mpc.bounds['lower', '_x', 'x_b'] = -1.5
     mpc.bounds['upper', '_x', 'x_b'] = 1.0
@@ -131,10 +127,6 @@ def Dribble_mpc(model, sim_t_step, x_coef, y_coef, z_coef):
 
     setbound_etime = datetime.datetime.now()
 
-#     print("params set time: ", setp_endtime - starttime)
-#     print("objective set time: ", setob_endtime - setob_stime)
-#     print("bound set time: ", setbound_etime - setbound_stime)
-
     tvp_template = mpc.get_tvp_template()
     # Period = 0.5
     # N = Period / setup_mpc['t_step']
@@ -155,5 +147,113 @@ def Dribble_mpc(model, sim_t_step, x_coef, y_coef, z_coef):
     mpc.setup()
     setuptime = datetime.datetime.now()
     print("setup time: ", setuptime -setbound_etime)
+
+    return mpc
+
+
+def xytri(t):
+    r = 1.0
+    T = 1
+    omga = 2 * math.pi / T
+    x = r * sin(omga * t)
+    y = r * cos(omga * t)
+    # print(x, y)
+    return x, y
+
+
+def template_mpc(model, sim_t_step, x_coef, y_coef, z_coef):
+    """
+    --------------------------------------------------------------------------
+    template_mpc: tuning parameters
+    --------------------------------------------------------------------------
+    """
+    mpc = do_mpc.controller.MPC(model)
+
+    setup_mpc = {
+        'n_horizon': 150,
+        'n_robust': 0,
+        'open_loop': 0,
+        't_step': sim_t_step,
+        'state_discretization': 'collocation',
+        'collocation_type': 'radau',
+        'collocation_deg': 3,
+        'collocation_ni': 1,
+        'store_full_solution': True,
+        # Use MA27 linear solver in ipopt for faster calculations:
+        #'nlpsol_opts': {'ipopt.linear_solver': 'ma27'}
+    }
+
+    mpc.set_param(**setup_mpc)
+
+    # mterm = 100*(model.aux['E_kin'] - model.aux['E_pot'])
+    # lterm = (model.aux['E_kin'] - model.aux['E_pot'])+10*(model.x['pos']-model.tvp['pos_set'])**2 # stage cost
+
+    q1 = 1000
+    q2 = 1000
+    q3 = 1000
+    vxq1 = 800.0
+    vyq2 = 800.0
+    vzq3 = 800.0
+    r1 = 10.0
+    r2 = 10.0
+    r3 = 10.0
+    mterm = q1 * (model.x['x_b'] - model.tvp['xtraj']) ** 2 + q2 * (model.x['y_b'] - model.tvp['ytraj']) ** 2 + q3 * (model.x['z_b'] - model.tvp['ztraj']) ** 2 + \
+            vxq1 * (model.x['dx_b'] - model.tvp['vxtraj']) ** 2 + vyq2 * (model.x['dy_b'] - model.tvp['vytraj']) ** 2 + vzq3 * (model.x['dz_b'] - model.tvp['vztraj']) ** 2
+    lterm = mterm 
+    # + r1 * (model.u['ux']) ** 2 + r2 * (model.u['uy']) ** 2 + r3 * (model.u['uz']) ** 2
+
+    mpc.set_objective(mterm=mterm, lterm=lterm)
+    mpc.set_rterm(ux=1e-4, uy=1e-4, uz=1e-4)
+
+
+    mpc.bounds['lower', '_x', 'x_b'] = -1.5
+    mpc.bounds['upper', '_x', 'x_b'] = 1.0
+
+    mpc.bounds['lower', '_x', 'y_b'] = -0.5
+    mpc.bounds['upper', '_x', 'y_b'] = 1.5
+
+    mpc.bounds['lower', '_x', 'z_b'] = 0.0
+    mpc.bounds['upper', '_x', 'z_b'] = 1.0
+
+    mpc.bounds['lower', '_u', 'ux'] = -500.0
+    mpc.bounds['upper', '_u', 'ux'] = 500.0
+
+    mpc.bounds['lower', '_u', 'uy'] = -500.0
+    mpc.bounds['upper', '_u', 'uy'] = 500.0
+
+    mpc.bounds['lower', '_u', 'uz'] = -500.0
+    mpc.bounds['upper', '_u', 'uz'] = 0.0
+
+    tvp_template = mpc.get_tvp_template()
+
+    # When to switch setpoint:
+    t_switch = 4    # seconds
+    ind_switch = t_switch // setup_mpc['t_step']
+
+    def tvp_fun(t_ind):
+        ind = t_ind // setup_mpc['t_step']
+        # if ind <= ind_switch:
+        #     tvp_template['_tvp',:, 'pos_set'] = -0.8
+        # else:
+            # tvp_template['_tvp',:, 'pos_set'] = 0.8
+        for k in range(setup_mpc['n_horizon'] + 1):
+            t_pre = t_ind + k * setup_mpc['t_step']
+            # tvp_template['_tvp',k, 'xtraj'] = -0.8
+            tvp_template['_tvp',k, 'xtraj'] = x_coef[0] + x_coef[1] * t_pre + x_coef[2] * t_pre ** 2 + x_coef[3] * t_pre ** 3
+            tvp_template['_tvp',k, 'ytraj'] = y_coef[0] + y_coef[1] * t_pre + y_coef[2] * t_pre ** 2 + y_coef[3] * t_pre ** 3
+            tvp_template['_tvp',k, 'ztraj'] = z_coef[0] + z_coef[1] * t_pre + z_coef[2] * t_pre ** 2 + z_coef[3] * t_pre ** 3
+            if t_pre <= 0.2:
+                tvp_template['_tvp',k, 'vxtraj'] = x_coef[1] + 2 * x_coef[2] * t_pre + 3 * x_coef[3] * t_pre ** 2
+                tvp_template['_tvp',k, 'vytraj'] = y_coef[1] + 2 * y_coef[2] * t_pre + 3 * y_coef[3] * t_pre ** 2
+                tvp_template['_tvp',k, 'vztraj'] = z_coef[1] + 2 * z_coef[2] * t_pre + 3 * z_coef[3] * t_pre ** 2
+            if t_pre > 0.2:
+                tvp_template['_tvp',k, 'vxtraj'] = x_coef[1] + 2 * x_coef[2] * 0.2 + 3 * x_coef[3] * 0.2 ** 2
+                tvp_template['_tvp',k, 'vytraj'] = y_coef[1] + 2 * y_coef[2] * 0.2 + 3 * y_coef[3] * 0.2 ** 2
+                tvp_template['_tvp',k, 'vztraj'] = z_coef[1] + 2 * z_coef[2] * 0.2 + 3 * z_coef[3] * 0.2 ** 2
+        return tvp_template
+
+    mpc.set_tvp_fun(tvp_fun)
+
+    mpc.setup()
 
     return mpc
