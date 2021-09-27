@@ -228,6 +228,7 @@ def TriCal():
     # plt.plot(t, ax)
     plt.title('x')
 
+    plt.scatter(-0.2, 0.15, c = 'r')
     plt.figure(2)
     # plt.plot(t, vz)
     plt.plot(t, z)

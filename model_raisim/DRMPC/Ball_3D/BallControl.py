@@ -21,7 +21,7 @@ from matplotlib import cm
 sys.path.append(os.path.abspath(os.path.dirname(__file__)) + "/utils")
 print(os.path.abspath(os.path.dirname(__file__))) # get current file path
 # from ParamsCalculate import ControlParamCal
-# import visualization
+import visualization
 import FileSave
 
 from Dribble_model import template_model
@@ -81,6 +81,14 @@ def DataPlot(Data):
 
     plt.figure()
     plt.scatter(BallPosition[:, 0], BallPosition[:, 2], label='X-Z plane Ball motion trajectory')
+    ConPoint = []
+    for i in range(len(BallVelocity[:, 2])):
+        if i > 0 and BallPosition[i, 2] < 0.5 and (BallVelocity[i, 2] * BallVelocity[i-1, 2]) < 0:
+            ConPoint.append(BallPosition[i, 0])
+            plt.scatter(BallPosition[i, 0], 0.15, c = 'r')
+    print("contact position is: ", ConPoint)
+    x_ticks = np.arange(-1.5, 1.0, 0.1)
+    plt.xticks(x_ticks) 
     plt.xlabel('x-axis position (m)', fontsize = 15)
     plt.ylabel('z-axis position (m)', fontsize = 15)
     # plt.legend(loc='upper right')
@@ -153,8 +161,8 @@ def RefTra(t):
     xtra = 1
     return xtra
 
-def TriCal(PosInit, VelInit, PosTar, VelTar):
-    t = 0.2
+def TriCal(t_force, PosInit, VelInit, PosTar, VelTar):
+    t = t_force
     pos_init = PosInit
     v_init = VelInit
 
@@ -851,26 +859,23 @@ def SetPoint_MPCControl(ParamData):
 def TRI_MPCControl(ParamData):
 
     # TraPoint_x = np.array([-0.2, -0.5, 0.1])
-    TraPoint_x = np.array([-0.2, -0.2])
+    TraPoint_x = np.array([-0.2, -0.2, 0.0])
     TraPoint_y = np.array([0.0, 0.6, 0.6])
 
     flag = 0
-    m = 0.4
-    z_ref = 0.5
-    v_zref = -6.0
-    v_xref = -6.0
-    v_yref = -6.0
     dx_ref = 0.6
     dy_ref = 0.6                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
 
     xtra = 0.0
     ytra = 0.0
-    # v_xref = 6
     index = 0
-    i_force = -1
-    gravity = world.getGravity()
-    g = gravity[0]
+
+    # mpc controller params
     sim_t_step = ParamData["environment"]["t_step"]
+    sim_time = ParamData["environment"]["sim_time"]
+    t_force = ParamData["MPCController"]["t_force"]
+    z_ref = ParamData["environment"]["z_ref"]
+    v_zref = ParamData["environment"]["v_zref"]
 
     BallPos, BallVel = ball1.getState()
     # print("init ball pos: ", BallPos)
@@ -885,8 +890,8 @@ def TRI_MPCControl(ParamData):
     Point1Pos = np.array([[0.0, 0.0, 0.0]])
     Point1Vel = np.array([[0.0, 0.0, 0.0]])
 
-    for i in range(10000):
-        time.sleep(0.0001)
+    for i in range(sim_time):
+        time.sleep(0.005)
 
         BallPos, BallVel = ball1.getState()
         BallPos = BallPos[0:3]
@@ -905,7 +910,7 @@ def TRI_MPCControl(ParamData):
                     # v_xref = - (dx_ref / 3) / (z_ref - 0.15) * v_zref
                     # v_yref = - (2 * dy_ref / 3)/ (z_ref - 0.15) * v_zref
                     # xtra = TraPoint_x[index] - dx_ref / 3
-                    # ytra = TraPoint_y[index] + dy_ref / 3
+                    # ytra = TraPoint_y[index] - 2 * dy_ref / 3
 
                     v_xref = - dx_ref / (z_ref - 0.15) * v_zref
                     v_yref = 0.0
@@ -925,13 +930,13 @@ def TRI_MPCControl(ParamData):
             # if i_force == -1:
                 PosTar = np.array([xtra, ytra, z_ref])
                 VelTar = np.array([v_xref, v_yref, v_zref])
-                x_coef, y_coef, z_coef = TriCal(BallPos, BallVel, PosTar, VelTar)
+                x_coef, y_coef, z_coef = TriCal(t_force, BallPos, BallVel, PosTar, VelTar)
 
                 # i_init = i
             
                 # # MPC controller setup
                 model = template_model()
-                mpc = template_mpc(model, sim_t_step, x_coef, y_coef, z_coef)
+                mpc = template_mpc(model, x_coef, y_coef, z_coef)
                 simulator = template_simulator(model, sim_t_step)
                 estimator = do_mpc.estimator.StateFeedback(model)
 
@@ -951,29 +956,8 @@ def TRI_MPCControl(ParamData):
             XForce = Force[0, 0]
             YForce = Force[1, 0]
             ZForce = Force[2, 0]
-
-            # i_force = i - i_init
-            # t_now = i_force * sim_t_step
-            # Xa = 2 * x_coef[2] + 6 * x_coef[3] * (t_now)
-            # x_ref = x_coef[0] + x_coef[1] * (t_now) + x_coef[2] * (t_now) ** 2 + x_coef[3] * (t_now) ** 3
-            # xv_ref = x_coef[1] + 2 * x_coef[2] * (t_now) + 3 * x_coef[3] * (t_now) ** 2
-            # Ya = 2 * y_coef[2] + 6 * y_coef[3] * (t_now)
-            # Za = 2 * z_coef[2] + 6 * z_coef[3] * (t_now)
-            # ztest_ref = z_coef[0] + z_coef[1] * (t_now) + z_coef[2] * (t_now) ** 2 + z_coef[3] * (t_now) ** 3
-            # zv_ref = z_coef[1] + 2 * z_coef[2] * (t_now) + 3 * z_coef[3] * (t_now) ** 2
-
-            # XForce = m * Xa
-            # YForce = m * Ya
-            # ZForce = m * (- g + Za)
-
-            # if i_force >= 300:
-            #     i_force = -1
             print("**********************************************************************************************")
-            # print("x0: ", x0)
-            # print("t_ref is: ", t_now, sim_t_step, i_force)
             print("Force: ", XForce, YForce, ZForce)
-            # print("x ball ref pos and vel acc: ", x_ref, xv_ref, Xa)
-            # print("z ball ref pos and vel acc: ", ztest_ref, zv_ref, Za)
             print("Ball pos and vel is ", BallPos, BallVel)
             print("x_coef, y_coef, z_coef: ", x_coef, y_coef, z_coef)
             print("xtra, ytra, v_xref, v_yref, v_zref: ",  xtra, ytra, v_xref, v_yref, v_zref)
@@ -1016,9 +1000,10 @@ def TRI_MPCControl(ParamData):
     BallVelocity = BallVelocity[1:,]
     ExternalForce = ExternalForce[1:,]
     SumForce = SumForce[1:,]
+    TraPoint = np.concatenate([[TraPoint_x], [TraPoint_y]], axis = 0)
 
-    Data = {'BallPos': BallPosition, 'BallVel': BallVelocity, 'ExternalForce': ExternalForce, 'ResForce':SumForce, 'time': T, \
-            "Point1Pos":Point1Pos, "Point1Vel":Point1Vel}
+    Data = {'BallPos': BallPosition, 'BallVel': BallVelocity, 'ExternalForce': ExternalForce, 'ResForce': SumForce, 'time': T, \
+            "Point1Pos": Point1Pos, "Point1Vel": Point1Vel, "TraPoint": TraPoint}
     # print(0)
     # return BallPosition, BallVelocity, ExternalForce, T
     return Data
@@ -1234,13 +1219,15 @@ if __name__ == "__main__":
     # Data = SetPoint_MPCControl(ParamData)
     Data = TRI_MPCControl(ParamData)
 
-    # # file save
-    # Data = FileSave.DataSave(BallState, EndFootState, ForceState, JointTorque, JointVelSaved, T, ParamData)
+    # file save
+    FileFlag = ParamData["environment"]["FileFlag"] 
+    FileSave.DataSave(Data, ParamData, FileFlag)
 
     # # data visulization
     # Data = {'BallPos': BallPosition, 'BallVel': BallVelocity, 'ExternalForce': ExternalForce, 'time': T}
 
-    DataPlot(Data)
+    # DataPlot(Data)
+    visualization.DataPlot(Data)
 
     # print("force, ", ForceState[0:100, 1])
 

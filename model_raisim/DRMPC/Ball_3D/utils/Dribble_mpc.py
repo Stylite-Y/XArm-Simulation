@@ -8,7 +8,7 @@ sys.path.append('../../')
 import do_mpc
 import math
 import datetime
-
+import yaml
 from Dribble_model import tanh_sig
 
 # =======parameter==========
@@ -161,16 +161,25 @@ def xytri(t):
     return x, y
 
 
-def template_mpc(model, sim_t_step, x_coef, y_coef, z_coef):
+def template_mpc(model, x_coef, y_coef, z_coef):
     """
     --------------------------------------------------------------------------
     template_mpc: tuning parameters
     --------------------------------------------------------------------------
     """
+    FilePath = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    ParamFilePath = FilePath + "/config/LISM_test.yaml"
+    ParamFile = open(ParamFilePath, "r", encoding="utf-8")
+    ParamData = yaml.load(ParamFile, Loader=yaml.FullLoader)
+
+    sim_t_step = ParamData["environment"]["t_step"]
+    n_horizons = ParamData["MPCController"]["n_horizons"]
+    t_force = ParamData["MPCController"]["t_force"]
+
     mpc = do_mpc.controller.MPC(model)
 
     setup_mpc = {
-        'n_horizon': 150,
+        'n_horizon': n_horizons,
         'n_robust': 0,
         'open_loop': 0,
         't_step': sim_t_step,
@@ -188,15 +197,15 @@ def template_mpc(model, sim_t_step, x_coef, y_coef, z_coef):
     # mterm = 100*(model.aux['E_kin'] - model.aux['E_pot'])
     # lterm = (model.aux['E_kin'] - model.aux['E_pot'])+10*(model.x['pos']-model.tvp['pos_set'])**2 # stage cost
 
-    q1 = 1000
-    q2 = 1000
-    q3 = 1000
-    vxq1 = 800.0
-    vyq2 = 800.0
-    vzq3 = 800.0
-    r1 = 10.0
-    r2 = 10.0
-    r3 = 10.0
+    q1 = ParamData["MPCController"]["xq"]
+    q2 = ParamData["MPCController"]["yq"]
+    q3 = ParamData["MPCController"]["zq"]
+    vxq1 = ParamData["MPCController"]["vxq"]
+    vyq2 = ParamData["MPCController"]["vyq"]
+    vzq3 = ParamData["MPCController"]["vzq"]
+    r1 = ParamData["MPCController"]["uxr"]
+    r2 = ParamData["MPCController"]["uyr"]
+    r3 = ParamData["MPCController"]["uzr"]
     mterm = q1 * (model.x['x_b'] - model.tvp['xtraj']) ** 2 + q2 * (model.x['y_b'] - model.tvp['ytraj']) ** 2 + q3 * (model.x['z_b'] - model.tvp['ztraj']) ** 2 + \
             vxq1 * (model.x['dx_b'] - model.tvp['vxtraj']) ** 2 + vyq2 * (model.x['dy_b'] - model.tvp['vytraj']) ** 2 + vzq3 * (model.x['dz_b'] - model.tvp['vztraj']) ** 2
     lterm = mterm 
@@ -242,14 +251,14 @@ def template_mpc(model, sim_t_step, x_coef, y_coef, z_coef):
             tvp_template['_tvp',k, 'xtraj'] = x_coef[0] + x_coef[1] * t_pre + x_coef[2] * t_pre ** 2 + x_coef[3] * t_pre ** 3
             tvp_template['_tvp',k, 'ytraj'] = y_coef[0] + y_coef[1] * t_pre + y_coef[2] * t_pre ** 2 + y_coef[3] * t_pre ** 3
             tvp_template['_tvp',k, 'ztraj'] = z_coef[0] + z_coef[1] * t_pre + z_coef[2] * t_pre ** 2 + z_coef[3] * t_pre ** 3
-            if t_pre <= 0.2:
+            if t_pre <= t_force:
                 tvp_template['_tvp',k, 'vxtraj'] = x_coef[1] + 2 * x_coef[2] * t_pre + 3 * x_coef[3] * t_pre ** 2
                 tvp_template['_tvp',k, 'vytraj'] = y_coef[1] + 2 * y_coef[2] * t_pre + 3 * y_coef[3] * t_pre ** 2
                 tvp_template['_tvp',k, 'vztraj'] = z_coef[1] + 2 * z_coef[2] * t_pre + 3 * z_coef[3] * t_pre ** 2
-            if t_pre > 0.2:
-                tvp_template['_tvp',k, 'vxtraj'] = x_coef[1] + 2 * x_coef[2] * 0.2 + 3 * x_coef[3] * 0.2 ** 2
-                tvp_template['_tvp',k, 'vytraj'] = y_coef[1] + 2 * y_coef[2] * 0.2 + 3 * y_coef[3] * 0.2 ** 2
-                tvp_template['_tvp',k, 'vztraj'] = z_coef[1] + 2 * z_coef[2] * 0.2 + 3 * z_coef[3] * 0.2 ** 2
+            if t_pre > t_force:
+                tvp_template['_tvp',k, 'vxtraj'] = x_coef[1] + 2 * x_coef[2] * t_force + 3 * x_coef[3] * t_force ** 2
+                tvp_template['_tvp',k, 'vytraj'] = y_coef[1] + 2 * y_coef[2] * t_force + 3 * y_coef[3] * t_force ** 2
+                tvp_template['_tvp',k, 'vztraj'] = z_coef[1] + 2 * z_coef[2] * t_force + 3 * z_coef[3] * t_force ** 2
         return tvp_template
 
     mpc.set_tvp_fun(tvp_fun)

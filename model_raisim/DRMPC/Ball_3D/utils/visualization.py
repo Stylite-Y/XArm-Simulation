@@ -112,6 +112,131 @@ def State_TPlot(ParamData, Params_1, Params_2, T, flag):
         plt.ylabel('Position (m)')
         plt.legend(loc='lower right')
 
+def DataPlot(Data):
+
+    BallPosition = Data['BallPos']
+    BallVelocity = Data['BallVel']
+    ExternalForce = Data['ExternalForce']
+    Point1Pos = Data['Point1Pos']
+    Point1Vel = Data['Point1Vel']
+    ResForce = Data['ResForce']
+    T = Data['time']
+    SumForce = ExternalForce
+
+    plt.figure()
+    plt.title('Ball motion in zx plane', fontsize = 20)
+
+    plt.subplot(311)
+    plt.plot(T, BallPosition[:, 0], label='Ball x-axis Position')
+    plt.plot(T, BallPosition[:, 1], label='Ball y-axis Position')
+    # plt.plot(T, BallVelocity[:, 0], label='Ball x-axis Velocity')
+    plt.plot(T, BallPosition[:, 2], label='Ball z-axis Position')
+    # plt.plot(T, line2, label='highest Velocity')
+    plt.axis([0, max(T)*1.05, -max(BallPosition[:, 2])*2, max(BallPosition[:, 2])*2])
+    plt.xlabel('time (s)')
+    plt.ylabel('Ball Position (m)', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
+
+
+    plt.subplot(312)
+    plt.plot(T, BallVelocity[:, 0], label='Ball x-axis Velocity')
+    plt.plot(T, BallVelocity[:, 1], label='Ball y-axis Velocity')
+    plt.plot(T, BallVelocity[:, 2], label='Ball z-axis Velocity')
+
+    plt.axis([0, max(T)*1.05, -max(BallVelocity[:, 2])*2, max(BallVelocity[:, 2])*2])
+    plt.xlabel('time (s)')
+    plt.ylabel('Velocity (m/s)', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
+
+    plt.subplot(313)
+    plt.plot(T, ExternalForce[:, 0], label='Ball x-axis Force')
+    plt.plot(T, ExternalForce[:, 1], label='Ball y-axis Force')
+    plt.plot(T, ExternalForce[:, 2], label='Ball z-axis Force')
+
+    plt.axis([0, max(T)*1.05, -max(ExternalForce[:, 0])*2.5, max(ExternalForce[:, 0])*2.5])
+    plt.xlabel('time (s)', fontsize = 15)
+    plt.ylabel('Force (N)', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
+
+    plt.figure()
+    plt.scatter(BallPosition[:, 0], BallPosition[:, 2], label='X-Z plane Ball motion trajectory')
+    ConPoint = []
+    for i in range(len(BallVelocity[:, 2])):
+        if i > 0 and BallPosition[i, 2] < 0.5 and (BallVelocity[i, 2] * BallVelocity[i-1, 2]) < 0:
+            ConPoint.append(BallPosition[i, 0])
+            plt.scatter(BallPosition[i, 0], 0.15, s = 100, c = 'r')
+    print("x axis contact position is: ", ConPoint)
+    x_ticks = np.arange(-1.5, 1.0, 0.1)
+    plt.xticks(x_ticks)
+    plt.xlabel('x-axis position (m)', fontsize = 15)
+    plt.ylabel('z-axis position (m)', fontsize = 15)
+    # plt.legend(loc='upper right')
+    plt.title('X-Z plane Ball motion trajectory', fontsize = 20)
+
+    # plt.figure()
+    # plt.plot(BallPosition[:, 0], ExternalForce[:, 0], label='Ball x-axis Pos-Force')
+    # plt.plot(BallPosition[:, 0], ExternalForce[:, 1], label='Ball y-axis Pos-Force')
+    # plt.plot(BallPosition[:, 0], ExternalForce[:, 2], label='Ball z-axis Pos-Force')
+    # plt.xlabel('Position (m)')
+    # plt.ylabel('Force (N)')
+    # plt.axis([-0.8, 0.8, -300, 250])
+    # plt.legend(loc='upper right')
+    # plt.title('Ball Pos-Force trajectory', fontsize = 20)
+
+    plt.figure()
+    plt.scatter(BallPosition[:, 0], BallPosition[:, 1], label='X-Y plane Ball motion trajectory', cmap='inferno')
+    ConPoint = []
+    for i in range(len(BallVelocity[:, 2])):
+        if i > 0 and BallPosition[i, 2] < 0.5 and (BallVelocity[i, 2] * BallVelocity[i-1, 2]) < 0:
+            ConPoint.append(BallPosition[i, 1])
+            plt.scatter(BallPosition[i, 0], BallPosition[i, 1], s = 100, c = 'r')
+    print("y axis contact position is: ", ConPoint)
+    x_ticks = np.arange(-1.2, 0.9, 0.1)
+    plt.xticks(x_ticks)
+    plt.xlabel('x-axis position (m)', fontsize = 15)
+    plt.ylabel('y-axis position (m)', fontsize = 15)
+    # plt.legend(loc='upper right')
+    plt.title('X-Y plane Ball motion trajectory', fontsize = 20)
+
+    # plt.figure()
+    # Num = len(Point1Vel)
+    # index = np.linspace(0, Num, Num)
+    # plt.subplot(211)
+    # # Point1Vel[0, 1] = 6
+    # # plt.scatter(index, Point1Pos[:, 0], label='Point 1 x-axis pos motion trajectory')
+    # plt.scatter(index, Point1Pos[:, 1], label='Point 1 y-axis pos motion trajectory')
+    # # plt.scatter(index, Point1Pos[:, 2], label='Point 1 z-axis pos motion trajectory')
+
+    # plt.xlabel('Period', fontsize = 15)
+    # plt.ylabel('axis position (m)', fontsize = 15)
+    # # plt.axis([-0.5, Num + 0.5, -1.5, 1.5])
+    # plt.legend(loc='upper right', fontsize = 15)
+
+    # plt.subplot(212)
+    # # plt.scatter(index, Point1Vel[:, 0], label='Point 1 x-axis vel motion trajectory')
+    # plt.scatter(index, Point1Vel[:, 1], label='Point 1 y-axis vel motion trajectory')
+    # # plt.scatter(index, Point1Vel[:, 2], label='Point 1 z-axis vel motion trajectory')
+
+    # plt.xlabel('Period', fontsize = 15)
+    # plt.ylabel('axis velocity (m)', fontsize = 15)
+    # # plt.axis([-0.5, Num + 0.5, -1.5, 1.5])
+    # plt.legend(loc='upper right', fontsize = 15)
+    # # plt.title('Point1 motion trajectory', fontsize = 20)
+
+    # fig = plt.figure()
+    # ax = fig.gca(projection='3d')
+    # ax.plot(BallPosition[:, 0], BallPosition[:, 1], ExternalForce[:, 0], label='x-axis Force')
+    # ax.plot(BallPosition[:, 0], BallPosition[:, 1], ExternalForce[:, 1], label='y-axis Force')
+    # ax.plot(BallPosition[:, 0], BallPosition[:, 1], ExternalForce[:, 2], label='z-axis Force')
+    # ax.plot(BallPosition[:, 0], BallPosition[:, 1], ResForce[:,0], label=' Resultant Force')
+    # ax.set_xlabel('x-axis position (m)')
+    # ax.set_ylabel('y-axis position (m)')
+    # ax.set_zlabel('Force (N)')
+    # ax.legend(loc='upper right')
+    # ax.set_title('X-Y plane Force Trajectory', fontsize = 20)
+
+    plt.show()
+
 
 def DataProcess(data):
     matplotlib.rcParams['font.size'] = 18
@@ -151,31 +276,33 @@ def DataProcess(data):
 
     # ============================================ data visualization ===============================================
     # plot joint torque-velocity figure
-    ScatterPhaseplot(JointVel_1, JointTorque_1, 1)
-    ScatterPhaseplot(JointVel_2, JointTorque_2, 2)
+    # ScatterPhaseplot(JointVel_1, JointTorque_1, 1)
+    # ScatterPhaseplot(JointVel_2, JointTorque_2, 2)
 
-    # phaseplot(JointVel_1, JointTorque_1, 1)
-    # phaseplot(JointVel_2, JointTorque_2, 2)    
+    # # phaseplot(JointVel_1, JointTorque_1, 1)
+    # # phaseplot(JointVel_2, JointTorque_2, 2)    
 
-    ## plot Ball and foot state figure
-    plt.figure()
+    # ## plot Ball and foot state figure
+    # plt.figure()
 
-    # plot Ball and foot velocity figure
-    plt.subplot(311)
-    State_TPlot(ParamData, BallState[:, 1], EndFootState[:, 1], T, 1)
+    # # plot Ball and foot velocity figure
+    # plt.subplot(311)
+    # State_TPlot(ParamData, BallState[:, 1], EndFootState[:, 1], T, 1)
 
-    # plot Ball and foot position figure
-    plt.subplot(312)
-    State_TPlot(ParamData, BallState[:, 0], EndFootState[:, 0], T, 0)
+    # # plot Ball and foot position figure
+    # plt.subplot(312)
+    # State_TPlot(ParamData, BallState[:, 0], EndFootState[:, 0], T, 0)
 
-    # plot contact force and designed force figure
-    plt.subplot(313)
-    # print(ForceState[0:1000, 1])
-    Force_TPlot(ForceState, T)
+    # # plot contact force and designed force figure
+    # plt.subplot(313)
+    # # print(ForceState[0:1000, 1])
+    # Force_TPlot(ForceState, T)
 
+    # DataPlot(data)
     plt.show()
 
 if __name__ == "__main__":
-    f = open(os.path.abspath(os.path.dirname(os.path.dirname(__file__))) + '/data/2021-07-12-x_ref_0.4-v0_8-vref_-10-dx_0.2-f1_15.0.pkl','rb')
+    f = open(os.path.abspath(os.path.dirname(os.path.dirname(__file__))) + '/data/2021-09-27/2021-09-27-TRIGON--tstep_0.0005-horizon_50-tforce_0.2-vzref_-6.0-xq_1000-vxq_800.0-uxr_10.0.pkl','rb')
     data = pickle.load(f)
-    DataProcess(data)
+    # DataProcess(data)
+    DataPlot(data)

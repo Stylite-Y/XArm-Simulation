@@ -1,19 +1,17 @@
 environment:
   t_step: 0.0005
-  sim_time: 6000
+  sim_time: 3000
   UpperArmLength: 0.2
   LowerArmLength: 0.2
   con_flag: 0
   fun_flag: 0
   mass: 0.5
-
-  FileFlag: 0
   z_ref: 0.5
   v_zref: -6.0
 
 MPCController:
   t_force: 0.2
-  n_horizons: 20
+  n_horizons: 80
   xq: 1000
   yq: 1000
   zq: 1000
