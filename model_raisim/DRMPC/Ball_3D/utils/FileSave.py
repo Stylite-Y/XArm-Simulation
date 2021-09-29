@@ -26,19 +26,19 @@ def ParamsCopy(save_dir, ParamData, FileFlag):
     ParamFilePath = FilePath + "/config/LISM_test.yaml"
     print(ParamFilePath)
     if FileFlag == 0:
-        ConfigFileName = str(today) + '-LISM' + 'V-' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + \
+        ConfigFileName = str(today) + '-LISM' + '-V' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + \
                         str(v_zref) + '-xq_' + str(xq) + '-vxq_' + str(vxq) + '-uxr_' + str(uxr) + '.yaml'
     elif FileFlag == 1:
-        ConfigFileName = str(today) + '-LISM' + '-TRIGON-' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + \
+        ConfigFileName = str(today) + '-LISM' + '-TRIGON' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + \
                         str(v_zref) + '-xq_' + str(xq) + '-vxq_' + str(vxq) + '-uxr_' + str(uxr) + '.yaml'
 
     # 文件是否存在
     if os.path.exists(os.path.join(save_dir, ConfigFileName)):
         if FileFlag == 0:
-            ConfigFileName = str(today) + '-LISM' + 'V-' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + \
+            ConfigFileName = str(today) + '-LISM' + '-V' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + \
                             str(v_zref) + '-xq_' + str(xq) + '-vxq_' + str(vxq) + '-uxr_' + str(uxr)  + '-' + str(RandNum) + '.yaml'
         elif FileFlag == 1:
-            ConfigFileName = str(today) + '-LISM' + '-TRIGON-' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + \
+            ConfigFileName = str(today) + '-LISM' + '-TRIGON' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + \
                             str(v_zref) + '-xq_' + str(xq) + '-vxq_' + str(vxq) + '-uxr_' + str(uxr)  + '-' + str(RandNum) + '.yaml'
 
     TargetFile = os.path.join(save_dir, ConfigFileName)
@@ -56,10 +56,10 @@ def DataSave(Data, ParamData, FileFlag):
     uxr = ParamData["MPCController"]["uxr"]
     RandNum = random.randint(0,100)
     if FileFlag == 0:
-        name = str(today) + 'V-' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + str(v_zref) + '-xq_' + \
+        name = str(today) + '-V' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + str(v_zref) + '-xq_' + \
             str(xq) + '-vxq_' + str(vxq) + '-uxr_' + str(uxr) + '.pkl'
     elif FileFlag == 1:
-        name = str(today) + '-TRIGON-' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + str(v_zref) + '-xq_' + \
+        name = str(today) + '-TRIGON' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + str(v_zref) + '-xq_' + \
             str(xq) + '-vxq_' + str(vxq) + '-uxr_' + str(uxr) + '.pkl'
     pathDir = './data/'
     print(name)
@@ -76,10 +76,10 @@ def DataSave(Data, ParamData, FileFlag):
     # 数据文件保存
     if os.path.exists(os.path.join(save_dir, name)):
         if FileFlag == 0:
-            name = str(today) + 'V-' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + str(v_zref) + '-xq_' + \
+            name = str(today) + '-V' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + str(v_zref) + '-xq_' + \
                str(xq) + '-vxq_' + str(vxq) + '-uxr_' + str(uxr) + '-' + str(RandNum) + '.pkl'
         elif FileFlag == 1:
-            name = str(today) + '-TRIGON-' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + str(v_zref) + '-xq_' + \
+            name = str(today) + '-TRIGON' + '-tstep_' + str(sim_t_step) + '-horizon_'+ str(n_horizons) + '-tforce_' + str(t_force) + '-vzref_' + str(v_zref) + '-xq_' + \
                 str(xq) + '-vxq_' + str(vxq) + '-uxr_' + str(uxr) + '-' + str(RandNum) + '.pkl'
 
     with open(os.path.join(save_dir, name), 'wb') as f:

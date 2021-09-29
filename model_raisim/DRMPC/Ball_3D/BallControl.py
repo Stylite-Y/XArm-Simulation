@@ -858,8 +858,8 @@ def SetPoint_MPCControl(ParamData):
 
 def TRI_MPCControl(ParamData):
 
-    # TraPoint_x = np.array([-0.2, -0.5, 0.1])
-    TraPoint_x = np.array([-0.2, -0.2, 0.0])
+    TraPoint_x = np.array([-0.2, -0.5, 0.1])
+    # TraPoint_x = np.array([-0.2, -0.2, 0.0])
     TraPoint_y = np.array([0.0, 0.6, 0.6])
 
     flag = 0
@@ -889,6 +889,7 @@ def TRI_MPCControl(ParamData):
 
     Point1Pos = np.array([[0.0, 0.0, 0.0]])
     Point1Vel = np.array([[0.0, 0.0, 0.0]])
+    RefCoef = np.array([[[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]])
 
     for i in range(sim_time):
         time.sleep(0.005)
@@ -907,16 +908,16 @@ def TRI_MPCControl(ParamData):
                     ytra = 0.0
 
                 elif index == 1:
-                    # v_xref = - (dx_ref / 3) / (z_ref - 0.15) * v_zref
-                    # v_yref = - (2 * dy_ref / 3)/ (z_ref - 0.15) * v_zref
-                    # xtra = TraPoint_x[index] - dx_ref / 3
-                    # ytra = TraPoint_y[index] - 2 * dy_ref / 3
+                    v_xref = - (dx_ref / 3) / (z_ref - 0.15) * v_zref
+                    v_yref = - (2 * dy_ref / 3)/ (z_ref - 0.15) * v_zref
+                    xtra = TraPoint_x[index] - dx_ref / 3
+                    ytra = TraPoint_y[index] - 2 * dy_ref / 3
 
-                    v_xref = - dx_ref / (z_ref - 0.15) * v_zref
-                    v_yref = 0.0
-                    xtra = TraPoint_x[index] - dx_ref
-                    ytra = 0.0
-                    # break
+                    # v_xref = - dx_ref / (z_ref - 0.15) * v_zref
+                    # v_yref = 0.0
+                    # xtra = TraPoint_x[index] - dx_ref
+                    # ytra = 0.0
+                    break
 
                 elif index == 2:
                     v_xref = - (dx_ref / 3) / (z_ref - 0.15) * v_zref
@@ -931,7 +932,8 @@ def TRI_MPCControl(ParamData):
                 PosTar = np.array([xtra, ytra, z_ref])
                 VelTar = np.array([v_xref, v_yref, v_zref])
                 x_coef, y_coef, z_coef = TriCal(t_force, BallPos, BallVel, PosTar, VelTar)
-
+                Coef = np.array([[x_coef, y_coef, z_coef]])
+                RefCoef = np.concatenate([RefCoef, Coef], axis = 0)
                 # i_init = i
             
                 # # MPC controller setup
@@ -972,7 +974,7 @@ def TRI_MPCControl(ParamData):
                     Point1Vel = np.concatenate([Point1Vel, [BallVel]], axis = 0)
                 flag = 0
                 index = index + 1
-                if index == 2:
+                if index == 3:
                     index = 0
 
                 print("end pos: ", BallPos)
@@ -993,6 +995,7 @@ def TRI_MPCControl(ParamData):
         SumForce = np.concatenate([SumForce, [[sumF]]], axis = 0)
         world.integrate()
 
+    RefCoef = RefCoef[1:,]
     T = T[1:,]
     Point1Pos = Point1Pos[1:,]
     Point1Vel = Point1Vel[1:,]
@@ -1003,7 +1006,7 @@ def TRI_MPCControl(ParamData):
     TraPoint = np.concatenate([[TraPoint_x], [TraPoint_y]], axis = 0)
 
     Data = {'BallPos': BallPosition, 'BallVel': BallVelocity, 'ExternalForce': ExternalForce, 'ResForce': SumForce, 'time': T, \
-            "Point1Pos": Point1Pos, "Point1Vel": Point1Vel, "TraPoint": TraPoint}
+            "Point1Pos": Point1Pos, "Point1Vel": Point1Vel, "TraPoint": TraPoint, "RefTraCoef": RefCoef}
     # print(0)
     # return BallPosition, BallVelocity, ExternalForce, T
     return Data
@@ -1217,7 +1220,11 @@ if __name__ == "__main__":
     # Data = SetPoint_DriControl(ParamData)
     # Data = XboxDriControl(ParamData)
     # Data = SetPoint_MPCControl(ParamData)
+    mpc_stime = datetime.datetime.now()
     Data = TRI_MPCControl(ParamData)
+    mpc_endtime = datetime.datetime.now()
+    spendtime = mpc_endtime - mpc_stime
+    print("this mpc simulate time is: ", spendtime)
 
     # file save
     FileFlag = ParamData["environment"]["FileFlag"] 

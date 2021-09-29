@@ -1,13 +1,13 @@
 environment:
   t_step: 0.0005
-  sim_time: 4000
+  sim_time: 6000
   UpperArmLength: 0.2
   LowerArmLength: 0.2
   con_flag: 0
   fun_flag: 0
   mass: 0.5
 
-  FileFlag: 1
+  FileFlag: 0
   z_ref: 0.5
   v_zref: -6.0
 

@@ -1,3 +1,4 @@
+# from BallControl import TriCal
 import numpy as np
 import math
 import pickle
@@ -6,6 +7,10 @@ import matplotlib.pyplot as plt
 import os
 import yaml
 from matplotlib.collections import LineCollection
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+import matplotlib.animation as animation
+
 
 def phaseplot(x, dx, flag):
     dydx = np.cos(0.05 * (x[:-1] + x[1:]))  # first derivative
@@ -123,6 +128,9 @@ def DataPlot(Data):
     T = Data['time']
     SumForce = ExternalForce
 
+    """
+    ball pos vel and force plot
+    """
     plt.figure()
     plt.title('Ball motion in zx plane', fontsize = 20)
 
@@ -158,8 +166,11 @@ def DataPlot(Data):
     plt.ylabel('Force (N)', fontsize = 15)
     plt.legend(loc='upper right', fontsize = 15)
 
+    """
+    XZ plane motion traj of ball plot
+    """
     plt.figure()
-    plt.scatter(BallPosition[:, 0], BallPosition[:, 2], label='X-Z plane Ball motion trajectory')
+    plt.scatter(BallPosition[:, 0], BallPosition[:, 2], s = 20, label='X-Z plane Ball motion trajectory')
     ConPoint = []
     for i in range(len(BallVelocity[:, 2])):
         if i > 0 and BallPosition[i, 2] < 0.5 and (BallVelocity[i, 2] * BallVelocity[i-1, 2]) < 0:
@@ -171,6 +182,17 @@ def DataPlot(Data):
     plt.xlabel('x-axis position (m)', fontsize = 15)
     plt.ylabel('z-axis position (m)', fontsize = 15)
     # plt.legend(loc='upper right')
+
+    TriCoef = Data['RefTraCoef']
+    print(TriCoef.shape)
+    print(BallPosition.shape)
+    t_c = np.linspace(0.0, 0.2, 200)
+    x_c1 = TriCoef[0, 0, 0] + TriCoef[0, 0, 1] * t_c + TriCoef[0, 0, 2] * t_c ** 2 + TriCoef[0, 0, 3] * t_c ** 3
+    z_c1 = TriCoef[0, 2, 0] + TriCoef[0, 2, 1] * t_c + TriCoef[0, 2, 2] * t_c ** 2 + TriCoef[0, 2, 3] * t_c ** 3
+    x_c2 = TriCoef[1, 0, 0] + TriCoef[1, 0, 1] * t_c + TriCoef[1, 0, 2] * t_c ** 2 + TriCoef[1, 0, 3] * t_c ** 3
+    z_c2 = TriCoef[1, 2, 0] + TriCoef[1, 2, 1] * t_c + TriCoef[1, 2, 2] * t_c ** 2 + TriCoef[1, 2, 3] * t_c ** 3
+    plt.scatter(x_c1, z_c1, s = 20)
+    plt.scatter(x_c2, z_c2, s = 20)
     plt.title('X-Z plane Ball motion trajectory', fontsize = 20)
 
     # plt.figure()
@@ -183,6 +205,9 @@ def DataPlot(Data):
     # plt.legend(loc='upper right')
     # plt.title('Ball Pos-Force trajectory', fontsize = 20)
 
+    """
+    XY plane motion traj of ball plot
+    """
     plt.figure()
     plt.scatter(BallPosition[:, 0], BallPosition[:, 1], label='X-Y plane Ball motion trajectory', cmap='inferno')
     ConPoint = []
@@ -196,6 +221,7 @@ def DataPlot(Data):
     plt.xlabel('x-axis position (m)', fontsize = 15)
     plt.ylabel('y-axis position (m)', fontsize = 15)
     # plt.legend(loc='upper right')
+
     plt.title('X-Y plane Ball motion trajectory', fontsize = 20)
 
     # plt.figure()
@@ -237,6 +263,152 @@ def DataPlot(Data):
 
     plt.show()
 
+def ThreeDimTra(Data):
+    BallPosition = Data['BallPos']
+    BallVelocity = Data['BallVel']
+    ExternalForce = Data['ExternalForce']
+    TriCoef = Data['RefTraCoef']
+
+    """
+    3D trajectory plot
+    """
+    fig = plt.figure(dpi=200)
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter(BallPosition[:, 0], BallPosition[:, 1], BallPosition[:, 2], s = 5)
+    
+    TriCoef = Data['RefTraCoef']
+    print(TriCoef.shape)
+    print(BallPosition.shape)
+    t_c = np.linspace(0.0, 0.2, 200)
+    x_c1 = TriCoef[0, 0, 0] + TriCoef[0, 0, 1] * t_c + TriCoef[0, 0, 2] * t_c ** 2 + TriCoef[0, 0, 3] * t_c ** 3
+    y_c1 = TriCoef[0, 1, 0] + TriCoef[0, 1, 1] * t_c + TriCoef[0, 1, 2] * t_c ** 2 + TriCoef[0, 1, 3] * t_c ** 3
+    z_c1 = TriCoef[0, 2, 0] + TriCoef[0, 2, 1] * t_c + TriCoef[0, 2, 2] * t_c ** 2 + TriCoef[0, 2, 3] * t_c ** 3
+
+    x_c2 = TriCoef[1, 0, 0] + TriCoef[1, 0, 1] * t_c + TriCoef[1, 0, 2] * t_c ** 2 + TriCoef[1, 0, 3] * t_c ** 3
+    y_c2 = TriCoef[1, 1, 0] + TriCoef[1, 1, 1] * t_c + TriCoef[1, 1, 2] * t_c ** 2 + TriCoef[1, 1, 3] * t_c ** 3
+    z_c2 = TriCoef[1, 2, 0] + TriCoef[1, 2, 1] * t_c + TriCoef[1, 2, 2] * t_c ** 2 + TriCoef[1, 2, 3] * t_c ** 3
+
+    x_c3 = TriCoef[2, 0, 0] + TriCoef[2, 0, 1] * t_c + TriCoef[2, 0, 2] * t_c ** 2 + TriCoef[2, 0, 3] * t_c ** 3
+    y_c3 = TriCoef[2, 1, 0] + TriCoef[2, 1, 1] * t_c + TriCoef[2, 1, 2] * t_c ** 2 + TriCoef[2, 1, 3] * t_c ** 3
+    z_c3 = TriCoef[2, 2, 0] + TriCoef[2, 2, 1] * t_c + TriCoef[2, 2, 2] * t_c ** 2 + TriCoef[2, 2, 3] * t_c ** 3
+
+    x_c4 = TriCoef[3, 0, 0] + TriCoef[3, 0, 1] * t_c + TriCoef[3, 0, 2] * t_c ** 2 + TriCoef[3, 0, 3] * t_c ** 3
+    y_c4 = TriCoef[3, 1, 0] + TriCoef[3, 1, 1] * t_c + TriCoef[3, 1, 2] * t_c ** 2 + TriCoef[3, 1, 3] * t_c ** 3
+    z_c4 = TriCoef[3, 2, 0] + TriCoef[3, 2, 1] * t_c + TriCoef[3, 2, 2] * t_c ** 2 + TriCoef[3, 2, 3] * t_c ** 3
+    ax.scatter(x_c1, y_c1, z_c1, s = 20)
+    ax.scatter(x_c2, y_c2, z_c2, s = 20)
+    ax.scatter(x_c3, y_c3, z_c3, s = 20)
+    ax.scatter(x_c4, y_c4, z_c4, s = 20)
+
+
+    ax.set_title("3D motion trajectoory of Ball",fontsize = 15)
+    ax.set_xlabel("x", fontsize = 10)
+    ax.set_ylabel("y", fontsize = 10)
+    ax.set_zlabel("z", fontsize = 10)
+    ax.view_init(elev=20, azim=-75)
+    x_ticks = np.arange(-1.0, 0.9, 0.2)
+    ax.set_xticks(x_ticks)
+    # ax.set_yticks(x_ticks)
+    ax.tick_params(labelsize = 8)
+    # plt.title('X-Z plane Ball motion trajectory', fontsize = 10)
+
+    # for angle in range(0, 360):
+    #     ax.view_init(20, angle)
+    #     plt.draw()
+    #     plt.pause(.001)
+    
+    ## motion point
+    x0, y0, z0 = BallPosition[0, 0], BallPosition[0, 1], BallPosition[0, 2]
+    point_ani, = ax.plot([x0], [y0], [z0], "ro")
+    text_pt = ax.text(0, 0, 1.05, '', fontsize=10) # label of data
+
+    def update_points(num):
+        # data point motion animation
+        point_ani.set_data(BallPosition[num, 0], BallPosition[num, 1])
+        point_ani.set_3d_properties(BallPosition[num, 2])
+        # data label animation
+        text_pt.set_position((BallPosition[num, 0], BallPosition[num, 1], BallPosition[num, 2]))
+        text_pt.set_text("x=%.3f, y=%.3f, y=%.3f"%(BallPosition[num, 0], BallPosition[num, 1], BallPosition[num, 2]))
+        # angle = num % 180
+        # ax.view_init(elev=30, azim=angle)
+        return point_ani,text_pt,
+
+    point_animation = animation.FuncAnimation(fig, update_points, frames=len(BallPosition[:, 0]), interval=5, blit=True)
+    # # point_animation.save('Pendulum_Animation.mp4',writer='ffmpeg', fps=10)
+    plt.show()
+
+def RealCmpRef(Data):
+    BallPosition = Data['BallPos']
+    BallVelocity = Data['BallVel']
+    TriCoef = Data['RefTraCoef']
+    T = Data['time']
+
+    m_xtrj = []
+    m_ztrj = []
+    m_vxtrj = []
+    m_vztrj = []
+    flag = 0
+    for i in range(len(BallPosition[:, 0])):
+        if BallPosition[i, 2] > 0.5:
+            m_xtrj.append(BallPosition[i, 0])
+            m_ztrj.append(BallPosition[i, 2])
+            m_vxtrj.append(BallVelocity[i, 0])
+            m_vztrj.append(BallVelocity[i, 2])
+            if flag == 0:
+                index1 = i
+                flag = 1
+            # print(BallPosition[i + 1, 2])
+            # print(BallPosition[0:50, 2])
+            # print(i)
+            if BallVelocity[i, 2] < 0 and BallPosition[i+1, 2] < 0.5:
+                index2 = i
+                break
+
+    print(len(m_xtrj))
+    t_m = T[index1:index2 + 1] - T[index1]
+    print(len(t_m))
+    t_c = np.linspace(0.0, 0.2, 200)
+    x_c1 = TriCoef[0, 0, 0] + TriCoef[0, 0, 1] * t_c + TriCoef[0, 0, 2] * t_c ** 2 + TriCoef[0, 0, 3] * t_c ** 3
+    z_c1 = TriCoef[0, 2, 0] + TriCoef[0, 2, 1] * t_c + TriCoef[0, 2, 2] * t_c ** 2 + TriCoef[0, 2, 3] * t_c ** 3
+    x_c2 = TriCoef[1, 0, 0] + TriCoef[1, 0, 1] * t_c + TriCoef[1, 0, 2] * t_c ** 2 + TriCoef[1, 0, 3] * t_c ** 3
+    z_c2 = TriCoef[1, 2, 0] + TriCoef[1, 2, 1] * t_c + TriCoef[1, 2, 2] * t_c ** 2 + TriCoef[1, 2, 3] * t_c ** 3
+    vx_c1 = TriCoef[0, 0, 1] + 2 * TriCoef[0, 0, 2] * t_c + 3 * TriCoef[0, 0, 3] * t_c ** 2
+    vz_c1 = TriCoef[0, 2, 1] + 2 * TriCoef[0, 2, 2] * t_c + 3 * TriCoef[0, 2, 3] * t_c ** 2
+    vx_c2 = TriCoef[1, 0, 1] + 2 * TriCoef[1, 0, 2] * t_c + 3 * TriCoef[1, 0, 3] * t_c ** 2
+    vz_c2 = TriCoef[1, 2, 1] + 2 * TriCoef[1, 2, 2] * t_c + 3 * TriCoef[1, 2, 3] * t_c ** 2
+
+    plt.figure()
+    plt.subplot(411)
+    plt.scatter(t_m, m_xtrj, s = 100, c = '#fbb4ae', label = 'x-axis motion trajectory')
+    plt.scatter(t_c, x_c1, s = 15, c = 'lightskyblue', label = 'x-axis ref trajectory')
+    plt.ylabel('Position (m)', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
+    plt.title('Compared between reference and  motion trajectory', fontsize = 20)
+    plt.subplot(412)
+    plt.scatter(t_m, m_ztrj, s = 100, c = '#decbe4', label = 'z-axis motion trajectory')
+    plt.scatter(t_c, z_c1, s = 15, c = '#ccebc5', label = 'z-axis ref trajectory')
+    plt.ylabel('Position (m)', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
+    plt.subplot(413)
+    plt.scatter(t_m, m_vxtrj, s = 100, c = '#fdcdac', label = 'x-axis motion speed')
+    plt.scatter(t_c, vx_c1, s = 15, c = '#b3e2cd', label = 'x-axis ref speed')
+    plt.ylabel('Velocity (m/s)', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
+    plt.subplot(414)
+    plt.scatter(t_m, m_vztrj, s = 100, c = '#beaed4', label = 'z-axis motion speed')
+    plt.scatter(t_c, vz_c1, s = 15, c = '#fdc086', label = 'z-axis ref speed')
+    plt.xlabel('time (s)')
+    plt.ylabel('Velocity (m/s)', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
+
+    # plt.scatter(vx_c2, vz_c2, s = 20)
+    # x_ticks = np.arange(-1.2, 0.9, 0.1)
+    # plt.xticks(x_ticks)
+    # plt.xlabel('x-axis position (m)', fontsize = 15)
+    # plt.ylabel('y-axis position (m)', fontsize = 15)
+
+    
+    plt.show()
 
 def DataProcess(data):
     matplotlib.rcParams['font.size'] = 18
@@ -302,7 +474,10 @@ def DataProcess(data):
     plt.show()
 
 if __name__ == "__main__":
-    f = open(os.path.abspath(os.path.dirname(os.path.dirname(__file__))) + '/data/2021-09-27/2021-09-27-TRIGON--tstep_0.0005-horizon_50-tforce_0.2-vzref_-6.0-xq_1000-vxq_800.0-uxr_10.0.pkl','rb')
+    f = open(os.path.abspath(os.path.dirname(os.path.dirname(__file__))) + \
+         '/data/2021-09-28/2021-09-28-V-tstep_0.0005-horizon_20-tforce_0.2-vzref_-6.0-xq_1000-vxq_800.0-uxr_10.0.pkl','rb')
     data = pickle.load(f)
     # DataProcess(data)
-    DataPlot(data)
+    # DataPlot(data)
+    RealCmpRef(data)
+    # ThreeDimTra(data)

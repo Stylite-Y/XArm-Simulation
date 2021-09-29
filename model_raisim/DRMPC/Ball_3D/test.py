@@ -6,7 +6,7 @@ import datetime
 import raisimpy as raisim
 import yaml
 import time
-
+from mpl_toolkits.mplot3d import axes3d
 def tanh_sig(x):
     return 0.5 + 0.5 * np.tanh(1000 * x)
 
@@ -191,8 +191,6 @@ def MPCControl():
     graphics.reset_axes()
     plt.show()
 
-
-
 def TriCal():
     t = 0.2
     pos_init = np.array([0.88, 0.0, 0.833])
@@ -211,34 +209,50 @@ def TriCal():
     y_coef = np.linalg.solve(A, b_y)
     z_coef = np.linalg.solve(A, b_z)
 
-    t = np.linspace(0.0, 0.2, 50)
-    t_test = 0.171
-    x = x_coef[0] + x_coef[1] * t + x_coef[2] * t ** 2 + x_coef[3] * t ** 3
-    x_test = x_coef[0] + x_coef[1] * t_test + x_coef[2] * t_test ** 2 + x_coef[3] * t_test ** 3
-    vx = x_coef[1] + 2 * x_coef[2] * t + 3 * x_coef[3] * t ** 2
-    vx_test = x_coef[1] + 2 * x_coef[2] * t_test + 3 * x_coef[3] * t_test ** 2
-    ax = x_coef[2] *  2 + x_coef[3] * t * 6
+    RefCoef = np.array([[[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]])
+    Coef = np.array([[x_coef, y_coef, z_coef]])
+    RefCoef = np.concatenate([RefCoef, Coef], axis = 0)
 
-    z = z_coef[0] + z_coef[1] * t + z_coef[2] * t ** 2 + z_coef[3] * t ** 3
-    vz = z_coef[1] + 2 * z_coef[2] * t + 3 * z_coef[3] * t ** 2
-    az = z_coef[2] * 2 + z_coef[3] * t * 6
-    plt.figure(1)
-    plt.plot(t, x)
-    plt.plot(t, vx)
-    # plt.plot(t, ax)
-    plt.title('x')
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
 
-    plt.scatter(-0.2, 0.15, c = 'r')
-    plt.figure(2)
-    # plt.plot(t, vz)
-    plt.plot(t, z)
-    # plt.plot(t, az)
-    plt.title('z')
+    # load some test data for demonstration and plot a wireframe
+    X, Y, Z = axes3d.get_test_data(0.1)
+    ax.plot_wireframe(X, Y, Z, rstride=5, cstride=5)
 
-    plt.show()
+    # rotate the axes and update
+    for angle in range(0, 360):
+        ax.view_init(30, angle)
+        plt.draw()
+        plt.pause(.001)
+    # t = np.linspace(0.0, 0.2, 50)
+    # t_test = 0.171
+    # x = x_coef[0] + x_coef[1] * t + x_coef[2] * t ** 2 + x_coef[3] * t ** 3
+    # x_test = x_coef[0] + x_coef[1] * t_test + x_coef[2] * t_test ** 2 + x_coef[3] * t_test ** 3
+    # vx = x_coef[1] + 2 * x_coef[2] * t + 3 * x_coef[3] * t ** 2
+    # vx_test = x_coef[1] + 2 * x_coef[2] * t_test + 3 * x_coef[3] * t_test ** 2
+    # ax = x_coef[2] *  2 + x_coef[3] * t * 6
+
+    # z = z_coef[0] + z_coef[1] * t + z_coef[2] * t ** 2 + z_coef[3] * t ** 3
+    # vz = z_coef[1] + 2 * z_coef[2] * t + 3 * z_coef[3] * t ** 2
+    # az = z_coef[2] * 2 + z_coef[3] * t * 6
+    # plt.figure(1)
+    # plt.plot(t, x)
+    # plt.plot(t, vx)
+    # # plt.plot(t, ax)
+    # plt.title('x')
+
+    # plt.scatter(-0.2, 0.15, c = 'r')
+    # plt.figure(2)
+    # # plt.plot(t, vz)
+    # plt.plot(t, z)
+    # # plt.plot(t, az)
+    # plt.title('z')
+
+    # plt.show()
 
     print("x_coef, y_coef, z_coef: ", x_coef, y_coef, z_coef)
-    print("t_test is: ", x_test, vx_test)
+    print("t_test is: ", Coef, RefCoef)
     return x_coef, y_coef, z_coef
 
 if __name__ == "__main__":
