@@ -7,6 +7,7 @@ import raisimpy as raisim
 import datetime
 import time
 import yaml
+import math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from xbox360controller import Xbox360Controller
@@ -17,6 +18,8 @@ from casadi import *
 from casadi.tools import *
 from do_mpc.tools.timer import Timer
 from matplotlib import cm
+from scipy.spatial.transform import Rotation 
+
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)) + "/utils")
 print(os.path.abspath(os.path.dirname(__file__))) # get current file path
@@ -27,6 +30,7 @@ import FileSave
 from Dribble_model import template_model
 from Dribble_mpc import template_mpc
 from Dribble_simulator import template_simulator
+from TrajOptim import TrajOptim
 
 
 # xbox = Xbox360Controller(0, axis_threshold=0.02)
@@ -182,6 +186,36 @@ def TriCal(t_force, PosInit, VelInit, PosTar, VelTar):
     print("x_coef, y_coef, z_coef: ", x_coef, y_coef, z_coef)
     
     return x_coef, y_coef, z_coef
+
+def BallTest():
+    for i in range(10000):
+        time.sleep(0.05)
+        # ball1.setExternalForce(0, [0, 0, 0.15], [5.0, 0.0, 0.0])
+        GeneralizedCoordinate = ball1.getGeneralizedCoordinate()
+        Quaternion = GeneralizedCoordinate[3:]
+        Euler_matrix = Rotation.from_quat(Quaternion)
+        Euler = Euler_matrix.as_euler('xyz', degrees=True)
+        print(Quaternion)
+        print(Euler)
+
+        DeltaTheta = math.pi / 1000
+        NormalForcc_Z = 9.81
+        TangentialForce_X = 5.0 * np.sin(DeltaTheta * i)
+        TangentialForce_Y = 5.0 * np.cos(DeltaTheta * i)
+        Force_Z = NormalForcc_Z
+        Force_X = TangentialForce_X
+        Force_Y = TangentialForce_Y
+        ball1.setExternalForce(0, [0.0, 0, 0.0], [0.0, 0.0, Force_Z])
+        ball1.setExternalForce(0, [0.15, 0, 0.0], [Force_X, Force_Y, 0.0])
+
+        # ball1.setExternalTorque(0, [0.0, 0.0, 5.0])
+
+        server.integrateWorldThreadSafe()
+
+    # for i in range(10000):
+    #     time.sleep(0.01)
+    #     ball1.setExternalForce(0, [0, 0, 0.15], [5.0, 0.0, 0.0])
+    #     server.integrateWorldThreadSafe()
 
 def MPCControl(Pos_init, Vel_init, xtra, ytra, v_xref, v_yref, index, mpc_flag):
     print("=========================================================================")
@@ -858,9 +892,9 @@ def SetPoint_MPCControl(ParamData):
 
 def TRI_MPCControl(ParamData):
 
-    TraPoint_x = np.array([-0.2, -0.5, 0.1])
+    TraPoint_x = np.array([-0.1, -0.3, 0.1])
     # TraPoint_x = np.array([-0.2, -0.2, 0.0])
-    TraPoint_y = np.array([0.0, 0.6, 0.6])
+    TraPoint_y = np.array([0.0, 0.3, 0.3])
 
     flag = 0
     dx_ref = 0.6
@@ -889,7 +923,8 @@ def TRI_MPCControl(ParamData):
 
     Point1Pos = np.array([[0.0, 0.0, 0.0]])
     Point1Vel = np.array([[0.0, 0.0, 0.0]])
-    RefCoef = np.array([[[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]])
+    # RefCoef = np.array([[[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]])
+    RefCoef = np.array([[[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]])
 
     for i in range(sim_time):
         time.sleep(0.005)
@@ -906,6 +941,8 @@ def TRI_MPCControl(ParamData):
                     v_yref = 0.0
                     xtra = TraPoint_x[index] + dx_ref
                     ytra = 0.0
+                    print("Ball pos and vel is ", BallPos, BallVel)
+                    print("xtra, ytra, v_xref, v_yref, v_zref: ",  xtra, ytra, v_xref, v_yref, v_zref)
 
                 elif index == 1:
                     v_xref = - (dx_ref / 3) / (z_ref - 0.15) * v_zref
@@ -917,13 +954,17 @@ def TRI_MPCControl(ParamData):
                     # v_yref = 0.0
                     # xtra = TraPoint_x[index] - dx_ref
                     # ytra = 0.0
-                    break
+                    print("Ball pos and vel is ", BallPos, BallVel)
+                    print("xtra, ytra, v_xref, v_yref, v_zref: ",  xtra, ytra, v_xref, v_yref, v_zref)
+                    # break
 
                 elif index == 2:
                     v_xref = - (dx_ref / 3) / (z_ref - 0.15) * v_zref
                     v_yref = (2 * dy_ref / 3) / (z_ref - 0.15) * v_zref
                     xtra = TraPoint_x[index] - dx_ref / 3
                     ytra = TraPoint_y[index] + (2 * dy_ref) / 3
+                    print("Ball pos and vel is ", BallPos, BallVel)
+                    print("xtra, ytra, v_xref, v_yref, v_zref: ",  xtra, ytra, v_xref, v_yref, v_zref)
                     # break
 
                 flag = 1
@@ -931,14 +972,17 @@ def TRI_MPCControl(ParamData):
             # if i_force == -1:
                 PosTar = np.array([xtra, ytra, z_ref])
                 VelTar = np.array([v_xref, v_yref, v_zref])
-                x_coef, y_coef, z_coef = TriCal(t_force, BallPos, BallVel, PosTar, VelTar)
-                Coef = np.array([[x_coef, y_coef, z_coef]])
-                RefCoef = np.concatenate([RefCoef, Coef], axis = 0)
+                # x_coef, y_coef, z_coef = TriCal(t_force, BallPos, BallVel, PosTar, VelTar)
+                # Coef = np.array([[x_coef, y_coef, z_coef]])
                 # i_init = i
+
+                ThetaCoef = TrajOptim(t_force, BallPos, BallVel, PosTar, VelTar)
+                RefCoef = np.concatenate([RefCoef, [ThetaCoef]], axis = 0)
             
                 # # MPC controller setup
                 model = template_model()
-                mpc = template_mpc(model, x_coef, y_coef, z_coef)
+                # mpc = template_mpc(model, x_coef, y_coef, z_coef)
+                mpc = template_mpc(model, ThetaCoef[0], ThetaCoef[1], ThetaCoef[2])
                 simulator = template_simulator(model, sim_t_step)
                 estimator = do_mpc.estimator.StateFeedback(model)
 
@@ -961,7 +1005,7 @@ def TRI_MPCControl(ParamData):
             print("**********************************************************************************************")
             print("Force: ", XForce, YForce, ZForce)
             print("Ball pos and vel is ", BallPos, BallVel)
-            print("x_coef, y_coef, z_coef: ", x_coef, y_coef, z_coef)
+            print("x_coef, y_coef, z_coef: ", ThetaCoef[0], ThetaCoef[1], ThetaCoef[2])
             print("xtra, ytra, v_xref, v_yref, v_zref: ",  xtra, ytra, v_xref, v_yref, v_zref)
             
         elif BallPos[2] <= z_ref:
@@ -1010,7 +1054,6 @@ def TRI_MPCControl(ParamData):
     # print(0)
     # return BallPosition, BallVelocity, ExternalForce, T
     return Data
-
 
 def XboxDriControl(ParamData):
 
@@ -1166,7 +1209,6 @@ if __name__ == "__main__":
     raisim.World.setLicenseFile(os.path.dirname(os.path.abspath(__file__)) + "/activation.raisim")
     # ball1_urdf_file = os.path.abspath(os.path.dirname(os.path.dirname(__file__))) + "/urdf/ball.urdf"
     ball1_urdf_file = os.path.dirname(os.path.abspath(__file__)) + "/urdf/ball.urdf"
-
     # raisim world config setting
     world = raisim.World()
 
@@ -1174,12 +1216,13 @@ if __name__ == "__main__":
     t_step = ParamData["environment"]["t_step"] 
     sim_time = ParamData["environment"]["sim_time"]
     world.setTimeStep(t_step)
-    ground = world.addGround(0)
+    ground = world.addGround(0, "floor")
     
     # set material collision property
     # world.setMaterialPairProp("rubber", "rub", 1, 0, 0)
-    world.setMaterialPairProp("rubber", "rub", 1.0, 0.85, 0.0001)     # ball rebound model test
-    world.setMaterialPairProp("default", "rub", 0.8, 1.0, 0.0001)
+    # world.setMaterialPairProp("rubber", "rub", 1.0, 0.85, 0.0001)     # ball rebound model test
+    # world.setMaterialPairProp("default", "rub", 0.8, 1.0, 0.0001)
+    # world.updateMaterialProp(raisim.MaterialManager(os.path.dirname(os.path.abspath(__file__)) + "/urdf/testMaterial.xml"))
     gravity = world.getGravity()
 
     world.setMaterialPairProp("default", "steel", 0.0, 1.0, 0.001)
@@ -1190,14 +1233,18 @@ if __name__ == "__main__":
     print(gravity)
     print(ball1.getGeneralizedCoordinateDim())
 
-    jointNominalConfig = np.array([0.0, 0.0, 0.5, 1.0, 0.0, 0.0, 0.0])
+    jointNominalConfig = np.array([0.0, 0.0, 0.5,1.0, 0.0, 0.0, 0.0])
     jointVelocityTarget = np.array([4.0, 0.0, -5, 0.0, 0.0, 0.0])
+    # jointVelocityTarget = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    Euler_matrix = Rotation.from_quat([1.0, 0.0, 0.0, 0.0])
+    Euler = Euler_matrix.as_euler('xyz', degrees=True)
+    print(Euler)
     ball1.setGeneralizedCoordinate(jointNominalConfig)
     # print(ball1.getGeneralizedCoordinateDim())
     ball1.setGeneralizedVelocity(jointVelocityTarget)
 
-    world.setMaterialPairProp("default", "steel", 0.0, 1.0, 0.001)
-    world.setMaterialPairProp("default", "rub", 0.0, 1.0, 0.001)
+    world.setMaterialPairProp("floor", "steel", 0.0, 1.0, 0.001)
+    world.setMaterialPairProp("floor", "rub", 0.0, 1.0, 0.001)
  
     ## ======================= single object ====================
     # ball1 = world.addSphere(0.12, 0.8, "steel")
@@ -1220,11 +1267,12 @@ if __name__ == "__main__":
     # Data = SetPoint_DriControl(ParamData)
     # Data = XboxDriControl(ParamData)
     # Data = SetPoint_MPCControl(ParamData)
-    mpc_stime = datetime.datetime.now()
+    # mpc_stime = datetime.datetime.now()
     Data = TRI_MPCControl(ParamData)
-    mpc_endtime = datetime.datetime.now()
-    spendtime = mpc_endtime - mpc_stime
-    print("this mpc simulate time is: ", spendtime)
+    # mpc_endtime = datetime.datetime.now()
+    # spendtime = mpc_endtime - mpc_stime
+    # print("this mpc simulate time is: ", spendtime)
+    # BallTest()
 
     # file save
     FileFlag = ParamData["environment"]["FileFlag"] 
@@ -1235,6 +1283,7 @@ if __name__ == "__main__":
 
     # DataPlot(Data)
     visualization.DataPlot(Data)
+    visualization.RealCmpRef(Data)
 
     # print("force, ", ForceState[0:100, 1])
 

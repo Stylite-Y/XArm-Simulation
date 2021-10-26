@@ -8,7 +8,7 @@ import random
 import shutil
 import pickle
 
-def ParamsCopy(save_dir, ParamData, FileFlag):
+def ParamsCopy(save_dir, ParamData, FileFlag, RandNum):
     # 参数文件复制
     sim_t_step = ParamData["environment"]["t_step"]
     n_horizons = ParamData["MPCController"]["n_horizons"]
@@ -17,7 +17,7 @@ def ParamsCopy(save_dir, ParamData, FileFlag):
     xq = ParamData["MPCController"]["xq"]
     vxq = ParamData["MPCController"]["vxq"]
     uxr = ParamData["MPCController"]["uxr"]
-    RandNum = random.randint(0,100)
+    # RandNum = random.randint(0,100)
     today=datetime.date.today()
 
     # set config params file pathdir and copy file name
@@ -71,7 +71,7 @@ def DataSave(Data, ParamData, FileFlag):
         os.makedirs(save_dir)
 
     # 参数文件复制
-    ParamsCopy(save_dir, ParamData, FileFlag)
+    ParamsCopy(save_dir, ParamData, FileFlag, RandNum)
 
     # 数据文件保存
     if os.path.exists(os.path.join(save_dir, name)):

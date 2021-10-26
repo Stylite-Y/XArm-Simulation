@@ -248,17 +248,17 @@ def template_mpc(model, x_coef, y_coef, z_coef):
         for k in range(setup_mpc['n_horizon'] + 1):
             t_pre = t_ind + k * setup_mpc['t_step']
             # tvp_template['_tvp',k, 'xtraj'] = -0.8
-            tvp_template['_tvp',k, 'xtraj'] = x_coef[0] + x_coef[1] * t_pre + x_coef[2] * t_pre ** 2 + x_coef[3] * t_pre ** 3
-            tvp_template['_tvp',k, 'ytraj'] = y_coef[0] + y_coef[1] * t_pre + y_coef[2] * t_pre ** 2 + y_coef[3] * t_pre ** 3
-            tvp_template['_tvp',k, 'ztraj'] = z_coef[0] + z_coef[1] * t_pre + z_coef[2] * t_pre ** 2 + z_coef[3] * t_pre ** 3
+            tvp_template['_tvp',k, 'xtraj'] = x_coef[0] + x_coef[1] * t_pre + x_coef[2] * t_pre ** 2 + x_coef[3] * t_pre ** 3 + x_coef[4] * t_pre ** 4 +  x_coef[5] * t_pre ** 5
+            tvp_template['_tvp',k, 'ytraj'] = y_coef[0] + y_coef[1] * t_pre + y_coef[2] * t_pre ** 2 + y_coef[3] * t_pre ** 3 + y_coef[4] * t_pre ** 4 +  y_coef[5] * t_pre ** 5
+            tvp_template['_tvp',k, 'ztraj'] = z_coef[0] + z_coef[1] * t_pre + z_coef[2] * t_pre ** 2 + z_coef[3] * t_pre ** 3 + z_coef[4] * t_pre ** 4 +  z_coef[5] * t_pre ** 5
             if t_pre <= t_force:
-                tvp_template['_tvp',k, 'vxtraj'] = x_coef[1] + 2 * x_coef[2] * t_pre + 3 * x_coef[3] * t_pre ** 2
-                tvp_template['_tvp',k, 'vytraj'] = y_coef[1] + 2 * y_coef[2] * t_pre + 3 * y_coef[3] * t_pre ** 2
-                tvp_template['_tvp',k, 'vztraj'] = z_coef[1] + 2 * z_coef[2] * t_pre + 3 * z_coef[3] * t_pre ** 2
+                tvp_template['_tvp',k, 'vxtraj'] = x_coef[1] + 2 * x_coef[2] * t_pre + 3 * x_coef[3] * t_pre ** 2 + 4 * x_coef[4] * t_pre ** 3 +  5 * x_coef[5] * t_pre ** 4
+                tvp_template['_tvp',k, 'vytraj'] = y_coef[1] + 2 * y_coef[2] * t_pre + 3 * y_coef[3] * t_pre ** 2 + 4 * y_coef[4] * t_pre ** 3 +  5 * y_coef[5] * t_pre ** 4
+                tvp_template['_tvp',k, 'vztraj'] = z_coef[1] + 2 * z_coef[2] * t_pre + 3 * z_coef[3] * t_pre ** 2 + 4 * z_coef[4] * t_pre ** 3 +  5 * z_coef[5] * t_pre ** 4
             if t_pre > t_force:
-                tvp_template['_tvp',k, 'vxtraj'] = x_coef[1] + 2 * x_coef[2] * t_force + 3 * x_coef[3] * t_force ** 2
-                tvp_template['_tvp',k, 'vytraj'] = y_coef[1] + 2 * y_coef[2] * t_force + 3 * y_coef[3] * t_force ** 2
-                tvp_template['_tvp',k, 'vztraj'] = z_coef[1] + 2 * z_coef[2] * t_force + 3 * z_coef[3] * t_force ** 2
+                tvp_template['_tvp',k, 'vxtraj'] = x_coef[1] + 2 * x_coef[2] * t_force + 3 * x_coef[3] * t_force ** 2 + 4 * x_coef[4] * t_force ** 3 +  5 * x_coef[5] * t_force ** 4
+                tvp_template['_tvp',k, 'vytraj'] = y_coef[1] + 2 * y_coef[2] * t_force + 3 * y_coef[3] * t_force ** 2 + 4 * y_coef[4] * t_force ** 3 +  5 * y_coef[5] * t_force ** 4
+                tvp_template['_tvp',k, 'vztraj'] = z_coef[1] + 2 * z_coef[2] * t_force + 3 * z_coef[3] * t_force ** 2 + 4 * z_coef[4] * t_force ** 3 +  5 * z_coef[5] * t_force ** 4
         return tvp_template
 
     mpc.set_tvp_fun(tvp_fun)

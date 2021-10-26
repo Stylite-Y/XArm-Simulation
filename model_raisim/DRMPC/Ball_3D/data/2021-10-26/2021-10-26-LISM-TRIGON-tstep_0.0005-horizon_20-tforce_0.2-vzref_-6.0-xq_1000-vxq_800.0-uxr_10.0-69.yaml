@@ -1,0 +1,44 @@
+environment:
+  t_step: 0.0005
+  sim_time: 4000
+  UpperArmLength: 0.2
+  LowerArmLength: 0.2
+  con_flag: 0
+  fun_flag: 0
+  mass: 0.5
+
+  FileFlag: 1
+  z_ref: 0.5
+  v_zref: -6.0
+
+MPCController:
+  t_force: 0.2
+  n_horizons: 20
+  xq: 1000
+  yq: 1000
+  zq: 1000
+  vxq: 800.0
+  vyq: 800.0
+  vzq: 800.0
+  uxr: 10.0
+  uyr: 10.0
+  uzr: 10.0
+
+controller:
+  v_int: 2
+  v_ref: -3
+  x_ref_FD: 0.35
+  x_ref: 0.4
+  x_top: 0.6
+  f_up: 15.0
+  Pgain: 40.0
+  Dgain: 0.8
+  K_virx: 10000.0
+  # 11m/s
+  # K_virz: 500.0
+  # K_errv_up: 5.0
+  # K_errv_down: 20.0
+
+  K_virz: 30.0
+  K_errv_up: 0.01
+  K_errv_down: 14

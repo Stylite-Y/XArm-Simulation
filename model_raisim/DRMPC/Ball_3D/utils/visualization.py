@@ -187,12 +187,12 @@ def DataPlot(Data):
     print(TriCoef.shape)
     print(BallPosition.shape)
     t_c = np.linspace(0.0, 0.2, 200)
-    x_c1 = TriCoef[0, 0, 0] + TriCoef[0, 0, 1] * t_c + TriCoef[0, 0, 2] * t_c ** 2 + TriCoef[0, 0, 3] * t_c ** 3
-    z_c1 = TriCoef[0, 2, 0] + TriCoef[0, 2, 1] * t_c + TriCoef[0, 2, 2] * t_c ** 2 + TriCoef[0, 2, 3] * t_c ** 3
-    x_c2 = TriCoef[1, 0, 0] + TriCoef[1, 0, 1] * t_c + TriCoef[1, 0, 2] * t_c ** 2 + TriCoef[1, 0, 3] * t_c ** 3
-    z_c2 = TriCoef[1, 2, 0] + TriCoef[1, 2, 1] * t_c + TriCoef[1, 2, 2] * t_c ** 2 + TriCoef[1, 2, 3] * t_c ** 3
-    plt.scatter(x_c1, z_c1, s = 20)
-    plt.scatter(x_c2, z_c2, s = 20)
+    x_c1 = TriCoef[0, 0, 0] + TriCoef[0, 0, 1] * t_c + TriCoef[0, 0, 2] * t_c ** 2 + TriCoef[0, 0, 3] * t_c ** 3 + TriCoef[0, 0, 4] * t_c ** 4 + TriCoef[0, 0, 5] * t_c ** 5
+    z_c1 = TriCoef[0, 2, 0] + TriCoef[0, 2, 1] * t_c + TriCoef[0, 2, 2] * t_c ** 2 + TriCoef[0, 2, 3] * t_c ** 3 + TriCoef[0, 2, 4] * t_c ** 4 + TriCoef[0, 2, 5] * t_c ** 5
+    x_c2 = TriCoef[1, 0, 0] + TriCoef[1, 0, 1] * t_c + TriCoef[1, 0, 2] * t_c ** 2 + TriCoef[1, 0, 3] * t_c ** 3 + TriCoef[1, 0, 4] * t_c ** 4 + TriCoef[1, 0, 5] * t_c ** 5
+    z_c2 = TriCoef[1, 2, 0] + TriCoef[1, 2, 1] * t_c + TriCoef[1, 2, 2] * t_c ** 2 + TriCoef[1, 2, 3] * t_c ** 3 + TriCoef[1, 2, 4] * t_c ** 4 + TriCoef[1, 2, 5] * t_c ** 5
+    plt.scatter(x_c1, z_c1, s = 4)
+    plt.scatter(x_c2, z_c2, s = 4)
     plt.title('X-Z plane Ball motion trajectory', fontsize = 20)
 
     # plt.figure()
@@ -344,15 +344,22 @@ def RealCmpRef(Data):
     T = Data['time']
 
     m_xtrj = []
+    m_ytrj = []
     m_ztrj = []
     m_vxtrj = []
+    m_vytrj = []
     m_vztrj = []
     flag = 0
+    indexflag = 0
     for i in range(len(BallPosition[:, 0])):
-        if BallPosition[i, 2] > 0.5:
+        if BallPosition[i, 2] < 0.5 and BallVelocity[i, 1] < 0.0  and indexflag == 0:
+            indexflag = 1
+        if BallPosition[i, 2] > 0.5 and indexflag == 1:
             m_xtrj.append(BallPosition[i, 0])
+            m_ytrj.append(BallPosition[i, 1])
             m_ztrj.append(BallPosition[i, 2])
             m_vxtrj.append(BallVelocity[i, 0])
+            m_vytrj.append(BallVelocity[i, 1])
             m_vztrj.append(BallVelocity[i, 2])
             if flag == 0:
                 index1 = i
@@ -368,38 +375,58 @@ def RealCmpRef(Data):
     t_m = T[index1:index2 + 1] - T[index1]
     print(len(t_m))
     t_c = np.linspace(0.0, 0.2, 200)
-    x_c1 = TriCoef[0, 0, 0] + TriCoef[0, 0, 1] * t_c + TriCoef[0, 0, 2] * t_c ** 2 + TriCoef[0, 0, 3] * t_c ** 3
-    z_c1 = TriCoef[0, 2, 0] + TriCoef[0, 2, 1] * t_c + TriCoef[0, 2, 2] * t_c ** 2 + TriCoef[0, 2, 3] * t_c ** 3
-    x_c2 = TriCoef[1, 0, 0] + TriCoef[1, 0, 1] * t_c + TriCoef[1, 0, 2] * t_c ** 2 + TriCoef[1, 0, 3] * t_c ** 3
-    z_c2 = TriCoef[1, 2, 0] + TriCoef[1, 2, 1] * t_c + TriCoef[1, 2, 2] * t_c ** 2 + TriCoef[1, 2, 3] * t_c ** 3
-    vx_c1 = TriCoef[0, 0, 1] + 2 * TriCoef[0, 0, 2] * t_c + 3 * TriCoef[0, 0, 3] * t_c ** 2
-    vz_c1 = TriCoef[0, 2, 1] + 2 * TriCoef[0, 2, 2] * t_c + 3 * TriCoef[0, 2, 3] * t_c ** 2
-    vx_c2 = TriCoef[1, 0, 1] + 2 * TriCoef[1, 0, 2] * t_c + 3 * TriCoef[1, 0, 3] * t_c ** 2
-    vz_c2 = TriCoef[1, 2, 1] + 2 * TriCoef[1, 2, 2] * t_c + 3 * TriCoef[1, 2, 3] * t_c ** 2
+    x_c1 = TriCoef[1, 0, 0] + TriCoef[1, 0, 1] * t_c + TriCoef[1, 0, 2] * t_c ** 2 + TriCoef[1, 0, 3] * t_c ** 3 + TriCoef[1, 0, 4] * t_c ** 4 +  TriCoef[1, 0, 5] * t_c ** 5
+    y_c1 = TriCoef[1, 1, 0] + TriCoef[1, 1, 1] * t_c + TriCoef[1, 1, 2] * t_c ** 2 + TriCoef[1, 1, 3] * t_c ** 3 + TriCoef[1, 1, 4] * t_c ** 4 +  TriCoef[1, 1, 5] * t_c ** 5
+    z_c1 = TriCoef[1, 2, 0] + TriCoef[1, 2, 1] * t_c + TriCoef[1, 2, 2] * t_c ** 2 + TriCoef[1, 2, 3] * t_c ** 3 + TriCoef[1, 2, 4] * t_c ** 4 +  TriCoef[1, 2, 5] * t_c ** 5
+    x_c2 = TriCoef[1, 0, 0] + TriCoef[1, 0, 1] * t_c + TriCoef[1, 0, 2] * t_c ** 2 + TriCoef[1, 0, 3] * t_c ** 3 + TriCoef[1, 0, 4] * t_c ** 4 +  TriCoef[1, 0, 5] * t_c ** 5
+    z_c2 = TriCoef[1, 2, 0] + TriCoef[1, 2, 1] * t_c + TriCoef[1, 2, 2] * t_c ** 2 + TriCoef[1, 2, 3] * t_c ** 3 + TriCoef[1, 2, 4] * t_c ** 4 +  TriCoef[1, 2, 5] * t_c ** 5
+    vx_c1 = TriCoef[1, 0, 1] + 2 * TriCoef[1, 0, 2] * t_c + 3 * TriCoef[1, 0, 3] * t_c ** 2 + 4 * TriCoef[1, 0, 4] * t_c ** 3 +  5 * TriCoef[1, 0, 5] * t_c ** 4
+    vy_c1 = TriCoef[1, 1, 1] + 2 * TriCoef[1, 1, 2] * t_c + 3 * TriCoef[1, 1, 3] * t_c ** 2 + 4 * TriCoef[1, 1, 4] * t_c ** 3 +  5 * TriCoef[1, 1, 5] * t_c ** 4
+    vz_c1 = TriCoef[1, 2, 1] + 2 * TriCoef[1, 2, 2] * t_c + 3 * TriCoef[1, 2, 3] * t_c ** 2 + 4 * TriCoef[1, 2, 4] * t_c ** 3 +  5 * TriCoef[1, 2, 5] * t_c ** 4
+    vx_c2 = TriCoef[1, 0, 1] + 2 * TriCoef[1, 0, 2] * t_c + 3 * TriCoef[1, 0, 3] * t_c ** 2 + 4 * TriCoef[1, 0, 4] * t_c ** 3 +  5 * TriCoef[1, 0, 5] * t_c ** 4
+    vz_c2 = TriCoef[1, 2, 1] + 2 * TriCoef[1, 2, 2] * t_c + 3 * TriCoef[1, 2, 3] * t_c ** 2 + 4 * TriCoef[1, 2, 4] * t_c ** 3 +  5 * TriCoef[1, 2, 5] * t_c ** 4
 
     plt.figure()
-    plt.subplot(411)
+    plt.subplot(311)
     plt.scatter(t_m, m_xtrj, s = 100, c = '#fbb4ae', label = 'x-axis motion trajectory')
     plt.scatter(t_c, x_c1, s = 15, c = 'lightskyblue', label = 'x-axis ref trajectory')
     plt.ylabel('Position (m)', fontsize = 15)
     plt.legend(loc='upper right', fontsize = 15)
-    plt.title('Compared between reference and  motion trajectory', fontsize = 20)
-    plt.subplot(412)
-    plt.scatter(t_m, m_ztrj, s = 100, c = '#decbe4', label = 'z-axis motion trajectory')
-    plt.scatter(t_c, z_c1, s = 15, c = '#ccebc5', label = 'z-axis ref trajectory')
+    plt.title('Reference And  Motion Position Trajectory', fontsize = 20)
+    plt.subplot(312)
+    plt.scatter(t_m, m_ytrj, s = 100, c = '#decbe4', label = 'y-axis motion trajectory')
+    plt.scatter(t_c, y_c1, s = 15, c = '#ccebc5', label = 'y-axis ref trajectory')
     plt.ylabel('Position (m)', fontsize = 15)
     plt.legend(loc='upper right', fontsize = 15)
-    plt.subplot(413)
-    plt.scatter(t_m, m_vxtrj, s = 100, c = '#fdcdac', label = 'x-axis motion speed')
-    plt.scatter(t_c, vx_c1, s = 15, c = '#b3e2cd', label = 'x-axis ref speed')
-    plt.ylabel('Velocity (m/s)', fontsize = 15)
+    plt.subplot(313)
+    plt.scatter(t_m, m_ztrj, s = 100, c = '#fdcdac', label = 'z-axis motion trajectory')
+    plt.scatter(t_c, z_c1, s = 15, c = '#b3e2cd', label = 'z-axis ref trajectory')
+    plt.ylabel('Position (m)', fontsize = 15)
     plt.legend(loc='upper right', fontsize = 15)
-    plt.subplot(414)
-    plt.scatter(t_m, m_vztrj, s = 100, c = '#beaed4', label = 'z-axis motion speed')
-    plt.scatter(t_c, vz_c1, s = 15, c = '#fdc086', label = 'z-axis ref speed')
-    plt.xlabel('time (s)')
-    plt.ylabel('Velocity (m/s)', fontsize = 15)
+
+    plt.figure()
+    plt.subplot(311)
+    plt.scatter(t_m, m_vxtrj, s = 100, c = '#fbb4ae', label = 'x-axis motion speed')
+    plt.scatter(t_c, vx_c1, s = 15, c = 'lightskyblue', label = 'x-axis ref speed')
+    plt.ylabel('Velocity (m/s', fontsize = 15)
     plt.legend(loc='upper right', fontsize = 15)
+    plt.title('Reference And  Motion Velocity Trajectory', fontsize = 20)
+    plt.subplot(312)
+    plt.scatter(t_m, m_vytrj, s = 100, c = '#decbe4', label = 'y-axis motion speed')
+    plt.scatter(t_c, vy_c1, s = 15, c = '#ccebc5', label = 'y-axis ref speed')
+    plt.ylabel('Velocity (m/s', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
+    plt.subplot(313)
+    plt.scatter(t_m, m_vztrj, s = 100, c = '#fdcdac', label = 'z-axis motion speed')
+    plt.scatter(t_c, vz_c1, s = 15, c = '#b3e2cd', label = 'z-axis ref speed')
+    plt.ylabel('Velocity (m/s', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
+    # plt.subplot(414)
+    # plt.scatter(t_m, m_vztrj, s = 100, c = '#beaed4', label = 'z-axis motion speed')
+    # plt.scatter(t_c, vz_c1, s = 15, c = '#fdc086', label = 'z-axis ref speed')
+    # plt.xlabel('time (s)')
+    # plt.ylabel('Velocity (m/s)', fontsize = 15)
+    # plt.legend(loc='upper right', fontsize = 15)
 
     # plt.scatter(vx_c2, vz_c2, s = 20)
     # x_ticks = np.arange(-1.2, 0.9, 0.1)
@@ -475,8 +502,9 @@ def DataProcess(data):
 
 if __name__ == "__main__":
     f = open(os.path.abspath(os.path.dirname(os.path.dirname(__file__))) + \
-         '/data/2021-09-28/2021-09-28-V-tstep_0.0005-horizon_20-tforce_0.2-vzref_-6.0-xq_1000-vxq_800.0-uxr_10.0.pkl','rb')
+         '/data/2021-10-26/2021-10-26-TRIGON-tstep_0.0005-horizon_20-tforce_0.2-vzref_-6.0-xq_1000-vxq_800.0-uxr_10.0-17.pkl','rb')
     data = pickle.load(f)
+    print(data['RefTraCoef'])
     # DataProcess(data)
     # DataPlot(data)
     RealCmpRef(data)
