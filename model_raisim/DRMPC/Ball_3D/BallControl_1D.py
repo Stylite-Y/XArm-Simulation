@@ -265,12 +265,12 @@ if __name__ == "__main__":
     world.setMaterialPairProp("rubber", "rub", 1.0, 0.85, 0.0001)     # ball rebound model test
     world.setMaterialPairProp("default", "rub", 0.8, 1.0, 0.0001)
     gravity = world.getGravity()
+    # world.setGravity([0, 0, 0])
 
     world.setMaterialPairProp("default", "steel", 0.0, 1.0, 0.001)
     ball1 = world.addArticulatedSystem(ball1_urdf_file)
     print(ball1.getDOF())
     ball1.setName("ball1")
-    gravity = world.getGravity()
     print(gravity)
     print(ball1.getGeneralizedCoordinateDim())
 
@@ -299,7 +299,7 @@ if __name__ == "__main__":
 
     # # dribbling control
     # BallPosition, BallVelocity, ExternalForce, T = DriControl(ParamData)
-    Data = DriControl(ParamData)
+    # Data = DriControl(ParamData)
 
     # # file save
     # Data = FileSave.DataSave(BallState, EndFootState, ForceState, JointTorque, JointVelSaved, T, ParamData)
@@ -307,7 +307,7 @@ if __name__ == "__main__":
     # # data visulization
     # Data = {'BallPos': BallPosition, 'BallVel': BallVelocity, 'ExternalForce': ExternalForce, 'time': T}
 
-    DataPlot(Data)
+    # DataPlot(Data)
 
     # print("force, ", ForceState[0:100, 1])
 

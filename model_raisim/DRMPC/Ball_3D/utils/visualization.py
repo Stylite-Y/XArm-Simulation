@@ -134,7 +134,7 @@ def DataPlot(Data):
     plt.figure()
     plt.title('Ball motion in zx plane', fontsize = 20)
 
-    plt.subplot(311)
+    plt.subplot(411)
     plt.plot(T, BallPosition[:, 0], label='Ball x-axis Position')
     plt.plot(T, BallPosition[:, 1], label='Ball y-axis Position')
     # plt.plot(T, BallVelocity[:, 0], label='Ball x-axis Velocity')
@@ -146,7 +146,7 @@ def DataPlot(Data):
     plt.legend(loc='upper right', fontsize = 15)
 
 
-    plt.subplot(312)
+    plt.subplot(412)
     plt.plot(T, BallVelocity[:, 0], label='Ball x-axis Velocity')
     plt.plot(T, BallVelocity[:, 1], label='Ball y-axis Velocity')
     plt.plot(T, BallVelocity[:, 2], label='Ball z-axis Velocity')
@@ -156,7 +156,7 @@ def DataPlot(Data):
     plt.ylabel('Velocity (m/s)', fontsize = 15)
     plt.legend(loc='upper right', fontsize = 15)
 
-    plt.subplot(313)
+    plt.subplot(413)
     plt.plot(T, ExternalForce[:, 0], label='Ball x-axis Force')
     plt.plot(T, ExternalForce[:, 1], label='Ball y-axis Force')
     plt.plot(T, ExternalForce[:, 2], label='Ball z-axis Force')
@@ -165,6 +165,30 @@ def DataPlot(Data):
     plt.xlabel('time (s)', fontsize = 15)
     plt.ylabel('Force (N)', fontsize = 15)
     plt.legend(loc='upper right', fontsize = 15)
+
+    """
+    force angle 
+    """
+    # plt.subplot(414)
+    plt.figure()
+    angle_x = np.zeros(len(T))
+    angle_z = np.zeros(len(T))
+    for i in range(len(T)):
+        if ExternalForce[i, 2] != 0:
+            angle_x[i] = math.atan(ExternalForce[i, 1] / ExternalForce[i, 0])
+            angle_z[i] = math.atan(ExternalForce[i, 0] / ExternalForce[i, 2])
+        else:
+            angle_x[i] = 0.0
+            angle_z[i] = 0.0
+    angle_x = angle_x * 180 / math.pi
+    angle_z = angle_z * 180 / math.pi
+    plt.scatter(T, angle_x, label='X-Y plane Ball force angle')
+    plt.scatter(T, angle_z, label='X-Z plane Ball force angle')
+    plt.xlabel('time (s)', fontsize = 15)
+    plt.ylabel('Angle (°)', fontsize = 15)
+    plt.axis([0, max(T)*1.05, -max(angle_x)*1.5, max(angle_x)*1.5])
+    plt.legend(loc='upper right', fontsize = 15)
+    plt.title('Force angle change in motion', fontsize = 20)
 
     """
     XZ plane motion traj of ball plot
@@ -274,32 +298,32 @@ def ThreeDimTra(Data):
     """
     fig = plt.figure(dpi=200)
     ax = fig.add_subplot(projection='3d')
-    ax.scatter(BallPosition[:, 0], BallPosition[:, 1], BallPosition[:, 2], s = 5)
+    # ax.scatter(BallPosition[:, 0], BallPosition[:, 1], BallPosition[:, 2], s = 5)
     
     TriCoef = Data['RefTraCoef']
     print(TriCoef.shape)
     print(BallPosition.shape)
     t_c = np.linspace(0.0, 0.2, 200)
-    x_c1 = TriCoef[0, 0, 0] + TriCoef[0, 0, 1] * t_c + TriCoef[0, 0, 2] * t_c ** 2 + TriCoef[0, 0, 3] * t_c ** 3
-    y_c1 = TriCoef[0, 1, 0] + TriCoef[0, 1, 1] * t_c + TriCoef[0, 1, 2] * t_c ** 2 + TriCoef[0, 1, 3] * t_c ** 3
-    z_c1 = TriCoef[0, 2, 0] + TriCoef[0, 2, 1] * t_c + TriCoef[0, 2, 2] * t_c ** 2 + TriCoef[0, 2, 3] * t_c ** 3
+    x_c1 = TriCoef[0, 0, 0] + TriCoef[0, 0, 1] * t_c + TriCoef[0, 0, 2] * t_c ** 2 + TriCoef[0, 0, 3] * t_c ** 3 + TriCoef[0, 0, 4] * t_c ** 4 + TriCoef[0, 0, 5] * t_c ** 5
+    y_c1 = TriCoef[0, 1, 0] + TriCoef[0, 1, 1] * t_c + TriCoef[0, 1, 2] * t_c ** 2 + TriCoef[0, 1, 3] * t_c ** 3 + TriCoef[0, 1, 4] * t_c ** 4 + TriCoef[0, 1, 5] * t_c ** 5
+    z_c1 = TriCoef[0, 2, 0] + TriCoef[0, 2, 1] * t_c + TriCoef[0, 2, 2] * t_c ** 2 + TriCoef[0, 2, 3] * t_c ** 3 + TriCoef[0, 2, 4] * t_c ** 4 + TriCoef[0, 2, 5] * t_c ** 5
 
-    x_c2 = TriCoef[1, 0, 0] + TriCoef[1, 0, 1] * t_c + TriCoef[1, 0, 2] * t_c ** 2 + TriCoef[1, 0, 3] * t_c ** 3
-    y_c2 = TriCoef[1, 1, 0] + TriCoef[1, 1, 1] * t_c + TriCoef[1, 1, 2] * t_c ** 2 + TriCoef[1, 1, 3] * t_c ** 3
-    z_c2 = TriCoef[1, 2, 0] + TriCoef[1, 2, 1] * t_c + TriCoef[1, 2, 2] * t_c ** 2 + TriCoef[1, 2, 3] * t_c ** 3
+    x_c2 = TriCoef[1, 0, 0] + TriCoef[1, 0, 1] * t_c + TriCoef[1, 0, 2] * t_c ** 2 + TriCoef[1, 0, 3] * t_c ** 3 + TriCoef[1, 0, 4] * t_c ** 4 + TriCoef[1, 0, 5] * t_c ** 5
+    y_c2 = TriCoef[1, 1, 0] + TriCoef[1, 1, 1] * t_c + TriCoef[1, 1, 2] * t_c ** 2 + TriCoef[1, 1, 3] * t_c ** 3 + TriCoef[1, 1, 4] * t_c ** 4 + TriCoef[1, 1, 5] * t_c ** 5
+    z_c2 = TriCoef[1, 2, 0] + TriCoef[1, 2, 1] * t_c + TriCoef[1, 2, 2] * t_c ** 2 + TriCoef[1, 2, 3] * t_c ** 3 + TriCoef[1, 2, 4] * t_c ** 4 + TriCoef[1, 2, 5] * t_c ** 5
 
-    x_c3 = TriCoef[2, 0, 0] + TriCoef[2, 0, 1] * t_c + TriCoef[2, 0, 2] * t_c ** 2 + TriCoef[2, 0, 3] * t_c ** 3
-    y_c3 = TriCoef[2, 1, 0] + TriCoef[2, 1, 1] * t_c + TriCoef[2, 1, 2] * t_c ** 2 + TriCoef[2, 1, 3] * t_c ** 3
-    z_c3 = TriCoef[2, 2, 0] + TriCoef[2, 2, 1] * t_c + TriCoef[2, 2, 2] * t_c ** 2 + TriCoef[2, 2, 3] * t_c ** 3
+    x_c3 = TriCoef[2, 0, 0] + TriCoef[2, 0, 1] * t_c + TriCoef[2, 0, 2] * t_c ** 2 + TriCoef[2, 0, 3] * t_c ** 3 + TriCoef[2, 0, 4] * t_c ** 4 + TriCoef[2, 0, 5] * t_c ** 5
+    y_c3 = TriCoef[2, 1, 0] + TriCoef[2, 1, 1] * t_c + TriCoef[2, 1, 2] * t_c ** 2 + TriCoef[2, 1, 3] * t_c ** 3 + TriCoef[2, 1, 4] * t_c ** 4 + TriCoef[2, 1, 5] * t_c ** 5
+    z_c3 = TriCoef[2, 2, 0] + TriCoef[2, 2, 1] * t_c + TriCoef[2, 2, 2] * t_c ** 2 + TriCoef[2, 2, 3] * t_c ** 3 + TriCoef[2, 2, 4] * t_c ** 4 + TriCoef[2, 2, 5] * t_c ** 5
 
-    x_c4 = TriCoef[3, 0, 0] + TriCoef[3, 0, 1] * t_c + TriCoef[3, 0, 2] * t_c ** 2 + TriCoef[3, 0, 3] * t_c ** 3
-    y_c4 = TriCoef[3, 1, 0] + TriCoef[3, 1, 1] * t_c + TriCoef[3, 1, 2] * t_c ** 2 + TriCoef[3, 1, 3] * t_c ** 3
-    z_c4 = TriCoef[3, 2, 0] + TriCoef[3, 2, 1] * t_c + TriCoef[3, 2, 2] * t_c ** 2 + TriCoef[3, 2, 3] * t_c ** 3
-    ax.scatter(x_c1, y_c1, z_c1, s = 20)
-    ax.scatter(x_c2, y_c2, z_c2, s = 20)
-    ax.scatter(x_c3, y_c3, z_c3, s = 20)
-    ax.scatter(x_c4, y_c4, z_c4, s = 20)
-
+    x_c4 = TriCoef[3, 0, 0] + TriCoef[3, 0, 1] * t_c + TriCoef[3, 0, 2] * t_c ** 2 + TriCoef[3, 0, 3] * t_c ** 3 + TriCoef[2, 0, 4] * t_c ** 4 + TriCoef[2, 0, 5] * t_c ** 5
+    y_c4 = TriCoef[3, 1, 0] + TriCoef[3, 1, 1] * t_c + TriCoef[3, 1, 2] * t_c ** 2 + TriCoef[3, 1, 3] * t_c ** 3 + TriCoef[2, 1, 4] * t_c ** 4 + TriCoef[2, 1, 5] * t_c ** 5
+    z_c4 = TriCoef[3, 2, 0] + TriCoef[3, 2, 1] * t_c + TriCoef[3, 2, 2] * t_c ** 2 + TriCoef[3, 2, 3] * t_c ** 3 + TriCoef[2, 2, 4] * t_c ** 4 + TriCoef[2, 2, 5] * t_c ** 5
+    ax.scatter(BallPosition[:, 0], BallPosition[:, 1], BallPosition[:, 2], s = 1, c = '#5c677d')
+    ax.scatter(x_c1, y_c1, z_c1, s = 20, c = '#2a9d8f')
+    ax.scatter(x_c2, y_c2, z_c2, s = 20, c = '#e9c46a')
+    ax.scatter(x_c3, y_c3, z_c3, s = 20, c = '#f4a261')
+    ax.scatter(x_c4, y_c4, z_c4, s = 20, c = '#e76f51')
 
     ax.set_title("3D motion trajectoory of Ball",fontsize = 15)
     ax.set_xlabel("x", fontsize = 10)
@@ -312,12 +336,17 @@ def ThreeDimTra(Data):
     ax.tick_params(labelsize = 8)
     # plt.title('X-Z plane Ball motion trajectory', fontsize = 10)
 
+    """
+    3D rotation view of balll motion traj
+    """
     # for angle in range(0, 360):
-    #     ax.view_init(20, angle)
+    #     ax.view_init(30, angle)
     #     plt.draw()
     #     plt.pause(.001)
     
-    ## motion point
+    """
+    3D animation of balll motion along traj
+    """
     x0, y0, z0 = BallPosition[0, 0], BallPosition[0, 1], BallPosition[0, 2]
     point_ani, = ax.plot([x0], [y0], [z0], "ro")
     text_pt = ax.text(0, 0, 1.05, '', fontsize=10) # label of data
@@ -428,6 +457,13 @@ def RealCmpRef(Data):
     # plt.ylabel('Velocity (m/s)', fontsize = 15)
     # plt.legend(loc='upper right', fontsize = 15)
 
+
+    plt.figure()
+    plt.scatter(t_m, m_vxtrj, s = 100, c = '#fbb4ae', label = 'x-axis motion speed')
+    plt.scatter(t_c, vx_c1, s = 15, c = 'lightskyblue', label = 'x-axis ref speed')
+    plt.ylabel('Velocity (m/s', fontsize = 15)
+    plt.legend(loc='upper right', fontsize = 15)
+    plt.title('Reference And  Motion Velocity Trajectory', fontsize = 20)
     # plt.scatter(vx_c2, vz_c2, s = 20)
     # x_ticks = np.arange(-1.2, 0.9, 0.1)
     # plt.xticks(x_ticks)
@@ -506,6 +542,6 @@ if __name__ == "__main__":
     data = pickle.load(f)
     print(data['RefTraCoef'])
     # DataProcess(data)
-    # DataPlot(data)
-    RealCmpRef(data)
+    DataPlot(data)
+    # RealCmpRef(data)
     # ThreeDimTra(data)

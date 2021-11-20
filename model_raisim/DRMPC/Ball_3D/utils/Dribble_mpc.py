@@ -210,7 +210,6 @@ def template_mpc(model, x_coef, y_coef, z_coef):
             vxq1 * (model.x['dx_b'] - model.tvp['vxtraj']) ** 2 + vyq2 * (model.x['dy_b'] - model.tvp['vytraj']) ** 2 + vzq3 * (model.x['dz_b'] - model.tvp['vztraj']) ** 2
     lterm = mterm 
     # + r1 * (model.u['ux']) ** 2 + r2 * (model.u['uy']) ** 2 + r3 * (model.u['uz']) ** 2
-
     mpc.set_objective(mterm=mterm, lterm=lterm)
     mpc.set_rterm(ux=1e-4, uy=1e-4, uz=1e-4)
 

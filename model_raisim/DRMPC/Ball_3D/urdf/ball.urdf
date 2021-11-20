@@ -3,14 +3,35 @@
      <!--base of fixing arm-->
     <link name="world"/>
 
+    <!-- <joint name="worldTolink1" type="fixed">
+        <parent link="world"/>
+        <child link="link1"/>
+        <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+    </joint>
+    
+    <link name="link1">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.2"/>
+            <geometry>
+                <cylinder length="0.4" radius="0.02"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <joint name="link1_ball" type="revolute">
+        <axis xyz="0 0 1"/>
+        <origin rpy="0 0 0" xyz="0.0 0.0 0.2"/>
+        <parent link="link1"/>
+        <child link="ball"/>
+    </joint> -->
+
     <link name="ball">
         <visual>
-            <origin rpy="0.0 0.0 0" xyz="0 0 0"/>
+            <origin rpy="0.0 0.0 0" xyz="0 0 0.0"/>
             <geometry>
                 <!-- <sphere radius="0.12"/> -->
                 <mesh filename="meshes/ball2.dae" scale="0.001 0.001 0.001"/>
                 <!-- <mesh filename="meshes/ball/ball2.OBJ" scale="100 100 100"/> -->
-
             </geometry>
         </visual>
         <inertial>
@@ -19,9 +40,9 @@
             <inertia ixx="0.00267" ixy="0" ixz="0.0" iyy="0.00267" iyz="0" izz="0.00267"/>
         </inertial>
         <collision>
-            <origin rpy="0.0 0.0 0.0" xyz="0 0.0 0"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0.0 0.0"/>
             <geometry>
-                <sphere radius="0.15"/>
+                <sphere radius="0.15"/>                  
             </geometry>
             <material name="">
                 <contact name="rub"/>
@@ -29,7 +50,7 @@
         </collision>
     </link>
 
-    <!-- <joint name="worldToball" type="free">
+    <!-- <joint name="worldToball" type="fixed">
         <parent link="world"/>
         <child link="ball"/>
         <origin rpy="0 0 0" xyz="0 0 0"/>

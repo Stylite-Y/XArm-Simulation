@@ -7,6 +7,51 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 
 # ========================
+# using method SLSQP do optimization
+def TrajOptim_SLSQP(time_set, PosInit, VelInit, PosTar, VelTar):
+    # ========================
+    # boundary condition init
+    PosLowerbound = [-1.5, -1.5, 0.5]
+    ForceLowerbound = [-500.0, -500.0, -500.0]
+    PosUpperbound = [1.5, 1.5, 1.0]
+    ForceUpperbound = [500.0, 500.0, 0.0]
+
+    # theta 11, 12, 21, 22, 13, 31 solve
+    Theta = np.zeros((3, 6))
+    Theta[0, 0] = PosInit[0]
+    Theta[0, 1] = VelInit[0]
+    Theta[1, 0] = PosInit[1]
+    Theta[1, 1] = VelInit[1]
+    Theta[2, 0] = PosInit[2]
+    Theta[2, 1] = VelInit[2]
+
+    # ========================
+    # optimization for traj optimize
+    # params
+    T_f = time_set
+    NSamples = 10
+    t_step = T_f / NSamples
+
+    # ========================
+    # Boundary condition
+    LowerThetaBnd = np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
+    UpperThetaBnd = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf,  np.inf])
+    Boundary = Bounds(LowerThetaBnd, UpperThetaBnd)
+
+    # ========================
+    # equality contraints
+    eq_cons = {'type': 'eq',
+               'fun' : lambda x: np.array([2*x[0] + x[1] - 1]),
+               'jac' : lambda x: np.array([2.0, 1.0])}
+
+    # ========================
+    # inequality contraints
+    ineq_cons = {'type': 'ineq',
+                 'fun' : lambda x: np.array(),
+                 'jac' : lambda x: np.array()}
+
+# ========================
+# using method trust-constr do optimization
 def TrajOptim(time_set, PosInit, VelInit, PosTar, VelTar):
     # ========================
     # boundary condition init

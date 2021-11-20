@@ -188,27 +188,99 @@ def TriCal(t_force, PosInit, VelInit, PosTar, VelTar):
     return x_coef, y_coef, z_coef
 
 def BallTest():
+    ball2 = world.addArticulatedSystem(ball2_urdf_file)
+    ball2.setName("ball2")
+    print(ball2.getGeneralizedCoordinateDim())
+    jointNominalConfig = np.array([0.3, 0.0, 0.2,1.0, 0.0, 0.0, 0.0])
+    ball2.setGeneralizedCoordinate(jointNominalConfig)
+
+
+    # dummy_inertia = np.zeros([3, 3])
+    # np.fill_diagonal(dummy_inertia, 0.1)
+    # ball1 = world.addMesh(ball_file, 0.6, dummy_inertia, np.array([0, 0, 1]), 0.001, "rub")
+    jointVelocityTarget = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    ball1.setGeneralizedVelocity(jointVelocityTarget)
+    world.setMaterialPairProp("rub", "rub", 1.0, 0.8, 0.0001)
+
+    flag = 0
+
     for i in range(10000):
-        time.sleep(0.05)
+        time.sleep(0.02)
         # ball1.setExternalForce(0, [0, 0, 0.15], [5.0, 0.0, 0.0])
-        GeneralizedCoordinate = ball1.getGeneralizedCoordinate()
-        Quaternion = GeneralizedCoordinate[3:]
-        Euler_matrix = Rotation.from_quat(Quaternion)
-        Euler = Euler_matrix.as_euler('xyz', degrees=True)
-        print(Quaternion)
-        print(Euler)
+        # GeneralizedCoordinate = ball1.getGeneralizedCoordinate()
+        # Quaternion = GeneralizedCoordinate[3:]
+        # Euler_matrix = Rotation.from_quat(Quaternion)
+        # Euler = Euler_matrix.as_euler('xyz', degrees=True)
+        # print(Quaternion)
+        # print(Euler)
+        gravity = world.getGravity()
+
+        ContactPoint = ball2.getContacts()
+
+        # wether the contact occurs berween ball and arm end foot
+        contact_flag = False
+        for c in ContactPoint:
+            contact_flag = c.getlocalBodyIndex() == ball2.getBodyIdx("ball")
+            if(contact_flag):
+                # print("Contact position in the world frame: ", ContactPoint[0].getNormal())
+                break
+            pass
+        print(contact_flag)
+
+        BallPos_2, BallVel_2 = ball2.getState()
+        BallPos_1, BallVel_1 = ball1.getState()
+        print(BallPos_1)
 
         DeltaTheta = math.pi / 1000
-        NormalForcc_Z = 9.81
-        TangentialForce_X = 5.0 * np.sin(DeltaTheta * i)
+        TangentialForce_X = - 5.0 * np.sin(DeltaTheta * i)
         TangentialForce_Y = 5.0 * np.cos(DeltaTheta * i)
-        Force_Z = NormalForcc_Z
         Force_X = TangentialForce_X
         Force_Y = TangentialForce_Y
-        ball1.setExternalForce(0, [0.0, 0, 0.0], [0.0, 0.0, Force_Z])
-        ball1.setExternalForce(0, [0.15, 0, 0.0], [Force_X, Force_Y, 0.0])
 
-        # ball1.setExternalTorque(0, [0.0, 0.0, 5.0])
+        # ball1.setExternalForce(0, [0.0, 0, 0.0], [0.0, 0.0, Force_Z1])
+        # ball1.setExternalForce(0, [0.15, 0, 0.0], [Force_X, Force_Y, 0.0])
+
+        # ball2.setGeneralizedForce([-100, -10])
+        # ball2.setGeneralizedVelocity([-10, -10])
+        # if contact_flag:
+        #     ball2.setGeneralizedVelocity([0.0, -100])
+
+        # # ball2.setExternalForce(0, [0.15, 0, 0.0], [Force_X, Force_Y, 0.0])
+        # ball2.setExternalTorque(0, [0.0, 0.0, 5000.0])
+        # k = math.acos(BallPos_2[1] / BallPos_2[0])
+        # print(k)
+        if contact_flag:
+            if flag == 0:
+                k = 0
+                flag = 1
+            F_nom = 20
+            d = math.sqrt(BallPos_2[0] ** 2 + BallPos_2[1] ** 2)
+            F_nom_x = - F_nom * (BallPos_2[0] - BallPos_1[0]) / d
+            F_nom_y = - F_nom * (BallPos_2[1] - BallPos_1[1]) / d
+            F_nom_z = - F_nom  * (BallPos_2[2] - 0.2) / d
+
+            F_t = 10
+            F_t_xy = - F_t * (BallPos_2[1] - BallPos_1[1]) / d
+            F_t_xz = - F_t * (BallPos_2[2] - 0.2) / d
+            F_t_y = F_t * (BallPos_2[0] - BallPos_1[0]) / d
+            F_t_z = F_t * (BallPos_2[0] - BallPos_1[0]) / d
+            # ball2.setExternalForce(0, [0.0, 0, 0.0], [F_nom_x, 0.0, F_nom_z])
+            # ball2.setExternalForce(0, [0.0, 0, 0.0], [F_t_xz, 0.0, F_t_z])
+            ball2.setExternalForce(0, [0.0, 0, 0.0], [F_nom_x, F_nom_y, 0.0])
+            ball2.setExternalForce(0, [0.0, 0, 0.0], [F_t_xy, F_t_y, 0.0])
+
+        else:
+            F_nom = 10
+            d = math.sqrt(BallPos_2[0] ** 2 + BallPos_2[1] ** 2)
+            F_nom_x = - F_nom * (BallPos_2[0] - BallPos_1[0]) / d
+            F_nom_y = - F_nom * (BallPos_2[1] - BallPos_1[1]) / d
+            F_nom_z = - F_nom * (BallPos_2[2] - 0.2) / d
+            # F_z = - 1000 * (BallPos_2[2] - 0.15)
+            F_z = 0
+            # ball2.setExternalForce(0, [0.0, 0, 0.0], [F_nom_x, 0.0, F_z])
+            ball2.setExternalForce(0, [0.0, 0, 0.0], [F_nom_x, F_nom_y, 0.0])
+            # ball2.setExternalForce(0, [0.0, 0, 0.0], [F_nom_x, F_nom_y, 0.0])
+
 
         server.integrateWorldThreadSafe()
 
@@ -216,6 +288,114 @@ def BallTest():
     #     time.sleep(0.01)
     #     ball1.setExternalForce(0, [0, 0, 0.15], [5.0, 0.0, 0.0])
     #     server.integrateWorldThreadSafe()
+
+def BallHandTest():
+    R = 0.2
+    r = 0.15
+    N = 100
+    k = 0
+    # alpha = np.linspace(-math.pi / 6, math.pi / 6, 10000)
+    alpha = np.linspace(0, math.pi / 6, N)
+    print(1)   
+    hand1 = world.addArticulatedSystem(hand1_urdf_file) 
+    print(1)   
+    hand1.setName("hand1")
+    # print(hand1.getDOF())
+
+    # jointNominalConfig_hand = np.array([0.0, 0.0, 0.0,00, 0.0, 0.0, 0.0])
+    # hand1.setGeneralizedCoordinate(jointNominalConfig_hand)
+    # print(1)
+
+    jointVelocityTarget = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    ball1.setGeneralizedVelocity(jointVelocityTarget)
+    world.setMaterialPairProp("steel", "rub", 1.0, 0.0, 0.001)
+
+
+    for i in range(10000):
+        time.sleep(0.02)
+        # ball1.setExternalForce(0, [0, 0, 0.15], [5.0, 0.0, 0.0])
+        # GeneralizedCoordinate = ball1.getGeneralizedCoordinate()
+        # Quaternion = GeneralizedCoordinate[3:]
+        # Euler_matrix = Rotation.from_quat(Quaternion)
+        # Euler = Euler_matrix.as_euler('xyz', degrees=True)
+        # print(Quaternion)
+        # print(Euler)
+        gravity = world.getGravity()
+        # ===================
+        # arm contact
+        # ContactPoint = hand1.getContacts()
+        # contact_flag = False
+        # for c in ContactPoint:
+        #     contact_flag = c.getlocalBodyIndex() == hand1.getBodyIdx("hand")
+        #     if(contact_flag):
+        #         break
+        #     pass
+        # print(contact_flag)
+        # help(raisim.contact.Contact)
+        if(0):
+            # ===================
+            # hand d and theta calculation
+            Beta = math.acos((R - r) * math.sin(alpha[N  -1]) / R)
+            # Beta = math.acos((R - r) * math.sin(alpha[k]) / R)
+            Theta = math.pi / 2 - Beta
+            D = R * math.sin(Beta) - (R - r) * math.cos(alpha[N  -1])
+            # D = R * math.sin(Beta) - (R - r) * math.cos(alpha[k])
+            Dis_p = D - r
+            arc_p = math.sqrt((D - r * math.cos(alpha[N  -1])) ** 2 + (r * math.sin(alpha[N  -1])) ** 2)
+            # arc_p = math.sqrt((D - r * math.cos(alpha[k])) ** 2 + (r * math.sin(alpha[k])) ** 2)
+
+            print("=================================")
+            print("Force direction angle:                             ", alpha[N-1] * 180 / math.pi)
+            print("Distance between hadn Vertex and centre of sphere: ", D)
+            print("Distance of hand and contact point is:             ", arc_p)
+            print("Hand rotation angle:                               ", Theta * 180 / math.pi)
+            print("Distance of hand move in z axis:                   ", Dis_p)
+            print("---------------------------------")
+
+            # nomial force for balance
+            Normal_F = 500
+            F_pri = - np.abs(Normal_F * math.sin(alpha[N  -1]))
+            # F_pri = - np.abs(Normal_F * math.sin(alpha[k]))
+            Torque = Normal_F * arc_p
+            NormalForcc_Z1 = -0.4 * gravity[2]
+            NormalForcc_Z2 = -0.2 * gravity[2]
+            Force_Z1 = NormalForcc_Z1
+            Force_Z2 = NormalForcc_Z2
+            # ball1.setExternalForce(0, [0.0, 0, 0.0], [0.0, 0.0, Force_Z1])
+            # hand1.setExternalForce(0, [0.0, 0, 0.0], [0.0, 0.0, Force_Z2])
+
+        
+            Ballforce = ball1.getGeneralizedForce()
+            ContactPos = ContactPoint[0].get_position()
+            alpha_cal = math.atan(ContactPos[0] / (ContactPos[2] - 0.5))
+            Normal_Cont = ContactPoint[0].getNormal()
+            alpha_cal2 = math.atan(Normal_Cont[0] / (Normal_Cont[2]))
+            print("Is the Ball contact with hand:                     ", contact_flag)
+            print("Contact position in the world frame:               ", ContactPos)
+            print("Contact normal in the world frame:                 ", Normal_Cont)
+            print("External force angle cal of the ball:              ", alpha_cal * 180 / math.pi, alpha_cal2 * 180 / math.pi)
+            print("External force of the ball:                        ", Ballforce)
+            # print("## ===============================")
+
+            # ===================
+            # xy pos and force for hand apply force
+            jointNominalConfig = np.array([0.0, Dis_p, Theta])
+            hand1.setGeneralizedCoordinate(jointNominalConfig)
+            hand1.setGeneralizedForce([10, F_pri, Torque])
+        # else:
+        #     # print(1)
+        #     hand1.setGeneralizedCoordinate(np.array([0.0, 0.0, 0.0]))
+        #     hand1.setGeneralizedVelocity(np.array([0.0, 0.0, 0.0]))
+
+            # hand1.setGeneralizedForce([F_pri, Torque])
+
+        # ball1.setGeneralizedCoordinate([0.0, 0.0, 0.5, 1.0, 0.0, 0.0, 0.0])
+        
+        # ball2.setExternalForce(0, [0.0, 0, 0.0], [0.0, 0.0, Force_Z2])
+        # ball2.setExternalForce(0, [0.15, 0, 0.0], [Force_X, Force_Y, 0.0])
+        # ball2.setExternalTorque(0, [0.0, 0.0, 5000.0])
+
+        server.integrateWorldThreadSafe()
 
 def MPCControl(Pos_init, Vel_init, xtra, ytra, v_xref, v_yref, index, mpc_flag):
     print("=========================================================================")
@@ -1209,6 +1389,8 @@ if __name__ == "__main__":
     raisim.World.setLicenseFile(os.path.dirname(os.path.abspath(__file__)) + "/activation.raisim")
     # ball1_urdf_file = os.path.abspath(os.path.dirname(os.path.dirname(__file__))) + "/urdf/ball.urdf"
     ball1_urdf_file = os.path.dirname(os.path.abspath(__file__)) + "/urdf/ball.urdf"
+    ball2_urdf_file = os.path.dirname(os.path.abspath(__file__)) + "/urdf/ball2.urdf"
+    hand1_urdf_file = os.path.dirname(os.path.abspath(__file__)) + "/urdf/hand.urdf"
     # raisim world config setting
     world = raisim.World()
 
@@ -1216,43 +1398,66 @@ if __name__ == "__main__":
     t_step = ParamData["environment"]["t_step"] 
     sim_time = ParamData["environment"]["sim_time"]
     world.setTimeStep(t_step)
-    ground = world.addGround(0, "floor")
+    ground = world.addGround(0)
     
-    # set material collision property
+    #======================
+    # material collision property of change direction of force is applied
     # world.setMaterialPairProp("rubber", "rub", 1, 0, 0)
-    # world.setMaterialPairProp("rubber", "rub", 1.0, 0.85, 0.0001)     # ball rebound model test
-    # world.setMaterialPairProp("default", "rub", 0.8, 1.0, 0.0001)
+    world.setMaterialPairProp("default", "rub", 1.0, 0.85, 0.0001)     # ball rebound model test
+    world.setMaterialPairProp("rub", "rub", 1.0, 0.8, 0.0001)
+    # world.setMaterialPairProp("rub", "rub", 0.52, 0.8, 0.001, 0.61, 0.01)
     # world.updateMaterialProp(raisim.MaterialManager(os.path.dirname(os.path.abspath(__file__)) + "/urdf/testMaterial.xml"))
-    gravity = world.getGravity()
+    # help(world)
+    
+    # ====================
+    # ball control materialpairprop params
+    # world.setMaterialPairProp("floor", "steel", 0.0, 1.0, 0.001)
+    # world.setMaterialPairProp("floor", "rub", 0.0, 1.0, 0.001)
 
-    world.setMaterialPairProp("default", "steel", 0.0, 1.0, 0.001)
+    gravity = world.getGravity()
+    # world.setMaterialPairProp("default", "steel", 0.0, 1.0, 0.001)
     ball1 = world.addArticulatedSystem(ball1_urdf_file)
-    print(ball1.getDOF())
     ball1.setName("ball1")
     gravity = world.getGravity()
-    print(gravity)
+    world.setGravity([0, 0, 0])
+    gravity1 = world.getGravity()
+    print(gravity, gravity1)
     print(ball1.getGeneralizedCoordinateDim())
 
-    jointNominalConfig = np.array([0.0, 0.0, 0.5,1.0, 0.0, 0.0, 0.0])
-    jointVelocityTarget = np.array([4.0, 0.0, -5, 0.0, 0.0, 0.0])
-    # jointVelocityTarget = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    Euler_matrix = Rotation.from_quat([1.0, 0.0, 0.0, 0.0])
-    Euler = Euler_matrix.as_euler('xyz', degrees=True)
-    print(Euler)
-    ball1.setGeneralizedCoordinate(jointNominalConfig)
-    # print(ball1.getGeneralizedCoordinateDim())
-    ball1.setGeneralizedVelocity(jointVelocityTarget)
+    # ====================
+    # ball control initial pos and vel setting
+    jointNominalConfig = np.array([0.0, 0.0, 0.2,1.0, 0.0, 0.0, 0.0])
+    # jointVelocityTarget = np.array([4.0, 0.0, -5, 0.0, 0.0, 0.0])
+    jointVelocityTarget = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
-    world.setMaterialPairProp("floor", "steel", 0.0, 1.0, 0.001)
-    world.setMaterialPairProp("floor", "rub", 0.0, 1.0, 0.001)
- 
+    # ====================
+    # force direction apply test initial pos and vel setting
+    # ball2 = world.addArticulatedSystem(ball1_urdf_file)
+    # ball2.setName("ball2")
+    # jointNominalConfig = np.array([0.0, 0.0, 0.5,1.0, 0.0, 0.0, 0.0])
+    # jointNominalConfig_2 = np.array([0.4, 0.0, 0.5,1.0, 0.0, 0.0, 0.0])
+    # jointVelocityTarget = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    # jointVelocityTarget_2 = np.array([-5.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    # Euler_matrix = Rotation.from_quat([1.0, 0.0, 0.0, 0.0])
+    # Euler = Euler_matrix.as_euler('xyz', degrees=True)
+    # print(Euler)
+
+    # ball2.setGeneralizedCoordinate(jointNominalConfig_2)
+    # ball2.setGeneralizedVelocity(jointVelocityTarget_2)
+
+    # ===================
+    # hand force apply
+
+    ball1.setGeneralizedCoordinate(jointNominalConfig)
+    # ball1.setGeneralizedVelocity(jointVelocityTarget)
+
     ## ======================= single object ====================
-    # ball1 = world.addSphere(0.12, 0.8, "steel")
+    # ball2 = world.addSphere(0.1, 0.2, "rub")
     # dummy_inertia = np.zeros([3, 3])
     # np.fill_diagonal(dummy_inertia, 0.1)
-    # ball1 = world.addMesh(ball_file, 0.6, dummy_inertia, np.array([0, 0, 1]), 0.001, "rub")
-    # ball1.setPosition(0, 0.0, 0.5)
-    # ball1.setVelocity(1.0, 0.0, -5, 0.0, 0, 0)
+    # # ball1 = world.addMesh(ball_file, 0.6, dummy_inertia, np.array([0, 0, 1]), 0.001, "rub")
+    # ball2.setPosition(0.25, 0.0, 0.5)
+    # ball2.setVelocity(0.0, 0.0, 0.0, 0.0, 0, 0)
     # BallPos = ball1.getPosition()
     # BallVel = ball1.getLinearVelocity()
 
@@ -1267,23 +1472,20 @@ if __name__ == "__main__":
     # Data = SetPoint_DriControl(ParamData)
     # Data = XboxDriControl(ParamData)
     # Data = SetPoint_MPCControl(ParamData)
-    # mpc_stime = datetime.datetime.now()
-    Data = TRI_MPCControl(ParamData)
-    # mpc_endtime = datetime.datetime.now()
-    # spendtime = mpc_endtime - mpc_stime
-    # print("this mpc simulate time is: ", spendtime)
-    # BallTest()
+    # Data = TRI_MPCControl(ParamData)
+    BallTest()
+    # BallHandTest()
 
     # file save
-    FileFlag = ParamData["environment"]["FileFlag"] 
-    FileSave.DataSave(Data, ParamData, FileFlag)
+    # FileFlag = ParamData["environment"]["FileFlag"] 
+    # FileSave.DataSave(Data, ParamData, FileFlag)
 
     # # data visulization
     # Data = {'BallPos': BallPosition, 'BallVel': BallVelocity, 'ExternalForce': ExternalForce, 'time': T}
 
     # DataPlot(Data)
-    visualization.DataPlot(Data)
-    visualization.RealCmpRef(Data)
+    # visualization.DataPlot(Data)
+    # visualization.RealCmpRef(Data)
 
     # print("force, ", ForceState[0:100, 1])
 
