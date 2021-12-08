@@ -1,6 +1,6 @@
 environment:
   t_step: 0.0005
-  sim_time: 4000
+  sim_time: 4000  
   UpperArmLength: 0.2
   LowerArmLength: 0.2
   con_flag: 0

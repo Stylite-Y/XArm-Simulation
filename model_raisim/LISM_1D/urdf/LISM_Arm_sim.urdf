@@ -126,12 +126,19 @@
         </visual>
     </link>
 
-    <joint name="plate_arm_r" type="fixed">
+    <!-- <joint name="plate_arm_r" type="fixed">
         <axis xyz="1 0 0"/>
         <origin rpy="0 0 0" xyz="0.05 0.1 0.7"/>
         <parent link="cir_plate_r"/>
         <child link="abad_r"/>
-        <!-- <limit effort="18" lower="-6.28" upper="6.28" velocity="40"/> -->
+        <dynamics damping="0.01" rotor_inertia="0.003708"/>
+    </joint> -->
+
+    <joint name="plate_arm_r" type="revolute">
+        <axis xyz="0 0 1"/>
+        <origin rpy="0 0 0" xyz="0.0 0.0 0.7"/>
+        <parent link="arm_plate"/>
+        <child link="abad_r"/>
         <dynamics damping="0.01" rotor_inertia="0.003708"/>
     </joint>
 

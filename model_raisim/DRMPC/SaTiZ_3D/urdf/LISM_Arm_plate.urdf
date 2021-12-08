@@ -249,33 +249,21 @@
         </collision> -->
     </link>
 
-    <joint name="lower_add" type="prismatic">
-        <axis xyz="0 0 1"/>
+    <joint name="lower_add" type="revolute">
+        <axis xyz="0 1 0"/>
         <origin rpy="0 0 0" xyz="0.2 0.0 0.0"/>
         <parent link="lower_r"/>
-        <child link="prism_link"/>
+        <child link="anothor"/>
     </joint>
 
     <!--lower link-->
-    <link name="prism_link">
-    <visual>
-            <origin rpy="0.0 0.0 0.0" xyz="0 0 -0.01"/>
-            <geometry>
-                <cylinder length="0.02" radius="0.01"/>
-            </geometry>
-            <material name="greyblack"/>
-        </visual>
-        <inertial>
-            <mass value="0.064"/>
-            <origin rpy="0.0 0.0 0.0" xyz="0 0.032 0"/>
-            <inertia ixx="0.000716" ixy="0" ixz="0.0" iyy="0.000721" iyz="0" izz="0.000012"/>
-        </inertial>
+    <link name="anothor">
     </link>    
 
     <joint name="lower_hand_y" type="revolute">
-        <axis xyz="0 1 0"/>
-        <origin rpy="0 0 0" xyz="0.0, 0.0, -0.02"/>
-        <parent link="prism_link"/>
+        <axis xyz="1 0 0"/>
+        <origin rpy="0 0 0" xyz="0.0, 0.0, 0.0"/>
+        <parent link="anothor"/>
         <child link="hand"/>
         <!-- <dynamics damping="0.01" rotor_inertia="0.008966"/>
          -->
@@ -284,24 +272,23 @@
     <!--lower link-->
     <link name="hand">
         <visual>
-            <origin rpy="0.0 -1.57 0.0" xyz="0 0 0"/>
+            <!-- <origin rpy="0.0 0.0 3.14" xyz="-0.025 0.032 0"/> -->
+            <origin rpy="0.0 0.0 0" xyz="0.06 0 0.0"/>
             <geometry>
-                <mesh filename="meshes/hand.dae" scale="0.001 0.001 0.001"/>
+                <box size="0.12 0.12 0.003"/>
             </geometry>
+            <material name="greyblack"/>
         </visual>
         <inertial>
-            <mass value="0.2"/>
-            <origin rpy="0.0 0.0 0.0" xyz="0 0 0"/>
-            <inertia ixx="0.00267" ixy="0" ixz="0.0" iyy="0.00267" iyz="0" izz="0.00267"/>
+            <mass value="0.064"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0.0 0"/>
+            <inertia ixx="0.00070" ixy="0" ixz="0.0" iyy="0.00066" iyz="0" izz="0.00014"/>
         </inertial>
         <collision>
-            <origin rpy="0.0 -1.57 0.0" xyz="0 0.0 0"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0.06 0.0 0.0"/>
             <geometry>
-                <mesh filename="meshes/hand.obj" scale="0.001 0.001 0.001"/> 
+                <box size="0.12 0.12 0.003"/>
             </geometry>
-            <material name="">
-                <contact name="steel"/>
-            </material>
         </collision>
     </link>
 

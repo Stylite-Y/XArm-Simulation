@@ -101,7 +101,7 @@ def DriControl(ParamData):
             a22 = EnvParam["LowerArmLength"] * np.sin(JointPos[1] + JointPos[2])
             Jacobin_F = np.array([[a11, a12], 
                                 [a21, a22]])
-            # print(Jacobin_F)
+            print(Jacobin_F)
             
             ## if ball is uplifting do this control
             if BallVel[2] > 0:
