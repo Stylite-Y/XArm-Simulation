@@ -591,7 +591,7 @@ def DataProcess(data):
 
 if __name__ == "__main__":
     f = open(os.path.abspath(os.path.dirname(os.path.dirname(__file__))) + \
-         '/data/2021-12-20/2021-12-20-TRIGON-tstep_0.0005-horizon_20-tforce_0.2-vzref_-6.0-xq_1000-vxq_800.0-uxr_10.0-0.pkl','rb')
+         '/data/2021-12-21/2021-12-21-TRIGON-tstep_0.0005-horizon_20-tforce_0.2-vzref_-6.0-xq_1000-vxq_800.0-uxr_10.0.pkl','rb')
     data = pickle.load(f)
     # print(data['RefTraCoef'])
     # DataProcess(data)

@@ -1193,8 +1193,9 @@
   jointVelocityTarget = np.array([0.0, 0.0, -3.0, 0.0, 0.0, 0.0])
   ```
 - 仿真实验结果
-  <img src="https://s2.loli.net/2021/12/21/dvfz1YOjmxtDyPl.png" alt="fd_state" style="zoom: 50%;">
-  <img src="https://s2.loli.net/2021/12/21/jQ74EtAgn6UPklo.png" alt="fd_tor">
+  <img src="https://s2.loli.net/2021/12/21/FvSnfx1Xd2uc7gb.png" alt="fd_state">
+  <img src="https://s2.loli.net/2021/12/21/HMgj3K5QorWdBIm.png" alt="fd_tor">
+  
 
 - 实验结果分析
   该方法可以实现球的稳定的稳定控制，但是在每次球接触时都会产生一个极大的冲击量，不确定对硬件实验是否有影响。
