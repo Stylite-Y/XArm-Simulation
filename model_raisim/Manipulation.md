@@ -31,6 +31,8 @@
       - [基于五次样条曲线轨迹优化的mpc球运动控制](#基于五次样条曲线轨迹优化的mpc球运动控制)
   - [<font color='yellow'>臂球系统的三维运动控制</font>](#font-coloryellow臂球系统的三维运动控制font)
       - [基于MPC和轨迹优化的臂球系统二维V型的运动控制。](#基于mpc和轨迹优化的臂球系统二维v型的运动控制)
+  - [<font color='yellow'>臂球系统的高速稳定运动控制</font>](#font-coloryellow臂球系统的高速稳定运动控制font)
+    - [基于Z向轨迹和PD姿态控制的运动](#基于z向轨迹和pd姿态控制的运动)
 
 
 ### 球的单自由度运动
@@ -824,7 +826,7 @@
   $$
   F = 
   \begin{cases}
-  -K_{vir}(x_{B} - x_{ref}) - f_{up},  & \mbox{if ball is uplifting} \\
+  -K_{vir}(x_{B} - x_{ref}) - f_{up},  & {if ball is uplifting} \\
   -K_{vir}(x_{B} - x_{ref}) - f_{down},  & {if ball is downwarding} \tag{1}
   \end{cases}
   $$
@@ -1123,3 +1125,80 @@
 - 仿真参数设置：
   地方 
 
+
+### <font color='yellow'>臂球系统的高速稳定运动控制</font>
+#### 基于Z向轨迹和PD姿态控制的运动
+- 实验目的：
+  本章实验仿真目的是实现高频的运动控制，并通过参数优化使得需求力矩在现有的机械腿电机的力矩限制之内。
+- 实验方法：
+  本次实验采用DLR的运球方法，竖直方向通过给出运动轨迹进行位置控制，其他方向通过机械手的俯仰和滚转角的PD控制使得机械臂能在在期望点附近稳定运动。
+- 实验原理：
+  1. 竖直方向通过文章中的参数和机械腿的参数，给出z向的运动轨迹，如下形式：
+     $$
+     z(t)=
+     \begin{cases}
+     Asin(\frac{5\pi}{4T}t)+z_0,  & for \: t \in \left[0, \frac{4}{5}T \right] \\
+     -\frac{1}{4}Asin(\frac{5\pi}{T}t)+z_0,  & for \: t \in \left[\frac{4}{5}T, T \right] \tag{1}
+     \end{cases}
+     $$
+  2. 水平xy方向通过末端执行器的滚转和俯仰角的PD控制进行稳定控制，每次接触通过提前计算得到的xy方向的速度和位置信息通过PD方法得到需要偏转的角度$\beta, \gamma$,来逐渐使得球收敛到期望点。
+     - 首先在球每次碰撞地面时通过其速度大小和方向以及位置信息，通过与期望点的对比通过PD控制得到下一次接触末端执行器需要偏转的角度：
+     $$
+     \begin{cases}
+     \beta_{des} = -K_{p\beta}(x_{des} - x) - K_{d\beta}(0.0 - \dot{x}),  \\
+     \gamma_{des} = K_{p\gamma}(y_{des} - y) + K_{d\gamma}(0.0 - \dot{y}),\tag{2}
+     \end{cases}
+     $$
+     - 由于raisim旋转雅克比矩阵的问题，为了机械臂可以跟随篮球的位置，本文将末端位置控制和手的姿态控制解耦，然后通过PD阻抗控制计算出需要的末端力和姿态需要的关节转矩：
+     $$
+     \begin{cases}
+     F_{x} = K_{p,x}(x_{eff,des} - x_{eff}) - K_{d,x}(\dot{e}_{eff,x}),  \\
+     F_{y} = K_{p,y}(y_{eff,des} - y_{eff}) - K_{d,y}(\dot{e}_{eff,y}), \\
+     F_{z} = K_{p,z}(z_{eff,des} - z_{eff}) - K_{d,z}(\dot{e}_{eff,z}),  \tag{3}
+     \end{cases}
+     $$
+     $$
+     \begin{cases}
+     Tor_{\beta} = K_{p,\beta}(\beta_{des} - \beta_{eff}) - K_{d,\beta}(\dot{e}_{eff,\beta}),  \\
+     Tor_{\gamma} = K_{p,\gamma}(\gamma_{des} - \gamma_{eff}) - K_{d,\gamma}(\dot{e}_{eff,\gamma}),   \tag{4}
+     \end{cases}
+     $$
+     - 然后通过速度雅克比矩阵将末端力转换到前三个关节的关节力矩上，而得到的姿态力矩直接作用的后后两个关节上。
+- 实验参数设置
+  ```python
+  # z方向参考轨迹的参数
+  T_Period = 0.33
+  A = 0.16
+  z0 = 0.48
+
+  # ref point
+  x_Ball_des = 0.4
+  y_Ball_des = 0.18
+
+  # PID params for desired angle cal
+  K_Bdes_p = 2
+  K_Bdes_d = 0.2
+  K_Gdes_p = 1
+  K_Gdes_d = 0.2
+
+  # PD control
+  Kx_F = np.diag([1500, 1500, 3000])
+  Kd_F = np.diag([100, 200, 100])
+  Kx_t = np.diag([100, 20])
+  Kd_t = np.diag([0.1, 0.1])
+
+  # 地面参数和初始状态
+  world.setMaterialPairProp("rub", "rub", 1.0, 0.9, 0.0001)
+  jointNominalConfig = np.array([0.4, 0.18, 0.3, 1.0, 0.0, 0.0, 0.0])
+  jointVelocityTarget = np.array([0.0, 0.0, -3.0, 0.0, 0.0, 0.0])
+  ```
+- 仿真实验结果
+  <img src="https://s2.loli.net/2021/12/21/dvfz1YOjmxtDyPl.png" alt="fd_state" style="zoom: 50%;">
+  <img src="https://s2.loli.net/2021/12/21/jQ74EtAgn6UPklo.png" alt="fd_tor">
+
+- 实验结果分析
+  该方法可以实现球的稳定的稳定控制，但是在每次球接触时都会产生一个极大的冲击量，不确定对硬件实验是否有影响。
+- 后续试验计划
+  1. 该方法z方向为位置控制，刚度很大，因此会产生很大的冲击量，该问题一方面可以通过末端的位置控制修改为弹簧模拟的力控，通过硬件是末端执行器换成弹性板。
+  2. 从控制上解决，可以考虑柔顺控制。
+  

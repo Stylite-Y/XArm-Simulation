@@ -11,6 +11,15 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import matplotlib.animation as animation
 
+def ColorSpan(ContPointTime, ColorId, axes):
+    for i in range(len(ContPointTime) + 1):
+        mod = i % 2
+        if i == 0:
+            axes.axvspan(-2, ContPointTime[i], facecolor=ColorId[mod])
+        elif i == len(ContPointTime):
+            axes.axvspan(ContPointTime[i-1], 20, facecolor=ColorId[mod])
+        else:
+            axes.axvspan(ContPointTime[i-1], ContPointTime[i], facecolor=ColorId[mod])
 
 def phaseplot(x, dx, flag):
     dydx = np.cos(0.05 * (x[:-1] + x[1:]))  # first derivative
@@ -121,79 +130,147 @@ def DataPlot(Data):
 
     BallPosition = Data['BallPos']
     BallVelocity = Data['BallVel']
-    ExternalForce = Data['ExternalForce']
-    Point1Pos = Data['Point1Pos']
-    Point1Vel = Data['Point1Vel']
-    ResForce = Data['ResForce']
+    FootPosition = Data['FootPos']
+    FootVelocity = Data['FootVel']
+    EndForce = Data['EndForce']
+    JointTorque = Data['JointTorque']
     T = Data['time']
-    SumForce = ExternalForce
+    ContPointTime = Data['ContPointTime']
+    print(ContPointTime)
 
     """
-    ball pos vel and force plot
+    ball pos vel and force plot,
+    background color block span setting
     """
-    plt.figure()
-    plt.title('Ball motion in zx plane', fontsize = 20)
-
-    plt.subplot(311)
-    plt.plot(T, BallPosition[:, 0], label='Ball x-axis Position')
-    plt.plot(T, BallPosition[:, 1], label='Ball y-axis Position')
+    fig, axes = plt.subplots(4,1)
+    ax1=axes[0]
+    ax2=axes[1]
+    ax3=axes[2]
+    ax4=axes[3]
+    ax1.plot(T, BallPosition[:, 0], label='Ball x-axis Position')
+    ax1.plot(T, BallPosition[:, 1], label='Ball y-axis Position')
     # plt.plot(T, BallVelocity[:, 0], label='Ball x-axis Velocity')
-    plt.plot(T, BallPosition[:, 2], label='Ball z-axis Position')
+    ax1.plot(T, BallPosition[:, 2], label='Ball z-axis Position')
     # plt.plot(T, line2, label='highest Velocity')
-    plt.axis([0, max(T)*1.05, -max(BallPosition[:, 2])*2, max(BallPosition[:, 2])*2])
-    plt.xlabel('time (s)')
-    plt.ylabel('Ball Position (m)', fontsize = 15)
-    plt.legend(loc='upper right', fontsize = 15)
+    ax1.axis([0, max(T)*1.05, 0.0, max(BallPosition[:, 2])*1.5])
+    ax1.set_xlabel('time (s)')
+    ax1.set_ylabel('Ball-Pos (m)', fontsize = 15)
+    ax1.legend(loc='upper right', fontsize = 15)
+    ax1.set_title('Ball and Foot Position and Velocity ', fontsize = 20)
+    # ColorId = ['#CDF0EA', '#FEFAEC']
+    # ColorId = ['#DEEDF0', '#FFF5EB']
+    # ColorId = ['#C5ECBE', '#FFEBBB']
+    # ColorId = ['#A7D7C5', '#F7F4E3']
+    ColorId = ['#E1F2FB', '#FFF5EB']
+
+    ColorSpan(ContPointTime, ColorId, ax1)
+
+    ax2.plot(T, BallVelocity[:, 0], label='Ball x-axis Velocity')
+    ax2.plot(T, BallVelocity[:, 1], label='Ball y-axis Velocity')
+    ax2.plot(T, BallVelocity[:, 2], label='Ball z-axis Velocity')
+
+    ax2.axis([0, max(T)*1.05, -max(BallVelocity[:, 2])*1.5, max(BallVelocity[:, 2])*1.5])
+    ax2.set_xlabel('time (s)')
+    ax2.set_ylabel('Ball-Vel (m/s)', fontsize = 15)
+    ax2.legend(loc='upper right', fontsize = 15)
+    ColorSpan(ContPointTime, ColorId, ax2)
 
 
-    plt.subplot(312)
-    plt.plot(T, BallVelocity[:, 0], label='Ball x-axis Velocity')
-    plt.plot(T, BallVelocity[:, 1], label='Ball y-axis Velocity')
-    plt.plot(T, BallVelocity[:, 2], label='Ball z-axis Velocity')
+    ax3.plot(T, FootPosition[:, 0], label='Foot x-axis Position')
+    ax3.plot(T, FootPosition[:, 1], label='Foot y-axis Position')
+    # plt.plot(T, BallVelocity[:, 0], label='Ball x-axis Velocity')
+    ax3.plot(T, FootPosition[:, 2], label='Foot z-axis Position')
+    # plt.plot(T, line2, label='highest Velocity')
+    ax3.axis([0, max(T)*1.05, 0.0, max(FootPosition[:, 2])*1.5])
+    ax3.set_xlabel('time (s)')
+    ax3.set_ylabel('Foot-Pos (m)', fontsize = 15)
+    ax3.legend(loc='upper right', fontsize = 15)
+    ColorSpan(ContPointTime, ColorId, ax3)
+    
+    ax4.plot(T, FootVelocity[:, 0], label='Foot x-axis Velocity')
+    ax4.plot(T, FootVelocity[:, 1], label='Foot y-axis Velocity')
+    ax4.plot(T, FootVelocity[:, 2], label='Foot z-axis Velocity')
 
-    plt.axis([0, max(T)*1.05, -max(BallVelocity[:, 2])*2, max(BallVelocity[:, 2])*2])
-    plt.xlabel('time (s)')
-    plt.ylabel('Velocity (m/s)', fontsize = 15)
-    plt.legend(loc='upper right', fontsize = 15)
+    ax4.axis([0, max(T)*1.05, -max(FootVelocity[:, 2])*1.5, max(FootVelocity[:, 2])*1.5])
+    ax4.set_xlabel('time (s)')
+    ax4.set_ylabel('Foot-Vel (m/s)', fontsize = 15)
+    ax4.legend(loc='upper right', fontsize = 15)
+    ColorSpan(ContPointTime, ColorId, ax4)
 
-    plt.subplot(313)
-    plt.plot(T, ExternalForce[:, 0], label='Ball x-axis Force')
-    plt.plot(T, ExternalForce[:, 1], label='Ball y-axis Force')
-    plt.plot(T, ExternalForce[:, 2], label='Ball z-axis Force')
-
-    plt.axis([0, max(T)*1.05, -max(ExternalForce[:, 0])*2.5, max(ExternalForce[:, 0])*2.5])
-    plt.xlabel('time (s)', fontsize = 15)
-    plt.ylabel('Force (N)', fontsize = 15)
-    plt.legend(loc='upper right', fontsize = 15)
 
     """
-    XZ plane motion traj of ball plot
+    End Force and Joint Torque plot
     """
-    plt.figure()
-    plt.scatter(BallPosition[:, 0], BallPosition[:, 2], s = 20, label='X-Z plane Ball motion trajectory')
-    ConPoint = []
-    for i in range(len(BallVelocity[:, 2])):
-        if i > 0 and BallPosition[i, 2] < 0.5 and (BallVelocity[i, 2] * BallVelocity[i-1, 2]) < 0:
-            ConPoint.append(BallPosition[i, 0])
-            plt.scatter(BallPosition[i, 0], 0.15, s = 100, c = 'r')
-    print("x axis contact position is: ", ConPoint)
-    x_ticks = np.arange(-1.5, 1.0, 0.1)
-    plt.xticks(x_ticks)
-    plt.xlabel('x-axis position (m)', fontsize = 15)
-    plt.ylabel('z-axis position (m)', fontsize = 15)
-    # plt.legend(loc='upper right')
+    fig, axes = plt.subplots(2,1)
+    ax1=axes[0]
+    ax2=axes[1]
+    ax1.set_title('End-Effector Force and Joint Torque ', fontsize = 20)
+    ColorId = ['#CDF0EA', '#FEFAEC']
 
-    TriCoef = Data['RefTraCoef']
-    print(TriCoef.shape)
-    print(BallPosition.shape)
-    t_c = np.linspace(0.0, 0.2, 200)
-    x_c1 = TriCoef[0, 0, 0] + TriCoef[0, 0, 1] * t_c + TriCoef[0, 0, 2] * t_c ** 2 + TriCoef[0, 0, 3] * t_c ** 3 + TriCoef[0, 0, 4] * t_c ** 4 + TriCoef[0, 0, 5] * t_c ** 5
-    z_c1 = TriCoef[0, 2, 0] + TriCoef[0, 2, 1] * t_c + TriCoef[0, 2, 2] * t_c ** 2 + TriCoef[0, 2, 3] * t_c ** 3 + TriCoef[0, 2, 4] * t_c ** 4 + TriCoef[0, 2, 5] * t_c ** 5
-    x_c2 = TriCoef[1, 0, 0] + TriCoef[1, 0, 1] * t_c + TriCoef[1, 0, 2] * t_c ** 2 + TriCoef[1, 0, 3] * t_c ** 3 + TriCoef[1, 0, 4] * t_c ** 4 + TriCoef[1, 0, 5] * t_c ** 5
-    z_c2 = TriCoef[1, 2, 0] + TriCoef[1, 2, 1] * t_c + TriCoef[1, 2, 2] * t_c ** 2 + TriCoef[1, 2, 3] * t_c ** 3 + TriCoef[1, 2, 4] * t_c ** 4 + TriCoef[1, 2, 5] * t_c ** 5
-    plt.scatter(x_c1, z_c1, s = 4)
-    plt.scatter(x_c2, z_c2, s = 4)
-    plt.title('X-Z plane Ball motion trajectory', fontsize = 20)
+    ax1.plot(T, EndForce[:, 0], label='End Effector x-axis Force')
+    ax1.plot(T, EndForce[:, 1], label='End Effector y-axis Force')
+    ax1.plot(T, EndForce[:, 2], label='End Effector z-axis Force')
+    ColorSpan(ContPointTime, ColorId, ax1)
+
+    ax1.axis([0, max(T)*1.05, -max(EndForce[:, 0])*0.5, max(EndForce[:, 0])*0.5])
+    ax1.set_xlabel('time (s)', fontsize = 15)
+    ax1.set_ylabel('Force (N)', fontsize = 15)
+    ax1.legend(loc='lower right', fontsize = 15)
+
+    ax2.plot(T, JointTorque[:, 0], label='Joint 1 Torque')
+    ax2.plot(T, JointTorque[:, 1], label='Joint 2 Torque')
+    ax2.plot(T, JointTorque[:, 2], label='Joint 3 Torque')
+    ax2.plot(T, JointTorque[:, 3], label='Joint 4 Torque')
+    ax2.plot(T, JointTorque[:, 4], label='Joint 5 Torque')
+
+    y_Torque = JointTorque[20:, 2]
+
+    ax2.axis([0, max(T)*1.05, -max(y_Torque)* 1.2, max(y_Torque)* 1.2])
+    ax2.set_xlabel('time (s)', fontsize = 15)
+    ax2.set_ylabel('Force (N)', fontsize = 15)
+    ax2.legend(loc='lower right', fontsize = 15)
+    ColorSpan(ContPointTime, ColorId, ax2)
+
+    """
+    double y axis setting
+    """
+    ax22 = ax2.twinx()
+    ax22.set_ylabel('End-Effector Pos (m)')
+    ax22.plot(T, FootPosition[:, 2], label='Foot z-axis Position')
+    ax22.plot(T, BallPosition[:, 2], label='Ball z-axis Position')
+    ax22.tick_params(axis='y')
+    ax22.set_ylim(-0.7, 0.7)
+    ax22.legend(loc='lower left', fontsize = 15)
+    fig.tight_layout()
+
+    # """
+    # XZ plane motion traj of ball plot
+    # """
+    # plt.figure()
+    # plt.scatter(BallPosition[:, 0], BallPosition[:, 2], s = 20, label='X-Z plane Ball motion trajectory')
+    # ConPoint = []
+    # for i in range(len(BallVelocity[:, 2])):
+    #     if i > 0 and BallPosition[i, 2] < 0.5 and (BallVelocity[i, 2] * BallVelocity[i-1, 2]) < 0:
+    #         ConPoint.append(BallPosition[i, 0])
+    #         plt.scatter(BallPosition[i, 0], 0.15, s = 100, c = 'r')
+    # print("x axis contact position is: ", ConPoint)
+    # x_ticks = np.arange(-1.5, 1.0, 0.1)
+    # plt.xticks(x_ticks)
+    # plt.xlabel('x-axis position (m)', fontsize = 15)
+    # plt.ylabel('z-axis position (m)', fontsize = 15)
+    # # plt.legend(loc='upper right')
+
+    # TriCoef = Data['RefTraCoef']
+    # print(TriCoef.shape)
+    # print(BallPosition.shape)
+    # t_c = np.linspace(0.0, 0.2, 200)
+    # x_c1 = TriCoef[0, 0, 0] + TriCoef[0, 0, 1] * t_c + TriCoef[0, 0, 2] * t_c ** 2 + TriCoef[0, 0, 3] * t_c ** 3 + TriCoef[0, 0, 4] * t_c ** 4 + TriCoef[0, 0, 5] * t_c ** 5
+    # z_c1 = TriCoef[0, 2, 0] + TriCoef[0, 2, 1] * t_c + TriCoef[0, 2, 2] * t_c ** 2 + TriCoef[0, 2, 3] * t_c ** 3 + TriCoef[0, 2, 4] * t_c ** 4 + TriCoef[0, 2, 5] * t_c ** 5
+    # x_c2 = TriCoef[1, 0, 0] + TriCoef[1, 0, 1] * t_c + TriCoef[1, 0, 2] * t_c ** 2 + TriCoef[1, 0, 3] * t_c ** 3 + TriCoef[1, 0, 4] * t_c ** 4 + TriCoef[1, 0, 5] * t_c ** 5
+    # z_c2 = TriCoef[1, 2, 0] + TriCoef[1, 2, 1] * t_c + TriCoef[1, 2, 2] * t_c ** 2 + TriCoef[1, 2, 3] * t_c ** 3 + TriCoef[1, 2, 4] * t_c ** 4 + TriCoef[1, 2, 5] * t_c ** 5
+    # plt.scatter(x_c1, z_c1, s = 4)
+    # plt.scatter(x_c2, z_c2, s = 4)
+    # plt.title('X-Z plane Ball motion trajectory', fontsize = 20)
 
     # plt.figure()
     # plt.plot(BallPosition[:, 0], ExternalForce[:, 0], label='Ball x-axis Pos-Force')
@@ -205,24 +282,24 @@ def DataPlot(Data):
     # plt.legend(loc='upper right')
     # plt.title('Ball Pos-Force trajectory', fontsize = 20)
 
-    """
-    XY plane motion traj of ball plot
-    """
-    plt.figure()
-    plt.scatter(BallPosition[:, 0], BallPosition[:, 1], label='X-Y plane Ball motion trajectory', cmap='inferno')
-    ConPoint = []
-    for i in range(len(BallVelocity[:, 2])):
-        if i > 0 and BallPosition[i, 2] < 0.5 and (BallVelocity[i, 2] * BallVelocity[i-1, 2]) < 0:
-            ConPoint.append(BallPosition[i, 1])
-            plt.scatter(BallPosition[i, 0], BallPosition[i, 1], s = 100, c = 'r')
-    print("y axis contact position is: ", ConPoint)
-    x_ticks = np.arange(-1.2, 0.9, 0.1)
-    plt.xticks(x_ticks)
-    plt.xlabel('x-axis position (m)', fontsize = 15)
-    plt.ylabel('y-axis position (m)', fontsize = 15)
-    # plt.legend(loc='upper right')
+    # """
+    # XY plane motion traj of ball plot
+    # """
+    # plt.figure()
+    # plt.scatter(BallPosition[:, 0], BallPosition[:, 1], label='X-Y plane Ball motion trajectory', cmap='inferno')
+    # ConPoint = []
+    # for i in range(len(BallVelocity[:, 2])):
+    #     if i > 0 and BallPosition[i, 2] < 0.5 and (BallVelocity[i, 2] * BallVelocity[i-1, 2]) < 0:
+    #         ConPoint.append(BallPosition[i, 1])
+    #         plt.scatter(BallPosition[i, 0], BallPosition[i, 1], s = 100, c = 'r')
+    # print("y axis contact position is: ", ConPoint)
+    # x_ticks = np.arange(-1.2, 0.9, 0.1)
+    # plt.xticks(x_ticks)
+    # plt.xlabel('x-axis position (m)', fontsize = 15)
+    # plt.ylabel('y-axis position (m)', fontsize = 15)
+    # # plt.legend(loc='upper right')
 
-    plt.title('X-Y plane Ball motion trajectory', fontsize = 20)
+    # plt.title('X-Y plane Ball motion trajectory', fontsize = 20)
 
     # plt.figure()
     # Num = len(Point1Vel)
@@ -514,10 +591,10 @@ def DataProcess(data):
 
 if __name__ == "__main__":
     f = open(os.path.abspath(os.path.dirname(os.path.dirname(__file__))) + \
-         '/data/2021-10-26/2021-10-26-TRIGON-tstep_0.0005-horizon_20-tforce_0.2-vzref_-6.0-xq_1000-vxq_800.0-uxr_10.0-17.pkl','rb')
+         '/data/2021-12-20/2021-12-20-TRIGON-tstep_0.0005-horizon_20-tforce_0.2-vzref_-6.0-xq_1000-vxq_800.0-uxr_10.0-0.pkl','rb')
     data = pickle.load(f)
-    print(data['RefTraCoef'])
+    # print(data['RefTraCoef'])
     # DataProcess(data)
-    # DataPlot(data)
+    DataPlot(data)
     # RealCmpRef(data)
-    ThreeDimTra(data)
+    # ThreeDimTra(data)

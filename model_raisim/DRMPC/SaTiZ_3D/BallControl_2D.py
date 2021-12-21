@@ -37,25 +37,25 @@ from TrajOptim import TrajOptim
 
 def TriCal(t_force, PosInit, VelInit, PosTar, VelTar):
     t = t_force
-    pos_init = PosInit
-    v_init = VelInit
+    a11 = PosInit[1]
+    a12 = VelInit[1]
+    a21 = PosInit[2]
+    a22 = VelInit[2]
+    k = (PosTar[1] - a11 - a12 * t) / (PosTar[2] - a21 - a22 * t)
+    k2 = (VelTar[1] - a12) / (VelTar[2] - a22)
 
-    pos_tar = PosTar
-    v_tar = VelTar
+    b = np.array([PosTar[2] - a21 - a22 * t, VelTar[2] - a22])
 
-    b_x = np.array([pos_init[0], v_init[0], pos_tar[0], v_tar[0]])
-    b_y = np.array([pos_init[1], v_init[1], pos_tar[1], v_tar[1]])
-    b_z = np.array([pos_init[2], v_init[2], pos_tar[2], v_tar[2]])
+    A = np.array([[t ** 2, t ** 3], [2 * t, 3 * t ** 2]])
 
-    A = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [1, t, t ** 2, t ** 3], [0, 1, 2 * t, 3 * t ** 2]])
-
-    x_coef = np.linalg.solve(A, b_x)
-    y_coef = np.linalg.solve(A, b_y)
-    z_coef = np.linalg.solve(A, b_z)
+    Coef = np.linalg.solve(A, b)
+    y_coef = np.array([a11, a12, k * Coef[0], k * Coef[1]])
+    z_coef = np.array([a21, a22, Coef[0], Coef[1]])
     print("pos and vel: ", PosInit, VelInit, PosTar, VelTar)
-    print("x_coef, y_coef, z_coef: ", x_coef, y_coef, z_coef)
+    print(a11, a12, a21, a22, k2)
+    print("y_coef, z_coef: ", Coef, k, y_coef, z_coef)
     
-    return x_coef, y_coef, z_coef
+    return y_coef, z_coef
 
 def PaperSim(ParamData):
     """
@@ -69,16 +69,16 @@ def PaperSim(ParamData):
 
     ## ====================
     # ball control initial pos and vel setting
-    jointNominalConfig = np.array([0.35, 0.08, 0.1,1.0, 0.0, 0.0, 0.0])
+    jointNominalConfig = np.array([0.4, 0.18, 0.3, 1.0, 0.0, 0.0, 0.0])
     # jointNominalConfig = np.array([0.34, -0.05, 0.5,1.0, 0.0, 0.0, 0.0])
-    jointVelocityTarget = np.array([0.0, 0.40, -5.0, 0.0, 0.0, 0.0])
+    jointVelocityTarget = np.array([0.0, 0.0, -3.0, 0.0, 0.0, 0.0])
     ball1.setGeneralizedCoordinate(jointNominalConfig)
     ball1.setGeneralizedVelocity(jointVelocityTarget)
 
     ## ===================
     # Arm initial setting
     # ArmTest_urdf_file = os.path.dirname(os.path.abspath(__file__)) + "/urdf/LISM_Arm_hand.urdf"
-    world.setMaterialPairProp("rub", "rub", 1.0, 0.5, 0.0001)
+    world.setMaterialPairProp("rub", "rub", 1.0, 0.9, 0.0001)
     DRArm = world.addArticulatedSystem(Arm_urdf_file)
     DRArm.setName("DRArm")
     print(DRArm.getGeneralizedCoordinateDim())
@@ -86,23 +86,29 @@ def PaperSim(ParamData):
     jointNominalConfig_Arm = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
     DRArm.setGeneralizedCoordinate(jointNominalConfig_Arm)
 
+    # world.updateMaterialProp(raisim.MaterialManager(os.path.dirname(os.path.abspath(__file__)) + "/urdf/testMaterial.xml"))
+
     ## ===================
     # control params
     t_flag = 0
-    T_Period = 0.15
-    A = 0.1
-    z0 = 0.5
+    T_Period = 0.33
+    A = 0.16
+    z0 = 0.48
     D_err_sum = 0.0
     phi_err_sum = 0.0
     phi_err_now = 0.0
+    BallVelCont = 0.0
+    i_start = 0
+    i_end = 0
+    T_W = 0.0
 
     # PID params for desired angle cal
     K_Bdes_p = 1
     K_Bdes_d = 0.0005
     K_Bdes_I = 0.3
-    K_Gdes_p = 1
-    K_Gdes_d = 0.0002
-    K_Gdes_I = 0.2
+    K_Gdes_p = 2
+    K_Gdes_d = 0.0005
+    K_Gdes_I = 0.1
     xhand_err_last = 0.0
     yhand_err_last = 0.0
     zhand_err_last = 0.0
@@ -111,12 +117,11 @@ def PaperSim(ParamData):
     
     # ref point
     x_Ball_des = 0.4
-    y_Ball_des = 0.0
-    phi_des = math.atan(0.08 / 0.35)
-    Beta_des = 0.0
-    Gamma_des = 0.0
-    D_des = math.sqrt(0.35 ** 2 + 0.08 ** 2)
-
+    y_Ball_des = 0.18
+    phi_des = math.atan(y_Ball_des / x_Ball_des)
+    Beta_end_des = 0.0
+    Gamma_end_des = 0.0
+    D_des = math.sqrt(x_Ball_des ** 2 + y_Ball_des ** 2)
 
     ## ================
     # arm and ball state
@@ -139,8 +144,20 @@ def PaperSim(ParamData):
     # print(OrientaHand)
     # help(raisim.ArticulatedSystem)
 
-    for i in range(10000):
-        time.sleep(0.008)
+    i_off = 4 * T_Period * math.asin((0.5 - z0) / A) / 5
+
+    BallPosition = np.array([[0.0, 0.0, 0.0]])          # the pos and vel state of ball
+    BallVelocity = np.array([[0.0, 0.0, 0.0]])       # the pos and vel state of endfoot
+    FootPosition = np.array([[0.0, 0.0, 0.0]])          # the pos and vel state of ball
+    FootVelocity = np.array([[0.0, 0.0, 0.0]])       # the pos and vel state of endfoot
+    EndForce = np.array([[0.0, 0.0, 0.0]])         # the calculate force and real contact force betweem ball an foot
+    JointTorque = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
+    SumForce = np.array([[0.0]])
+    T = np.array([0.0])
+    ContPointTime = np.array([0.0])
+
+    for i in range(3000):
+        time.sleep(0.001)
 
         ## =======================
         # arm and ball current state
@@ -186,16 +203,35 @@ def PaperSim(ParamData):
             D_err_now = D_des - D_now
             D_err_sum = D_err_sum + D_err_now * t_steps
             phi_end_des = math.atan(y_hand_des / x_hand_des)
-            Beta_end_des = - (K_Bdes_p * (D_des - D_now) + K_Bdes_d * (phi_err_now / t_steps) + K_Bdes_I * (D_err_sum))
-            Gamma_end_des = (K_Gdes_p * (phi_des - phi_ball) + K_Gdes_d * (phi_err_now / t_steps) + K_Gdes_I * (phi_err_sum))
+            i_start = i_end
+            i_end = i
+            if i_start != 0:
+                T_W = (i_end - i_start) * t_steps
+            
+            ContactTime = i * t_steps
+            ContPointTime = np.concatenate([ContPointTime, [ContactTime]], axis = 0)
+            # Beta_end_des = - (K_Bdes_p * (D_des - D_now) + K_Bdes_d * (phi_err_now / t_steps) + K_Bdes_I * (D_err_sum))
+            # Gamma_end_des = (K_Gdes_p * (phi_des - phi_ball) + K_Gdes_d * (phi_err_now / t_steps) + K_Gdes_I * (phi_err_sum))
             t_flag = 1
             # if Beta_end_des > 10:
             #     break
-        elif contact_flag == False:
-            Beta_end_des = 0.0
-            Gamma_end_des = 0.0
+        if contact_flag == False:
+            if BallPos[2] < 0.25 and BallVel[2] < 0:
+                Beta_end_des = 0.0
+                Gamma_end_des = 0.0
             t_flag = 0
 
+            if BallVelCont != 0.0 and BallVelCont < 0.0 and BallVel[2] > 0.0:
+                # g = world.getGravity()
+                # g = g[2]
+                # V_cont = math.sqrt(BallVel[2] ** 2 + 2 * g * 0.04)
+                # zy_ratio = -(BallVel[1] / V_cont)
+                # zx_ratio = (BallVel[0] / V_cont)
+                Gamma_end_des = 1 * (y_Ball_des - BallPos[1]) + 0.2 * (0.0 - BallVel[1])
+                Beta_end_des = -2 * (x_Ball_des - BallPos[0]) - 0.2 * (0.0 - BallVel[0])
+
+
+        BallVelCont = BallVel[2]
         print("======================================")
         print("D_ball D_des , D_err_now is: ", D_ball, D_des, D_des - D_ball, D_err_sum)
         print("phi_ball, phi_err_now, phi_des phi_err_sum is: ", phi_ball, phi_err_now, phi_des, phi_err_now / t_steps, phi_err_sum)
@@ -220,7 +256,7 @@ def PaperSim(ParamData):
         print("Angular Jacobian is:          ", JacobianRotate)
 
         # arm z axis desired position
-        t_z = ((i) * EnvParam["t_step"]) % T_Period
+        t_z = ((i + i_off) * EnvParam["t_step"]) % T_Period
         if t_z <= 0.8 * T_Period:
             z_hand_des = A * math.sin(1.25 * math.pi * t_z / T_Period) + z0
             zvel_hand_des = 1.25 * math.pi * math.cos(1.25 * math.pi * t_z / T_Period) / T_Period
@@ -266,14 +302,14 @@ def PaperSim(ParamData):
         # Torque[3] = - Torque[3]
 
         Kx_F = np.diag([1500, 1500, 3000])
-        Kd_F = np.diag([50, 50, 100])
+        Kd_F = np.diag([100, 200, 100])
         pos = np.array([x_hand_des - FootPos[0], y_hand_des - FootPos[1], z_hand_des - FootPos[2]])
         vel_err = np.array([delta_xhand_err / t_steps,  delta_yhand_err / t_steps,  delta_zhand_err / t_steps])
         F = np.dot(Kx_F, pos) + np.dot(Kd_F, vel_err)
         Torque3 = np.dot(JacobianVel[0:3, 0:3].T, F)
 
-        Kx_t = np.diag([100, 100])
-        Kd_t = np.diag([1, 1])
+        Kx_t = np.diag([100, 20])
+        Kd_t = np.diag([0.1, 0.1])
         pos_t = np.array([Beta_end_des - Beta_hand, Gamma_end_des - Gamma_hand])
         vel_err_t = np.array([delta_Betahand_err / t_steps, delta_Gammahand_err / t_steps])
         Tor = np.dot(Kx_t, pos_t) + np.dot(Kd_t, vel_err_t)
@@ -283,23 +319,49 @@ def PaperSim(ParamData):
         print("the time is:                  ", t_z)
         print("Is the hand and ball contact: ", contact_flag)
         print("pos des is:                   ", x_hand_des, y_hand_des, z_hand_des)
-        print("FootPos BallPos is:           ", FootPos)
+        print("Foot state is:                ", FootPos, FootVel)
+        print("Ball state:                   ", BallPos[0:3], BallVel[0:3])
         print("Beta_des and Gamma_des is:    ", Beta_end_des, Gamma_end_des)
         print("Beta_Hand, Gamma_Hand is:     ", Beta_hand, Gamma_hand)
-        print("the kp pos is:                ", pos_t)
-        print("the kd vel err is:            ", vel_err_t)
+        print("the kp pos is:                ", pos, pos_t)
+        print("the kd vel err is:            ", vel_err, vel_err_t)
         print("the Force is:                 ", F)
-        print("the Tor is:                 ", Tor)
+        print("the Tor is:                   ", Tor)
         # print("The Jacobian is: ", Jacobian)
         print("the torque is :               ", Torque3)
+        print("The whole period time is:     ", T_W)
         # print("the torque is :               ", Torque4)
 
         # if contact_flag:
         #     break
 
         DRArm.setGeneralizedForce([Torque3[0], Torque3[1], Torque3[2], Tor[0], Tor[1]])
-                
+
+        t = i * t_steps
+        T = np.concatenate([T, [t]], axis = 0)
+        BallPosition = np.concatenate([BallPosition, [BallPos[0:3]]], axis = 0)
+        BallVelocity = np.concatenate([BallVelocity, [BallVel[0:3]]], axis = 0)
+        FootPosition = np.concatenate([FootPosition, [FootPos]], axis = 0)
+        FootVelocity = np.concatenate([FootVelocity, [FootVel]], axis = 0)
+        EndForce = np.concatenate([EndForce, [F]], axis = 0)
+        JointTorque = np.concatenate([JointTorque, [[Torque3[0], Torque3[1], Torque3[2], Tor[0], Tor[1]]]], axis = 0)
+
         server.integrateWorldThreadSafe()
+
+    T = T[1:,]
+    print(ContPointTime, T)
+    ContPointTime = ContPointTime[1:,]
+    BallPosition = BallPosition[1:,]
+    BallVelocity = BallVelocity[1:,]
+    FootPosition = FootPosition[1:,]
+    FootVelocity = FootVelocity[1:,]
+    EndForce = EndForce[1:,]
+    JointTorque = JointTorque[1:,]
+
+    Data = {'BallPos': BallPosition, 'BallVel': BallVelocity, "FootPos": FootPosition, "FootVel": FootVelocity,\
+            "JointTorque":JointTorque,  'EndForce': EndForce, 'time': T, "ContPointTime": ContPointTime}
+
+    return Data
 
 def ArmBall2DSim(ParamData):
     EnvParam = ParamData["environment"]
@@ -307,8 +369,8 @@ def ArmBall2DSim(ParamData):
 
     ## ====================
     ## ball control initial pos and vel setting
-    jointNominalConfig = np.array([0.4, 0.18, 0.1, 1.0, 0.0, 0.0, 0.0])
-    jointVelocityTarget = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    jointNominalConfig = np.array([0.4, 0.18, 0.3, 1.0, 0.0, 0.0, 0.0])
+    jointVelocityTarget = np.array([0.0, 1.0, -4, 0.0, 0.0, 0.0])
     ball1.setGeneralizedCoordinate(jointNominalConfig)
     ball1.setGeneralizedVelocity(jointVelocityTarget)
 
@@ -325,7 +387,26 @@ def ArmBall2DSim(ParamData):
     print("the dof of the arm is: ", Dof)
     ## ==================
     ## control params
+    fun_flag = 0
+    index = 0
+    z_ref = 0.3
+    vz_ref = -5
 
+    yhand_err_last = 0.0
+    zhand_err_last = 0.0
+    Gammahand_err_last = 0.0
+    BallVelCont = 0.0
+    Gamma_end_des = 0.0
+    zy_ratio = 0.0
+    V_cont = 0.0
+
+    K_p_up = 300
+    K_p_down = 300
+    K_d_up = 5
+    K_d_down = 30
+
+    K_p_angle = 1000
+    K_d_angle = 200
 
     ## ================
     ## arm and ball state
@@ -340,7 +421,7 @@ def ArmBall2DSim(ParamData):
     # help(raisim.ArticulatedSystem)
 
     for i in range(10000):
-        time.sleep(0.008)
+        time.sleep(0.05)
 
         ## =======================
         ## arm and ball current state
@@ -371,19 +452,102 @@ def ArmBall2DSim(ParamData):
                 break
             pass
 
+        y_coef, z_coef = TriCal(0.15, [0.0, 0.18, 0.35], [0.0, 0.0, 5], [0.0, 0.3, 0.3], [0.0, -0.4852216, -5])
+        print(y_coef, z_coef)
+        # break
+
+        if contact_flag:
+            PosInit = BallPos[0:3]
+            VelInit = BallVel[0:3]
+            if fun_flag == 0:
+                if index == 0:
+                    y_ref = 0.3
+
+                elif index == 1:
+                    y_ref = 0.06
+
+                fun_flag = 1
+            
+            if BallVel[2] > 0:
+                # zy_ratio = np.abs(BallVel[1] / BallVel[2])
+
+                ZForce = K_p_up * (z_ref - BallPos[2]) + K_d_up * (0.0 - BallVel[2])
+                
+            elif BallVel[2] <= 0:
+                ZForce = K_p_down * (z_ref - BallPos[2]) + K_d_down * (vz_ref - BallVel[2])
+
+            if index == 0:
+                YForce = zy_ratio * ZForce
+                # Gamma_end_des = -math.atan(zy_ratio)
+            elif index == 1:
+                YForce = - zy_ratio * ZForce
+                # Gamma_end_des = math.atan(zy_ratio)
+
+        else:    
+            if fun_flag == 1:
+                fun_flag = 0
+                index = index + 1
+                if index == 2:
+                    index = 0
+
+            if BallVelCont != 0.0 and BallVelCont < 0.0 and BallVel[2] > 0.0:
+                g = world.getGravity()
+                g = g[2]
+                V_cont = math.sqrt(BallVel[2] ** 2 + 2 * g * 0.04)
+                zy_ratio = np.abs(BallVel[1] / V_cont)
+                Gamma_end_des = math.atan(zy_ratio)
+                if index ==0:
+                    Gamma_end_des = -Gamma_end_des            
+
+            y_hand_des = BallPos[1]
+            z_hand_des = 0.5
+            yhand_err_now = y_hand_des - FootPos[1]
+            delta_yhand_err = yhand_err_now - yhand_err_last
+            yhand_err_last = yhand_err_now
+
+            zhand_err_now = z_hand_des - FootPos[2]
+            delta_zhand_err = zhand_err_now - zhand_err_last
+            zhand_err_last = zhand_err_now
+
+            Kx_F = np.diag([0.0, 1500, 3000])
+            Kd_F = np.diag([0.0, 50, 100])
+            pos = np.array([0.0, y_hand_des - FootPos[1], z_hand_des - FootPos[2]])
+            vel_err = np.array([0.0, delta_yhand_err / t_steps,  delta_zhand_err / t_steps])
+            Force = np.dot(Kx_F, pos) + np.dot(Kd_F, vel_err)
+            YForce = Force[1]
+            ZForce = Force[2]
+
+        
+        Gammahand_err_now = Gamma_end_des - Gamma_hand
+        delta_Gammahand_err = Gammahand_err_now - Gammahand_err_last
+        Gammahand_err_last = Gammahand_err_now
+
+        AngleTorque = K_p_angle * (Gamma_end_des - Gamma_hand) + K_d_angle * (0.0 - delta_Gammahand_err)
+        
+        Force = np.array([0.0, YForce, ZForce])
+        TorqueVel = np.dot(JacobianVel[0:3, 0:3].T, Force)
+
+        DRArm.setGeneralizedForce([TorqueVel[0], TorqueVel[1], TorqueVel[2], AngleTorque])
+
         ## ======================
         ## params print 
         print("## ====================================================================")
         print("Is ball and hand contact:                ", contact_flag)
         print("The Foot Postion and Vel:                ", FootPos, FootVel)
-        print("The Ball Postion and Vel:                ", BallPos, BallVel)
-        print("Arm rotation matrix:                     ", JacobianRotate)
-        print("Arm Jacobian vel matrix:                 ", JacobianVel)
-        print("Arm Jacobian rotation matrix:            ", JacobianRotate)
+        print("The orientation of hand is:              ", Gamma_hand)
+        print("The Ball Postion and Vel:                ", BallPos[0:3], BallVel[0:3])
+        # print("Arm rotation matrix:                     ", JacobianRotate)
+        # print("Arm Jacobian vel matrix:                 ", JacobianVel)
+        # print("Arm Jacobian rotation matrix:            ", JacobianRotate)
+        print("Desired state of hand:                   ", Gamma_end_des, zy_ratio, V_cont)
+        print("Cal Force is:                            ", Force)
+        print("Joint Torque is:                         ", TorqueVel, AngleTorque)
+
+        print("##++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        print("cal params delta_Gammahand_vel: ",Gammahand_err_now, delta_Gammahand_err)
         
-
+        BallVelCont = BallVel[2]
         server.integrateWorldThreadSafe()
-
 
 
 if __name__ == "__main__":
@@ -414,7 +578,6 @@ if __name__ == "__main__":
     # material collision property of change direction of force is applied
     # world.setMaterialPairProp("rubber", "rub", 1, 0, 0)
     world.setMaterialPairProp("default", "rub", 1.0, 0.85, 0.0001)     # ball rebound model test
-    # world.setMaterialPairProp("rub", "rub", 0.52, 0.8, 0.001, 0.61, 0.01)
     # world.updateMaterialProp(raisim.MaterialManager(os.path.dirname(os.path.abspath(__file__)) + "/urdf/testMaterial.xml"))
     # help(world)
 
@@ -422,7 +585,7 @@ if __name__ == "__main__":
     ball1 = world.addArticulatedSystem(ball1_urdf_file)
     ball1.setName("ball1")
     gravity = world.getGravity()
-    world.setGravity([0, 0, 0])
+    # world.setGravity([0, 0, 0])
     gravity1 = world.getGravity()
     print(gravity, gravity1)
 
@@ -431,18 +594,15 @@ if __name__ == "__main__":
     server.launchServer(8080)
 
  
-    # PaperSim(ParamData)
-    ArmBall2DSim(ParamData)
+    Data = PaperSim(ParamData)
+    # ArmBall2DSim(ParamData)
 
     # file save
-    # FileFlag = ParamData["environment"]["FileFlag"] 
-    # FileSave.DataSave(Data, ParamData, FileFlag)
-
-    # # data visulization
-    # Data = {'BallPos': BallPosition, 'BallVel': BallVelocity, 'ExternalForce': ExternalForce, 'time': T}
+    FileFlag = ParamData["environment"]["FileFlag"] 
+    FileSave.DataSave(Data, ParamData, FileFlag)
 
     # DataPlot(Data)
-    # visualization.DataPlot(Data)
+    visualization.DataPlot(Data)
     # visualization.RealCmpRef(Data)
 
     # print("force, ", ForceState[0:100, 1])

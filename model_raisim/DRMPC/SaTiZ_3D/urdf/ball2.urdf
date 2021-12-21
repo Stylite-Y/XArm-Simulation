@@ -3,66 +3,36 @@
      <!--base of fixing arm-->
     <link name="world"/>
 
-    <!-- <joint name="worldTolink1" type="fixed">
+    <joint name="worldTolink1" type="fixed">
         <parent link="world"/>
         <child link="link0"/>
         <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
     </joint>
 
-    <link name="link0">
-        <visual>
-            <origin rpy="0.0 1.57 0.0" xyz="0.3 0 0.0"/>
-            <geometry>
-                <cylinder length="1.0" radius="0.02"/>
-            </geometry>
-        </visual>
-    </link>
-
-    <joint name="link0_link1" type="prismatic">
-        <axis xyz="1 0 0"/>
-        <origin rpy="0 0 0" xyz="0.3 0.0 0.0"/>
+    <link name = "link0"></link>
+    
+    <joint name="y" type="prismatic">
         <parent link="link0"/>
         <child link="link1"/>
-    </joint>
-
-    
-    <link name="link1">
-        <visual>
-            <origin rpy="0.0 0.0 0.0" xyz="0.0 0 0.25"/>
-            <geometry>
-                <cylinder length="0.5" radius="0.02"/>
-            </geometry>
-        </visual>
-    </link>
-
-    <joint name="link1_link2" type="fixed">
-        <origin rpy="0 0 0" xyz="0.0 0.0 0.5"/>
-        <parent link="link1"/>
-        <child link="link2"/>
-    </joint>
-
-    <link name="link2">
-        <visual>
-            <origin rpy="0.0 1.57 0.0" xyz="0 0 0.0"/>
-            <geometry>
-                <cylinder length="1" radius="0.02"/>
-            </geometry>
-        </visual>
-    </link>
-
-    <joint name="link2_ball_r" type="revolute">
-        <axis xyz="0 0 1"/>
         <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+        <axis xyz="0.0 1.0 0.0"/>
+    </joint>
+
+    <link name = "link1"></link>
+
+    <joint name="z" type="prismatic">
         <parent link="link1"/>
         <child link="ball"/>
-    </joint> -->
+        <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+        <axis xyz="0.0 0.0 1"/>
+    </joint>
 
     <link name="ball">
         <visual>
             <origin rpy="0.0 0.0 0" xyz="0 0 0.0"/>
             <geometry>
-                <sphere radius="0.05"/>
-                <!-- <mesh filename="meshes/ball2.dae" scale="0.001 0.001 0.001"/> -->
+                <!-- <sphere radius="0.2"/> -->
+                <mesh filename="meshes/ball2.dae" scale="0.001 0.001 0.001"/>
                 <!-- <mesh filename="meshes/ball/ball2.OBJ" scale="100 100 100"/> -->
             </geometry>
         </visual>
@@ -74,10 +44,10 @@
         <collision>
             <origin rpy="0.0 0.0 0.0" xyz="0 0.0 0.0"/>
             <geometry>
-                <sphere radius="0.05"/>                  
+                <sphere radius="0.15"/>                  
             </geometry>
             <material name="">
-                <contact name="rub"/>
+                <contact name="rubber"/>
             </material>
         </collision>
     </link>
