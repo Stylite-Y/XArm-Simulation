@@ -1,7 +1,0 @@
-<raisim>
-    <material>
-        <default friction="0.8" restitution="0.85" restitution_threshold="0"/>
-        <pair_prop name1="steel" name2="rubber" friction="0.15" restitution="0.85" restitution_threshold="0.001" static_friction="0.15" static_friction_velocity_threshold="0.0001"/>
-        <!-- <pair_prop name1="rub" name2="rub" friction="0.9" restitution="0.0" restitution_threshold="0.0" static_friction="1.0" static_friction_velocity_threshold="2"/> -->
-    </material>
-</raisim>
