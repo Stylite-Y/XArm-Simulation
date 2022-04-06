@@ -1,0 +1,63 @@
+<?xml version="1.0" ?>
+<robot name="LISM_Arm">
+     <!--base of fixing arm-->
+    <link name="world"/>
+
+    <joint name="worldTobase" type="fixed">
+        <parent link="world"/>
+        <child link="base"/>
+        <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+    </joint>
+    
+    <link name="base">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.01"/>
+            <geometry>
+                <box size = "0.2 0.3 0.02"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <joint name="BaseToLink" type="revolute">
+        <axis xyz="-1 0 0"/>
+        <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+        <parent link="base"/>
+        <child link="link1"/>
+    </joint>
+
+    <link name="link1">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.25"/>
+            <geometry>
+                <cylinder length="0.5" radius="0.03"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <mass value="0.5"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.25"/>
+            <inertia ixx="0.0104167" ixy="0" ixz="0.0" iyy="0.0104167" iyz="0" izz="0.000225"/>
+        </inertial>
+    </link>
+
+    <joint name="l12l2" type="revolute">
+        <axis xyz="-1 0 0"/>
+        <origin rpy="0 0 0" xyz="0.0 0.0 0.5"/>
+        <parent link="link1"/>
+        <child link="link2"/>
+    </joint>
+
+    <link name="link2">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.5"/>
+            <geometry>
+                <cylinder length="1.0" radius="0.03"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <mass value="0.2"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.5"/>
+            <inertia ixx="0.0167" ixy="0" ixz="0.0" iyy="0.0015" iyz="0" izz="0.000225"/>
+        </inertial>
+    </link>
+
+</robot>
