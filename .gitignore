@@ -110,6 +110,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# data file
+/model_raisim/DRMPC/SaTiZ/data
+
 # Spyder project settings
 .spyderproject
 .spyproject

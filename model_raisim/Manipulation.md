@@ -1193,8 +1193,18 @@
   jointVelocityTarget = np.array([0.0, 0.0, -3.0, 0.0, 0.0, 0.0])
   ```
 - 仿真实验结果
+  1. 2.5Hz
+   <img src="https://s2.loli.net/2021/12/21/9VhBnAxeovy1XIQ.png" alt="fd_state-2.5hz">
+   <img src="https://s2.loli.net/2021/12/21/Dkgrjs7MOcWJPza.png" alt="fd_tor-2.5hz">
+  2. 3Hz
   <img src="https://s2.loli.net/2021/12/21/FvSnfx1Xd2uc7gb.png" alt="fd_state">
-  <img src="https://s2.loli.net/2021/12/21/HMgj3K5QorWdBIm.png" alt="fd_tor">
+  <img src="https://s2.loli.net/2021/12/21/hDY9lgiUzXMECsB.png" alt="fd_state-3hz">
+  3. 5Hz
+   <img src="https://s2.loli.net/2021/12/21/pPoLVhvZmJ5WB3k.png" alt="fd_state-5hz">
+  <img src="https://s2.loli.net/2021/12/21/1hSJXHWxuwk2lzK.png" alt="fd_tor-5hz">
+  4. 5Hz下由于关节力矩只有瞬间达到峰值，因此可以采用力矩范围限制的方法进行力矩约束，测试结果发现仍然可以稳定运动
+   <img src="https://s2.loli.net/2021/12/21/iBR2oZWvmgFxVSe.png" alt="fd_state-5hz-clip">
+   <img src="https://s2.loli.net/2021/12/21/HRY1TIspoiUarvf.png" alt="fd_tor-5hz-clip">
   
 
 - 实验结果分析
