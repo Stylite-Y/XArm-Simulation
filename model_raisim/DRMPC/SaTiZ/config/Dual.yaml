@@ -16,8 +16,8 @@ Environment:
 Controller:
   Target: 0.0
   dt: 0.002
-  T: 1
-  
+  T: 0.5
+  Tp: 0.08  
 
   Boundary:
     theta1: [-1.57, 1.57]

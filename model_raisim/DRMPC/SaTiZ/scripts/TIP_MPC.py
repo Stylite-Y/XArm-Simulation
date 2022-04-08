@@ -2,7 +2,6 @@
 三级摆的平衡控制
 """
 
-from cProfile import label
 import casadi as ca
 from casadi import sin as s
 from casadi import cos as c
@@ -13,15 +12,15 @@ import os
 import yaml
 from ruamel.yaml import YAML
 import datetime
-
-from torch import solve
+from scipy.integrate import odeint
 
 class TriplePendulum():
     def __init__(self, cfg):
         self.opti = ca.Opti()
-        self.dt = cfg['Controller']['dt']
-        self.T = cfg['Controller']['T']
-        self.NS = int(self.T / self.dt)       # samples number
+        self.dt = cfg['Controller']['dt']       # sample time
+        self.Tp = cfg['Controller']['Tp']       # predictive time
+        self.NS = int(self.Tp / self.dt)        # samples number
+        # print("number of sample: ", self.NS)
         
         # mass and geometry related parameter
         self.m = cfg['Robot']['Mass']['mass']
@@ -177,17 +176,11 @@ class TriplePendulum():
         
         return inertia_force
 
-    @staticmethod
-    def getPosture():
-        pass
-
-    @staticmethod
-    def getMotorBound():
-        pass
-
 
 class NLP():
-    def __init__(self, robot, cfg, seed=None):
+    def __init__(self, robot, cfg, x0, dq0, seed=None):
+        self.x0 = x0
+        self.dq0 = dq0
         self.cfg = cfg
         self.TorqueCoef = cfg["Optimization"]["CostCoeff"]["torqueCoef"]
         self.PostarCoef = cfg["Optimization"]["CostCoeff"]["postarCoeff"]
@@ -197,7 +190,8 @@ class NLP():
         self.cost = self.CostFun(robot)
         robot.opti.minimize(self.cost)
 
-        self.ceq = self.getConstraints(robot)
+        # self.ceq = self.getConstraints(robot)
+        self.ceq = self.getConstraintsMPC(robot)
         robot.opti.subject_to(self.ceq)
 
         p_opts = {"expand": True, "error_on_fail": False}
@@ -272,6 +266,63 @@ class NLP():
 
         return ceq
 
+    def getConstraintsMPC(self, Arm):
+        ceq = []
+
+        ## continuous dynamics constraints
+        for i in range(Arm.NS - 1):
+            ceq.extend([Arm.q[i+1][j] - Arm.q[i][j] - Arm.dt/2 * \
+                        (Arm.dq[i+1][j] + Arm.dq[i][j]) == 0 for j in range(3)])
+
+            Inertia = Arm.InertiaForce(Arm.q[i], Arm.ddq[i])
+            Coriolis = Arm.Coriolis(Arm.q[i], Arm.dq[i])
+            Gravity = Arm.Gravity(Arm.q[i])
+
+            ceq.extend([Inertia[0] + Gravity[0] + Coriolis[0] == 0])
+            ceq.extend([Inertia[j+1] + Gravity[j+1] + Coriolis[j+1] - Arm.u[i][j] == 0 for j in range(2)])
+            pass
+    
+        ## Boundary constraints
+        for temp_q in Arm.q:
+            ceq.extend([Arm.opti.bounded(Arm.q_LB[j], temp_q[j], Arm.q_UB[j]) for j in range(3)])
+            pass
+
+        for temp_dq in Arm.dq:
+            ceq.extend([Arm.opti.bounded(Arm.dq_LB[j], temp_dq[j], Arm.dq_UB[j]) for j in range(3)])
+            pass
+
+        for temp_u in Arm.u:
+            ceq.extend([Arm.opti.bounded(Arm.u_LB[j], temp_u[j], Arm.u_UB[j]) for j in range(2)])
+            pass
+
+        ## motion smooth constraint
+        for i in range(len(Arm.u) -1):
+            ceq.extend([ca.fabs(Arm.u[i][j] - Arm.u[i+1][j]) <= 2 for j in range(2)])
+            pass
+        
+        ceq.extend([Arm.q[0][0]==self.x0[0]])
+        ceq.extend([Arm.q[0][1]==self.x0[1]])
+        ceq.extend([Arm.q[0][2]==self.x0[2]])
+
+        ceq.extend([Arm.dq[0][0]==self.dq0[0]])
+        ceq.extend([Arm.dq[0][1]==self.dq0[1]])
+        ceq.extend([Arm.dq[0][2]==self.dq0[2]])
+
+        return ceq
+
+    def Solve_StateReturn(self, robot):
+        u = []
+        try:
+            sol = robot.opti.solve()
+            u.append([sol.value(robot.u[0][j]) for j in range(2)])
+            pass
+        except:
+            value = robot.opti.debug.value
+            u.append([value(robot.u[0][j]) for j in range(2)])
+            pass
+
+        return u[0]
+
     def Solve_Output(self, robot, flag_save=True, StorePath="./"):
         # solve the nlp and stroge the solution
         q = []
@@ -324,10 +375,44 @@ class NLP():
 
             return q, dq, ddq, u, t
 
-class Data():
-    def __init__(self):
+
+class MPC():
+    def __init__(self, cfg, q0, dq0, u1):
+        self.cfg = cfg
+        self.q0 = q0
+        self.u1 = u1
+        self.dq0 = dq0
+        self.t = cfg['Controller']['dt']
         pass
 
+    def updateState(self, robot):
+        mass_matrix = robot.MassMatrix(self.q0)
+        mass_matrix = np.asarray(mass_matrix)
+        mass_inv = np.linalg.inv(mass_matrix)
+
+        def odefun(y, t):
+            q1, q2, q3, dq1, dq2, dq3 = y
+            corilios = robot.Coriolis([q1, q2, q3], [dq1, dq2, dq3])
+            gravity = robot.Gravity([q1, q2, q3])
+            dydt = [dq1, dq2, dq3,
+                    -mass_inv[0][0]*(corilios[0]+gravity[0]) - mass_inv[0][1]*(corilios[1]+gravity[1]) - mass_inv[0][2]*(corilios[2]+gravity[2]),
+                    self.u1[0] - mass_inv[1][0]*(corilios[0]+gravity[0]) - mass_inv[1][1]*(corilios[1]+gravity[1]) - mass_inv[1][2]*(corilios[2]+gravity[2]),
+                    self.u1[1] - mass_inv[2][0]*(corilios[0]+gravity[0]) - mass_inv[2][1]*(corilios[1]+gravity[1]) - mass_inv[2][2]*(corilios[2]+gravity[2])]
+            dydt1 = [dq1, dq2, dq3,
+                    q1]
+            return dydt
+
+        q_init = []
+        q_init.extend(self.q0)
+        q_init.extend(self.dq0)
+
+        t_ode = np.linspace(0, self.t, 4)
+
+        sol = odeint(odefun, q_init, t_ode)
+
+        return sol[-1,0:3], sol[-1,3:6]
+
+## trajectory optimizaition main function
 def main():
     # region optimization trajectory for bipedal hybrid robot system
     vis_flag = True
@@ -337,9 +422,6 @@ def main():
     save_dir = StorePath + "/data/" + str(todaytime) + "/"
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
-    # seed = None
-    date = "11_03_2022_22_25_22"
-    seed = save_dir + date + "_sol.npy"
 
     # region load config file
     FilePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -381,6 +463,120 @@ def main():
 
     pass
 
+
+## mpc control main function
+def MPC_main():
+    ## file path 
+    vis_flag = True
+    save_flag = True
+    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    todaytime=datetime.date.today()
+    save_dir = StorePath + "/data/" + str(todaytime) + "/"
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    ## region load config file
+    FilePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ParamFilePath = FilePath + "/config/Dual.yaml"
+    ParamFile = open(ParamFilePath, "r", encoding="utf-8")
+    cfg = yaml.load(ParamFile, Loader=yaml.FullLoader)
+
+    ## controller paramters
+    dt = cfg['Controller']['dt']        # sample time
+    T = cfg['Controller']['T']          # predictive time
+    N = int(T / dt)                     # samples number
+
+    ## initial state setting
+    q0 = [0.1, -0.3, 0.2]    
+    dq0 = [0.0, 0.0, 0.0]
+
+    ## create robot and NLP problem
+    # robot = TriplePendulum(cfg)
+    q = []
+    dq = []
+    tor = []
+    t = []
+    for i in range(N):
+        ## create NLP problem
+        robot = TriplePendulum(cfg)
+        nonlinearOptimization = NLP(robot, cfg, q0, dq0)
+
+        ## get the first input of the optimal sequence
+        u1 = nonlinearOptimization.Solve_StateReturn(robot)
+
+        ## state save
+        t.append(i*robot.dt)
+        q.append(q0)
+        dq.append(dq0)
+        tor.append(u1)
+
+        ## state update accoding to current state and input
+        mpccontroller = MPC(cfg, q0, dq0, u1)
+        q0, dq0 = mpccontroller.updateState(robot)
+
+        # if i > 2:
+        #     break
+        pass
+
+    q = np.asarray(q)
+    dq = np.asarray(dq)
+    tor = np.asarray(tor)
+    t = np.asarray(t).reshape([-1, 1])
+    
+    print(t.shape, q.shape)
+
+    ML = cfg["Optimization"]["MaxLoop"] / 1000
+    Tp = cfg['Controller']['Tp']
+    PostarCoef = cfg["Optimization"]["CostCoeff"]["postarCoeff"]
+    TorqueCoef = cfg["Optimization"]["CostCoeff"]["torqueCoef"]
+
+    if save_flag:
+        date = time.strftime("%Y-%m-%d-%H-%M-%S")
+        name = "-Pos_"+str(PostarCoef)+"-Tor_"+str(TorqueCoef) \
+                + "-dt_"+str(dt)+"-T_"+str(T)+"-Tp_"+str(Tp)+"-ML_"+str(ML)+ "k"
+        np.save(save_dir+date+name+"-sol.npy",
+                np.hstack((q, dq, tor, t)))
+        # output the config yaml file
+        # with open(os.path.join(StorePath, date + name+"-config.yaml"), 'wb') as file:
+        #     yaml.dump(self.cfg, file)
+        with open(save_dir+date+name+"-config.yaml", mode='w') as file:
+            YAML().dump(cfg, file)
+
+    if vis_flag:
+        import matplotlib.pyplot as plt
+        import matplotlib as mpl
+
+        fig, axes = plt.subplots(3,1, dpi=100,figsize=(12,10))
+        ax1 = axes[0]
+        ax2 = axes[1]
+        ax3 = axes[2]
+
+        ax1.plot(t, q[:, 0], label="theta 1")
+        ax1.plot(t, q[:, 1], label="theta 2")
+        ax1.plot(t, q[:, 2], label="theta 3")
+
+        ax1.set_ylabel('Joint Angle ', fontsize = 15)
+        ax1.legend(loc='upper right', fontsize = 12)
+        ax1.grid()
+
+        ax2.plot(t, dq[:, 0], label="theta 1 Vel")
+        ax2.plot(t, dq[:, 1], label="theta 2 Vel")
+        ax2.plot(t, dq[:, 2], label="theta 3 Vel")
+
+        ax2.set_ylabel('Angular Vel ', fontsize = 15)
+        ax2.legend(loc='upper right', fontsize = 12)
+        ax2.grid()
+
+        ax3.plot(t, tor[:, 0], label="torque 1")
+        ax3.plot(t, tor[:, 1], label="torque 2")
+        ax3.set_ylabel('Torque ', fontsize = 15)
+        ax3.legend(loc='upper right', fontsize = 12)
+        ax3.grid()
+    
+        plt.show()
+
+
+
 def visualization():
     FilePath = "/home/stylite-y/Documents/Master/Manipulator/Simulation/model_raisim/DRMPC/SaTiZ_3D/data/2022-04-06" 
     config_file = FilePath + "/2022-04-06-17-59-06-Pos_1-Tor_0.1-dt_0.01-T_2-ML_1.0k-config.yaml"
@@ -421,25 +617,8 @@ def visualization():
     
     pass
 
-def test():
-    opti = ca.Opti()
-    u = [-2] * 3
-    q = []
-    q.append([opti.variable(3) for _ in range(3)])
-    q = q[0]    
-    # q.append([opti.variable(2) for _ in range(3)])    
-    b = [u[i]+1 for i in range(2)]
-    a = np.array(q).shape
-    b.extend([123])
-
-    ceq = []
-    for j in range(3):
-        ceq.extend([q[j][i]<=0 for i in range(3)])
-    res = []
-    res.append([u[i]+2 for i in range(3)])
-    pass
 
 if __name__ == "__main__":
-    main()
-    # test()
+    # main()
     # visualization()
+    MPC_main()
