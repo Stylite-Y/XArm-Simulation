@@ -3,9 +3,9 @@ Optimization:
   RandomSeed: 1
 
   CostCoeff:
-    postarCoeff: 5
-    powerCoeff: 0.1
-    torqueCoef: 0.1
+    postarCoeff: 100
+    powerCoeff: 0.0
+    torqueCoef: 0.0
 
 Environment:
   Gravity: 9.8
@@ -14,29 +14,30 @@ Environment:
   sim_time: 4000  
 
 Controller:
-  Target: 0.0
-  dt: 0.002
-  T: 0.5
-  Tp: 0.08  
+  PosTar: 0.0
+  VelTar: 0.0
+  dt: 0.01
+  T: 2.0
+  Tp: 5.0
 
   Boundary:
     theta1: [-1.57, 1.57]
-    theta2: [-9.42, 9.42]
-    theta3: [-9.42, 9.42]
+    theta2: [-20, 20]
+    theta3: [-20, 20]
 
 
 Robot:
   Mass:
     mass: [0.5, 0.2, 0.2]
-    inertia: [0.0267, 0.01067, 0.01067]
-    massCenter: [0.4, 0.4, 0.4]
+    inertia: [0.367, 0.11067, 0.11067]
+    massCenter: [0.4, 0.3, 0.3]
   Geometry:
     L_body: 0.8
-    L_thigh: 0.8
-    L_shank: 0.8
+    L_thigh: 0.3
+    L_shank: 0.3
   damping: 0.0
   Motor:
     MaxTorque: 36
-    MaxSpeed: 53
-    CriticalSpeed: 27
+    MaxSpeed: 100
+    CriticalSpeed: 100
   
