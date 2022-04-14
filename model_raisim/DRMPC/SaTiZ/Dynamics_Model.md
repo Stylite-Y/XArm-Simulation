@@ -1,6 +1,6 @@
 
 
-### 三级倒立摆模型
+## 三级倒立摆模型
 
 ![Two_LInks_DualArm .drawio](https://s2.loli.net/2022/03/28/n5QY7xasghDrq8V.png)
 
@@ -43,7 +43,8 @@ $$
 V=m_bgy_b+m_tgy_{t}+m_hgy_{h}
 $$
 
-动力学方程
+### 动力学方程
+
 $$
 \begin{bmatrix}
 M_{11} &M_{12} &M_{13}\\
@@ -144,6 +145,8 @@ l_sm_2(L_bS_{2,3}+L_tS_3)\dot{\theta}_1^2\\
 \right.
 $$
 
+### 方程线性化
+
 动力学方程线性化：当$\theta_1和\theta_2$都很小时，可以近似认为是零，因此在平衡点附近$\theta_1=0, \phi_2(\phi_2=\pi+\theta_2)=0,\theta_3=0,\dot{\theta}_1=0,\dot{\theta}_2=0,\dot{\theta}_3=0$，在进行线性化时所以由于角度变化很小，因此所有的二阶小量都被舍去（$\theta\dot{\theta}$或者$\dot{\theta}^2$），因此离心力和科氏力项中由于简化后存在二阶小量，该矩阵各项都会为0.
 
 其中：$sin\theta\approx\theta,cos\theta\approx1,sin(\theta_2+\theta_3)\approx\theta_2+\theta_3,cos(\theta_2+\theta_3)\approx1$
@@ -235,7 +238,7 @@ $$
 
 
 
-### 优化方程
+## 轨迹优化
 
 $$
 \begin{aligned}
@@ -258,4 +261,8 @@ $$
 \end{aligned}
 \end{aligned}
 $$
+
+<img src="https://s2.loli.net/2022/04/06/IoAUBLMbX246i3x.png" alt="traj-mpc-0.002" style="zoom:72%;" />
+
+<img src="https://s2.loli.net/2022/04/10/UAjKxbz4SMdvLR7.png" alt="traj-mpc-0.01" style="zoom:72%;" />
 

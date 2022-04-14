@@ -298,14 +298,17 @@ if __name__ == "__main__":
     q0 = [1.0, 0.0]
     dq0 = [0.0, 0.0]
     u1 = [0.0, 0.0]
+    q1 = np.array([[1, 21,5], [1, 5, 7]])
+    b = q1.tolist()
+    print(list(q1), b[0][1], q0[1])
     
-    sol = updatestate(q0, dq0, u1)
-    print("===================")
-    print(sol)
-    print(sol[-1,0:2])
+    # sol = updatestate(q0, dq0, u1)
+    # print("===================")
+    # print(sol)
+    # print(sol[-1,0:2])
 
     # temp = A()
     # # temp.b()
     # print(np.linspace(0, 4, 4))
-    visual2()
+    # visual2()
 
