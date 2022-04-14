@@ -3,22 +3,22 @@ Optimization:
   RandomSeed: 1
 
   CostCoef:
-    postarCoef: 10
-    VeltarCoef: 8
-    torqueCoef: 0.4
+    postarCoef: 100
+    VeltarCoef: 30
+    torqueCoef: 5
 
 Environment:
   Gravity: 9.81
   Friction_Coeff: 1.0
-  t_step: 0.002
+  t_step: 0.01
   sim_time: 4000  
 
 Controller:
   PosTar: 0.0
   VelTar: 0.0
-  dt: 0.002
-  T: 5
-  Tp: 0.2
+  dt: 0.01
+  T: 4
+  Tp: 0.8
 
   Boundary:
     theta1: [-1.57, 1.57]

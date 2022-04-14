@@ -516,7 +516,14 @@ class DataProcess():
         self.t = t
         self.savepath = savepath
 
-        self.save_dir = self.DirCreate()
+        self.ML = self.cfg["Optimization"]["MaxLoop"] / 1000
+        self.Tp = self.cfg['Controller']['Tp']
+        self.T = self.cfg['Controller']['T']
+        self.PostarCoef = self.cfg["Optimization"]["CostCoef"]["postarCoef"]
+        self.TorqueCoef = self.cfg["Optimization"]["CostCoef"]["torqueCoef"]
+        self.VeltarCoef = cfg["Optimization"]["CostCoef"]["VeltarCoef"]
+
+        self.save_dir, self.name, self.date = self.DirCreate()
         pass
 
     def visualization(q, dq, u, t, robot, flag):
@@ -565,20 +572,15 @@ class DataProcess():
         pass
 
     def DirCreate(self):
-        ML = self.cfg["Optimization"]["MaxLoop"] / 1000
-        Tp = self.cfg['Controller']['Tp']
-        T = self.cfg['Controller']['T']
-        PostarCoef = self.cfg["Optimization"]["CostCoef"]["postarCoef"]
-        TorqueCoef = self.cfg["Optimization"]["CostCoef"]["torqueCoef"]
         date = time.strftime("%Y-%m-%d-%H-%M-%S")
-        dirname = "-MPC-Pos_"+str(PostarCoef)+"-Tor_"+str(TorqueCoef) \
-                + "-dt_"+str(self.robot.dt)+"-T_"+str(T)+"-Tp_"+str(Tp)+"-ML_"+str(ML)+ "k" + "/"
+        dirname = "-MPC-Pos_"+str(self.PostarCoef)+"-Tor_"+str(self.TorqueCoef) +"-Vel_"+str(self.VeltarCoef)\
+                + "-dt_"+str(self.robot.dt)+"-T_"+str(self.T)+"-Tp_"+str(self.Tp)+"-ML_"+str(self.ML)+ "k" 
 
-        save_dir = self.savepath + date + dirname
+        save_dir = self.savepath + date + dirname+ "/"
 
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
-        return save_dir
+        return save_dir, dirname, date
 
     def DataPlot(self, saveflag):
         import matplotlib.pyplot as plt
@@ -623,14 +625,8 @@ class DataProcess():
         ax3.legend(loc='upper right', fontsize = 12)
         ax3.grid()
 
-        ML = self.cfg["Optimization"]["MaxLoop"] / 1000
-        Tp = self.cfg['Controller']['Tp']
-        T = self.cfg['Controller']['T']
-        PostarCoef = self.cfg["Optimization"]["CostCoef"]["postarCoef"]
-        TorqueCoef = self.cfg["Optimization"]["CostCoef"]["torqueCoef"]
-        date = time.strftime("%Y-%m-%d-%H-%M-%S")
-        name = "-MPC-Pos_"+str(PostarCoef)+"-Tor_"+str(TorqueCoef) \
-                + "-dt_"+str(self.robot.dt)+"-T_"+str(T)+"-Tp_"+str(Tp)+"-ML_"+str(ML)+ "k" + ".png"
+        date = self.date
+        name = self.name + ".png"
 
         savename = self.save_dir + date + name
 
@@ -715,16 +711,10 @@ class DataProcess():
             fig, animate, len(self.t), interval=self.robot.dt*1000, blit=True)
 
         ## animation save to gif
-        ML = self.cfg["Optimization"]["MaxLoop"] / 1000
-        Tp = self.cfg['Controller']['Tp']
-        T = self.cfg['Controller']['T']
-        PostarCoef =self. cfg["Optimization"]["CostCoef"]["postarCoef"]
-        TorqueCoef = self.cfg["Optimization"]["CostCoef"]["torqueCoef"]
-        date = time.strftime("%Y-%m-%d-%H-%M-%S")
-        name = "-MPC-Pos_"+str(PostarCoef)+"-Tor_"+str(TorqueCoef) \
-                + "-dt_"+str(self.robot.dt)+"-T_"+str(T)+"-Tp_"+str(Tp)+"-ML_"+str(ML)+ "k" + ".gif"
+        date = self.date
+        name = self.name + ".gif"
 
-        savename = self.save_dir + name
+        savename = self.save_dir + date + name
 
         if saveflag:
             ani.save(savename, writer='pillow', fps=72)
@@ -839,15 +829,8 @@ class DataProcess():
         pass
 
     def DataSave(self, saveflag):
-        ML = self.cfg["Optimization"]["MaxLoop"] / 1000
-        Tp = self.cfg['Controller']['Tp']
-        T = self.cfg['Controller']['T']
-        dt = self.cfg['Controller']['dt']
-        PostarCoef = self.cfg["Optimization"]["CostCoef"]["postarCoef"]
-        TorqueCoef = self.cfg["Optimization"]["CostCoef"]["torqueCoef"]
-        date = time.strftime("%Y-%m-%d-%H-%M-%S")
-        name = "-MPC-Pos_"+str(PostarCoef)+"-Tor_"+str(TorqueCoef) \
-                + "-dt_"+str(dt)+"-T_"+str(T)+"-Tp_"+str(Tp)+"-ML_"+str(ML)+ "k"
+        date = self.date
+        name = self.name 
 
         if saveflag:
             np.save(self.save_dir+date+name+"-sol.npy",
@@ -1049,11 +1032,15 @@ def Sim_main():
     robot = TriplePendulum(cfg)
     # endregion
 
+    # region data setting
     q = []
     dq = []
     t = []
     u = []
+    # endregion
+    
     time_start = time.time()
+
     for i in range(N):
         # time.sleep(0.01)
         TIP.updateMassInfo()
@@ -1083,15 +1070,21 @@ def Sim_main():
         pass
 
     time_end = time.time()
-    time_run = time_end - time_start
+    
+    # region data process
     q = np.asarray(q)
     dq = np.asarray(dq)
     tor = np.asarray(u)
     t = np.asarray(t).reshape([-1, 1])
-    print("="*50)
-    print("whole running time of mpc is: ", time_run / 60 , " min")
+    # endregion
 
-    ## visualization
+    # region params print
+    time_run = (time_end - time_start) / 60
+    print("="*50)
+    print("whole running time of mpc is: ", time_run , " min")
+    # endregion
+
+    # region visualization
     fig_flag = True
     ani_flag = True
     save_flag = True
@@ -1102,6 +1095,7 @@ def Sim_main():
     visual.DataPlot(fig_flag)
     visual.animation(0, ani_flag)
     visual.DataSave(save_flag)
+    # endregion
     pass
 
 if __name__ == "__main__":
