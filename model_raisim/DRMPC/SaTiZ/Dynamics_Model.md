@@ -266,3 +266,48 @@ $$
 
 <img src="https://s2.loli.net/2022/04/10/UAjKxbz4SMdvLR7.png" alt="traj-mpc-0.01" style="zoom:72%;" />
 
+
+
+## MPC控制
+
+###　MPC_Raisim测试
+
+- mpc 控制方程
+
+$$
+\begin{aligned}
+&\min_{q_i,\tau_i}{\sum^n_{i=0}(\lvert \tau_i \rvert+\lvert q_i - q_{tar}\rvert)+\lvert q_n-q_{tar} \rvert}\\
+&\quad\quad s.t.\quad
+\begin{aligned}
+&\color{Crimson}{\left\{
+    \begin{aligned}
+    &q_{i+1}-q_i-\frac{dt}{2}(\dot{q}_{i+1}+\dot{q}_{i})=0\\
+    &M(q_i)(\dot{q}_{i+1}-\dot{q}_i)+C(q_i,\dot{q}_{i+1})dt+G(q_i)dt-\tau_i dt=0\\
+    \end{aligned}
+\right.} &\color{Crimson}{Dynamics}\\
+&\color{DodgerBlue}{\left\{
+    \begin{aligned}
+    &\underline{q}\le q \le \bar{q}\\
+    &\underline{\dot{q}} \le \dot{q} \le \bar{\dot{q}}\\
+    &\underline{\tau}(\dot{q})\le \tau \le \bar{\tau}(\dot{q})\\
+    \end{aligned}
+\right.} &\color{DodgerBlue}{Boundary}\\
+\end{aligned}
+\end{aligned}
+$$
+
+
+
+- 一组好的测试参数和结果
+
+  测试结果文件：X-2022-04-14-18-22-51-MPC-Pos_100-Tor_5-Vel_30-dt_0.01-T_4-Tp_0.8-ML_0.5k文件夹
+
+  测试结果：基于当前的质量和惯量分布，预测时间Tp必须大于0.6s，但是测试的惯量分布三级杆很近似
+
+  <img src="https://s2.loli.net/2022/04/15/Db4tcZM9IxzaNJF.png" alt="2022-04-14-18-22-51-MPC-Pos_100-Tor_5-Vel_30-dt_0.01-T_4-Tp_0.8-ML_0.5k" style="zoom:72%;" />
+
+- 工作计划：
+
+  对于质量和惯量构建一定的无量纲化参数，来减少可调的参数量
+
+  测试最大可调节身体偏移量，增加力矩限制范围

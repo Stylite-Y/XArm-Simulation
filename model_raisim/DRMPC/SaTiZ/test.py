@@ -294,6 +294,9 @@ def visual2():
         print(i // di, '/', t.size // di)
         make_plot(i)
 
+def stepresponse():
+    pass
+
 if __name__ == "__main__":
     q0 = [1.0, 0.0]
     dq0 = [0.0, 0.0]

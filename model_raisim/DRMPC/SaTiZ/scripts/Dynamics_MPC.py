@@ -6,7 +6,10 @@ from casadi.tools import *
 import do_mpc
 import os
 import yaml
+from scipy import signal
 import matplotlib.pyplot as plt
+from sympy import Symbol as sym
+import sympy
 
 class RobotProperty():
     def __init__(self, ParamData):
@@ -157,8 +160,6 @@ class RobotProperty():
         return [[M11, M12, M13],
                 [M21, M22, M23],
                 [M31, M32, M33]]
-
-
 
 def Dribble_model(ParamData,symvar_type='SX'):
     """
@@ -325,77 +326,112 @@ def Dribble_simulator(model):
 
     return simulator
 
-if __name__ =="__main__":
-    ## get params config data
-    ## /..../Simulation/model_raisim/DRMPC/SaTiZ_3D/scripts
-    # FilePath1 = os.path.dirname(os.path.abspath(__file__))
-    ## os.path.abspath(__file__): /.../DRMPC/SaTiZ_3D/scripts/Dynamics_MPC.py
-    ## os.path.dirname(__file__): /.../DRMPC/SaTiZ_3D/scripts
+def StepResponse(cfg):
+    Robot = RobotProperty(cfg)
+    MassMatrix = Robot.getMassMatrix(0, np.pi, 0)
+    Gravity = Robot.getGravityLinearMatrix()
+    s = sym('s')
+    for i in range(3):
+        for j in range(3):
+            Mass = MassMatrix[i][j] * s * s
+    K = Mass + Gravity
+    K = sympy.Matrix(K)
+    print(K)
+    K_inv = K.inv()
+    row1 = K_inv.row(0)
+    col2 = row1.col(0)
+    col2 = sympy.simplify(col2)
+    print(col2)
 
-    # /..../Simulation/model_raisim/DRMPC/SaTiZ_3D
+    up1 = [0.000088, 0, 0.063, 0, 6.95, 0, 144.28]
+    low1 = [0.00045, 0, 0.32, 0, 35.45, 0, 736]
+    sys1 = signal.TransferFunction(up1, low1)
+    t1, y1 = signal.step(sys1)
+    # plt.figure()
+    # plt.plot(t1, y1)
+    # plt.show()
+    pass
+
+if __name__ =="__main__":
     FilePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ParamFilePath = FilePath + "/config/Dual.yaml"
     ParamFile = open(ParamFilePath, "r", encoding="utf-8")
-    ParamData = yaml.load(ParamFile, Loader=yaml.FullLoader)
+    cfg = yaml.load(ParamFile, Loader=yaml.FullLoader)
 
-    # Dribble_model(ParamData)
-    model = Dribble_model(ParamData)
-    mpc = Dribble_mpc(model, ParamData)
-    simulator = Dribble_simulator(model)
-    estimator = do_mpc.estimator.StateFeedback(model)
+    StepResponse(cfg)
+    pass
 
-    """
-    Set initial state
-    """
-    # x0 = np.pi*np.array([-0.05, 1.05, 0.5, 0, 0, 0]).reshape(-1,1)
-    simulator.x0['theta1'] = -0.05*np.pi
-    simulator.x0['theta2'] = 1.05*np.pi
-    simulator.x0['theta3'] = 0.5*np.pi
+# if __name__ =="__main__":
+#     ## get params config data
+#     ## /..../Simulation/model_raisim/DRMPC/SaTiZ_3D/scripts
+#     # FilePath1 = os.path.dirname(os.path.abspath(__file__))
+#     ## os.path.abspath(__file__): /.../DRMPC/SaTiZ_3D/scripts/Dynamics_MPC.py
+#     ## os.path.dirname(__file__): /.../DRMPC/SaTiZ_3D/scripts
 
-    x0 = simulator.x0.cat.full()
-    mpc.x0 = x0
-    simulator.x0 = x0
-    estimator.x0 = x0
+#     # /..../Simulation/model_raisim/DRMPC/SaTiZ_3D
+#     FilePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+#     ParamFilePath = FilePath + "/config/Dual.yaml"
+#     ParamFile = open(ParamFilePath, "r", encoding="utf-8")
+#     ParamData = yaml.load(ParamFile, Loader=yaml.FullLoader)
 
-    mpc.set_initial_guess()
+#     # Dribble_model(ParamData)
+#     model = Dribble_model(ParamData)
+#     mpc = Dribble_mpc(model, ParamData)
+#     simulator = Dribble_simulator(model)
+#     estimator = do_mpc.estimator.StateFeedback(model)
 
-    """
-    Setup graphic:
-    """
+#     """
+#     Set initial state
+#     """
+#     # x0 = np.pi*np.array([-0.05, 1.05, 0.5, 0, 0, 0]).reshape(-1,1)
+#     simulator.x0['theta1'] = -0.05*np.pi
+#     simulator.x0['theta2'] = 1.05*np.pi
+#     simulator.x0['theta3'] = 0.5*np.pi
 
-    fig, ax, graphics = do_mpc.graphics.default_plot(mpc.data)
-    plt.ion()
+#     x0 = simulator.x0.cat.full()
+#     mpc.x0 = x0
+#     simulator.x0 = x0
+#     estimator.x0 = x0
 
-    """
-    Run MPC main loop:
-    """
-    show_animation = True
-    mpc_graphics = do_mpc.graphics.Graphics(mpc.data)
-    sim_graphics = do_mpc.graphics.Graphics(simulator.data)
-    for k in range(500):
-        u0 = mpc.make_step(x0)
-        y_next = simulator.make_step(u0)
-        x0 = estimator.make_step(y_next)
+#     mpc.set_initial_guess()
 
-        # if show_animation:
-        #     graphics.plot_results(t_ind=k)
-        #     graphics.plot_predictions(t_ind=k)
-        #     graphics.reset_axes()
-        #     plt.show()
-        #     plt.pause(0.01)
+#     """
+#     Setup graphic:
+#     """
 
-    # mpc_graphics.plot_predictions(t_ind=0)
-    # Plot results until current time
-    mpc_graphics = do_mpc.graphics.Graphics(mpc.data)
-    sim_graphics = do_mpc.graphics.Graphics(simulator.data)
-    sim_graphics.plot_results()
-    sim_graphics.reset_axes()
-    plt.show()
+#     fig, ax, graphics = do_mpc.graphics.default_plot(mpc.data)
+#     plt.ion()
 
-    SavePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    SavePath = SavePath + '/data/2022-03-21/'
-    store_results = True
-    if store_results:
-        # do_mpc.data.save_results([mpc, simulator], SavePath)
-        do_mpc.data.save_results([mpc, simulator])
+#     """
+#     Run MPC main loop:
+#     """
+#     show_animation = True
+#     mpc_graphics = do_mpc.graphics.Graphics(mpc.data)
+#     sim_graphics = do_mpc.graphics.Graphics(simulator.data)
+#     for k in range(500):
+#         u0 = mpc.make_step(x0)
+#         y_next = simulator.make_step(u0)
+#         x0 = estimator.make_step(y_next)
+
+#         # if show_animation:
+#         #     graphics.plot_results(t_ind=k)
+#         #     graphics.plot_predictions(t_ind=k)
+#         #     graphics.reset_axes()
+#         #     plt.show()
+#         #     plt.pause(0.01)
+
+#     # mpc_graphics.plot_predictions(t_ind=0)
+#     # Plot results until current time
+#     mpc_graphics = do_mpc.graphics.Graphics(mpc.data)
+#     sim_graphics = do_mpc.graphics.Graphics(simulator.data)
+#     sim_graphics.plot_results()
+#     sim_graphics.reset_axes()
+#     plt.show()
+
+#     SavePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+#     SavePath = SavePath + '/data/2022-03-21/'
+#     store_results = True
+#     if store_results:
+#         # do_mpc.data.save_results([mpc, simulator], SavePath)
+#         do_mpc.data.save_results([mpc, simulator])
 

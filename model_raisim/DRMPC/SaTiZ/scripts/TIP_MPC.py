@@ -7,6 +7,7 @@ from casadi import sin as s
 from casadi import cos as c
 from matplotlib.pyplot import savefig
 import numpy as np
+from scipy import signal
 from numpy.random import normal
 import time
 import os
@@ -15,6 +16,7 @@ from ruamel.yaml import YAML
 import raisimpy as raisim
 import datetime
 from scipy.integrate import odeint
+from Dynamics_MPC import RobotProperty
 
 class TriplePendulum():
     def __init__(self, cfg):
@@ -189,6 +191,8 @@ class NLP():
         self.VeltarCoef = cfg["Optimization"]["CostCoef"]["VeltarCoef"]
         max_iter = cfg["Optimization"]["MaxLoop"]
         self.random_seed = cfg["Optimization"]["RandomSeed"]
+        self.dt = cfg['Controller']['dt']       # sample time
+        self.Nc = cfg['Controller']['Nc']       # control time
 
         self.cost = self.CostFun(robot)
         # self.cost = self.CostFunMPC(robot)
@@ -381,6 +385,21 @@ class NLP():
 
         return u[0]
 
+    def Solve_StateReturn2(self, robot):
+        u = []
+        try:
+            sol = robot.opti.solve()
+            for i in range(self.Nc):
+                u.append([sol.value(robot.u[i][j]) for j in range(2)])
+            pass
+        except:
+            value = robot.opti.debug.value
+            for i in range(self.Nc):
+                u.append([value(robot.u[i][j]) for j in range(2)])
+            pass
+
+        return u
+
     def Solve_Output(self, robot, flag_save=True, StorePath="./"):
         # solve the nlp and stroge the solution
         q = []
@@ -505,6 +524,16 @@ class MPC():
 
         return sol
 
+class DynamicsAnalysis():
+    def __init__(self, cfg):
+        self.cfg = cfg
+        pass
+
+    def StepResponse(self):
+        Robot = RobotProperty(self.cfg)
+        MassMatrix = Robot.getMassMatrix(0, np.pi, 0)
+        Gravity = Robot.getGravityLinearMatrix()
+        pass
 
 class DataProcess():
     def __init__(self, cfg, robot, q, dq, u, t, savepath):
@@ -518,6 +547,7 @@ class DataProcess():
 
         self.ML = self.cfg["Optimization"]["MaxLoop"] / 1000
         self.Tp = self.cfg['Controller']['Tp']
+        self.Nc = self.cfg['Controller']['Nc']
         self.T = self.cfg['Controller']['T']
         self.PostarCoef = self.cfg["Optimization"]["CostCoef"]["postarCoef"]
         self.TorqueCoef = self.cfg["Optimization"]["CostCoef"]["torqueCoef"]
@@ -574,7 +604,7 @@ class DataProcess():
     def DirCreate(self):
         date = time.strftime("%Y-%m-%d-%H-%M-%S")
         dirname = "-MPC-Pos_"+str(self.PostarCoef)+"-Tor_"+str(self.TorqueCoef) +"-Vel_"+str(self.VeltarCoef)\
-                + "-dt_"+str(self.robot.dt)+"-T_"+str(self.T)+"-Tp_"+str(self.Tp)+"-ML_"+str(self.ML)+ "k" 
+                + "-dt_"+str(self.robot.dt)+"-T_"+str(self.T)+"-Tp_"+str(self.Tp)+"-Tc_"+str(self.Nc)+"-ML_"+str(self.ML)+ "k" 
 
         save_dir = self.savepath + date + dirname+ "/"
 
@@ -842,7 +872,6 @@ class DataProcess():
                 YAML().dump(self.cfg, file)
             pass
 
-
 ## trajectory optimizaition main function
 def main():
     # region optimization trajectory for bipedal hybrid robot system
@@ -883,9 +912,6 @@ def main():
 ## mpc control main function
 def MPC_main():
     ## file path 
-    ani_flag = True
-    vis_flag = True
-    save_flag = False
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
     ani_path = StorePath + "/data/animation/"
@@ -915,6 +941,7 @@ def MPC_main():
     dq = []
     tor = []
     t = []
+    time_start = time.time() 
     for i in range(N):
         ## create NLP problem
         robot = TriplePendulum(cfg)
@@ -939,14 +966,21 @@ def MPC_main():
         dq0 = sol[-1, 3:6]
         q0 = q0.tolist()
         dq0 = dq0.tolist()
-        print("===================================")
-        print(i)
+        print("=================================")
+        print("the number of receding optimia: ", i, "/", N)
+        time_end = time.time()
+        time_run = (time_end - time_start) / 60
+        print("whole running time of mpc is: ", time_run , " min")
 
         # if i == 1:
         #     print(q)
         #     # print(q[:,1])
         #     print(sol, q0, dq0)
         #     break
+
+    time_run = (time_end - time_start) / 60
+    print("="*50)
+    print("whole running time of mpc is: ", time_run , " min")
 
     q = np.asarray(q)
     dq = np.asarray(dq)
@@ -955,27 +989,18 @@ def MPC_main():
     
     print(t.shape, q.shape)
 
-    ML = cfg["Optimization"]["MaxLoop"] / 1000
-    Tp = cfg['Controller']['Tp']
-    PostarCoef = cfg["Optimization"]["CostCoeff"]["postarCoeff"]
-    TorqueCoef = cfg["Optimization"]["CostCoeff"]["torqueCoef"]
-
-    if save_flag:
-        date = time.strftime("%Y-%m-%d-%H-%M-%S")
-        name = "-MPC-Pos_"+str(PostarCoef)+"-Tor_"+str(TorqueCoef) \
-                + "-dt_"+str(dt)+"-T_"+str(T)+"-Tp_"+str(Tp)+"-ML_"+str(ML)+ "k"
-        np.save(save_dir+date+name+"-sol.npy",
-                np.hstack((q, dq, tor, t)))
-        # output the config yaml file
-        # with open(os.path.join(StorePath, date + name+"-config.yaml"), 'wb') as file:
-        #     yaml.dump(self.cfg, file)
-        with open(save_dir+date+name+"-config.yaml", mode='w') as file:
-            YAML().dump(cfg, file)
-
-    DataProcess.DataPlot(q, dq, tor, t, vis_flag)
-    
-    if ani_flag:
-        DataProcess.animation(q, dq, tor, t, robot, ani_path, cfg, 0, 0)
+    # region visualization
+    fig_flag = True
+    ani_flag = True
+    save_flag = True
+    # fig_flag = False
+    # ani_flag = False
+    # save_flag = False
+    visual = DataProcess(cfg, robot, q, dq, tor, t, save_dir)
+    visual.DataPlot(fig_flag)
+    visual.animation(0, ani_flag)
+    visual.DataSave(save_flag)
+    # endregion
 
 def Sim_main():
     # region filepath and configure file load
@@ -1018,10 +1043,11 @@ def Sim_main():
     # region controller initial params setting
     dt = cfg['Controller']['dt']        # sample time
     T = cfg['Controller']['T']          # predictive time
+    Nc = cfg['Controller']['Nc']        # control time
     N = int(T / dt)                     # samples number
 
-    # q0 = [0.2, 3.3, -0.5]
     q0 = [0.1, 3.3, -0.5]
+    # q0 = [0.5, 3.3, -0.5]
     dq0 = [0.0, 0.0, 0.0]
     jointNominalConfig = np.array([q0[0], q0[1], q0[2]])
     jointVelocityTarget = np.array([dq0[0], dq0[1], dq0[2]])
@@ -1039,22 +1065,65 @@ def Sim_main():
     u = []
     # endregion
     
-    time_start = time.time()
+    time_start = time.time() 
 
+    # region mpc main loop
+    # for i in range(N):
+    #     # time.sleep(0.01)
+    #     TIP.updateMassInfo() 
+    #     JointPos, JointVel = TIP.getState()
+    #     JointPos = JointPos.tolist()
+    #     JointVel = JointVel.tolist()
+
+    #     robot = TriplePendulum(cfg)
+    #     nonlinearOptimization = NLP(robot, cfg, JointPos, JointVel)
+    #     tor = nonlinearOptimization.Solve_StateReturn(robot)
+
+    #     u1 = tor[0]
+    #     u2 = tor[1]
+    #     u_temp = [u1, u2]
+
+    #     t.append((i)*robot.dt)
+    #     q.append(JointPos)
+    #     dq.append(JointVel)
+    #     u.append(u_temp)
+
+    #     print("=================================")
+    #     print("the number of receding optimia: ", i, "/", N)
+    #     time_end = time.time()
+    #     time_run = (time_end - time_start) / 60
+    #     print("whole running time of mpc is: ", time_run , " min")
+
+    #     TIP.setGeneralizedForce([0.0, u1, u2])
+
+    #     server.integrateWorldThreadSafe()
+    #     pass
+    # endregion
+
+    # region mpc multi Tc loop
+    Nc_flag = 0
     for i in range(N):
         # time.sleep(0.01)
-        TIP.updateMassInfo()
-        mass_sim = TIP.getMassMatrix() 
+        TIP.updateMassInfo() 
         JointPos, JointVel = TIP.getState()
         JointPos = JointPos.tolist()
         JointVel = JointVel.tolist()
+        if Nc_flag == Nc:
+            Nc_flag = 0
+        if Nc_flag == 0:
+            robot = TriplePendulum(cfg)
+            nonlinearOptimization = NLP(robot, cfg, JointPos, JointVel)
+            tor = nonlinearOptimization.Solve_StateReturn2(robot)
+            # print(tor)
+            u1 = tor[Nc_flag][0]
+            u2 = tor[Nc_flag][1]
+            Nc_flag += 1
+        elif Nc_flag > 0 and Nc_flag < Nc:
+            u1 = tor[Nc_flag][0]
+            u2 = tor[Nc_flag][1]
+            Nc_flag += 1
+            pass
 
-        robot = TriplePendulum(cfg)
-        nonlinearOptimization = NLP(robot, cfg, JointPos, JointVel)
-        tor = nonlinearOptimization.Solve_StateReturn(robot)
-
-        u1 = tor[0]
-        u2 = tor[1]
         u_temp = [u1, u2]
 
         t.append((i)*robot.dt)
@@ -1064,11 +1133,15 @@ def Sim_main():
 
         print("=================================")
         print("the number of receding optimia: ", i, "/", N)
+        time_end = time.time()
+        time_run = (time_end - time_start) / 60
+        print("whole running time of mpc is: ", time_run , " min")
+
         TIP.setGeneralizedForce([0.0, u1, u2])
 
         server.integrateWorldThreadSafe()
         pass
-
+    # endregion
     time_end = time.time()
     
     # region data process

@@ -4,8 +4,8 @@ Optimization:
 
   CostCoef:
     postarCoef: 100
-    VeltarCoef: 30
-    torqueCoef: 5
+    VeltarCoef: 20
+    torqueCoef: 1
 
 Environment:
   Gravity: 9.81
@@ -17,8 +17,9 @@ Controller:
   PosTar: 0.0
   VelTar: 0.0
   dt: 0.01
-  T: 4
-  Tp: 0.8
+  T: 5
+  Nc: 4
+  Tp: 1.0
 
   Boundary:
     theta1: [-1.57, 1.57]
@@ -29,8 +30,8 @@ Controller:
 Robot:
   Mass:
     # mass: [0.5, 0.3, 0.3]
-    # inertia: [0.020, 0.001, 0.001]
-    inertia: [0.036, 0.03, 0.03]
+    inertia: [0.015, 0.006, 0.006]
+    # inertia: [0.036, 0.03, 0.03]
     mass: [0.5, 0.2, 0.2]
     # inertia: [0.367, 0.11067, 0.11067]
     massCenter: [0.4, 0.15, 0.15]
