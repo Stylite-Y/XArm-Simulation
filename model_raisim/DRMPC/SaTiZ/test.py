@@ -295,7 +295,7 @@ def visual2():
         make_plot(i)
 
 def stepresponse():
-    pass
+    pass    
 
 if __name__ == "__main__":
     q0 = [1.0, 0.0]
@@ -314,4 +314,6 @@ if __name__ == "__main__":
     # # temp.b()
     # print(np.linspace(0, 4, 4))
     # visual2()
+
+    print(np.sqrt(4))
 

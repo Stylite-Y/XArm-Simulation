@@ -147,7 +147,7 @@ $$
 
 ### 方程线性化
 
-动力学方程线性化：当$\theta_1和\theta_2$都很小时，可以近似认为是零，因此在平衡点附近$\theta_1=0, \phi_2(\phi_2=\pi+\theta_2)=0,\theta_3=0,\dot{\theta}_1=0,\dot{\theta}_2=0,\dot{\theta}_3=0$，在进行线性化时所以由于角度变化很小，因此所有的二阶小量都被舍去（$\theta\dot{\theta}$或者$\dot{\theta}^2$），因此离心力和科氏力项中由于简化后存在二阶小量，该矩阵各项都会为0.
+动力学方程线性化：当$\theta_1和\theta_2$都很小时，可以近似认为是零，因此在平衡点附近$\theta_1=0, \phi_2(\phi_2=\theta_2-\pi)=0,\theta_3=0,\dot{\theta}_1=0,\dot{\theta}_2=0,\dot{\theta}_3=0$，在进行线性化时所以由于角度变化很小，因此所有的二阶小量都被舍去（$\theta\dot{\theta}$或者$\dot{\theta}^2$），因此离心力和科氏力项中由于简化后存在二阶小量，该矩阵各项都会为0.
 
 其中：$sin\theta\approx\theta,cos\theta\approx1,sin(\theta_2+\theta_3)\approx\theta_2+\theta_3,cos(\theta_2+\theta_3)\approx1$
 
