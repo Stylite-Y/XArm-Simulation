@@ -20,6 +20,7 @@ from scipy.integrate import odeint
 from Dynamics_MPC import RobotProperty
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from scipy.signal import hilbert, savgol_filter
 
 class TriplePendulum():
     def __init__(self, cfg):
@@ -142,16 +143,18 @@ class TriplePendulum():
             - L0*(L1*m2*s(q[1]) + lc2*m2*s(q[1]+q[2]) + lc1*m1*s(q[1])) * dq[1]*dq[1] \
             - 2*lc2*m2*(L0*s(q[1]+q[2]) + L1*s(q[2]))* dq[1]*dq[2] \
             - lc2*m2*(L0*s(q[1]+q[2]) + L1*s(q[2]))* dq[2]*dq[2]
-        # C1 = C1 - 1.0 * dq[0] 
+        C1 = C1 - 0.2 * dq[0] 
         
         C2 = L0*(L1*m2*s(q[1]) + lc2*m2*s(q[1]+q[2]) + lc1*m1*s(q[1])) * dq[0]*dq[0] \
             - 2*L1*lc2*m2*s(q[2]) * dq[0]*dq[2] \
             - 2*L1*lc2*m2*s(q[2]) * dq[1]*dq[2] \
             - L1*lc2*m2*s(q[2]) * dq[2]*dq[2]
+        C2 = C2 - 0.2 * dq[1] 
 
         C3 = lc2*m2*(L0*s(q[1]+q[2]) + L1*s(q[2]))* dq[0]*dq[0] \
             + 2*L1*lc2*m2*s(q[2]) * dq[0]*dq[1] \
             + L1*lc2*m2*s(q[2]) * dq[1]*dq[1]
+        C3 = C3 - 0.2 * dq[2] 
 
         return [C1, C2, C3]
 
@@ -200,6 +203,7 @@ class NLP():
         self.TorqueCoef = cfg["Optimization"]["CostCoef"]["torqueCoef"]
         self.PostarCoef = cfg["Optimization"]["CostCoef"]["postarCoef"]
         self.VeltarCoef = cfg["Optimization"]["CostCoef"]["VeltarCoef"]
+        self.DtorqueCoef = cfg["Optimization"]["CostCoef"]["DtorqueCoef"]
         max_iter = cfg["Optimization"]["MaxLoop"]
         self.random_seed = cfg["Optimization"]["RandomSeed"]
         self.dt = cfg['Controller']['dt']       # sample time
@@ -261,13 +265,18 @@ class NLP():
         Torque = 0
         PosTar = 0
         VelTar = 0
+        Dtorque = 0
         for i in range(Arm.NS):
-            for j in range(2):
-                Torque += (Arm.u[i][j]/Arm.motor_mt)**2 * Arm.dt
-                pass
+            Torque += (Arm.u[i][0]/Arm.motor_mt)**2 * Arm.dt * self.TorqueCoef[0]
+            Torque += (Arm.u[i][1]/Arm.motor_mt)**2 * Arm.dt * self.TorqueCoef[1]
+            if i > 0:
+                Dtorque += (Arm.u[i][0]- Arm.u[i-1][0])**2 * Arm.dt * self.DtorqueCoef[0]
+                Dtorque += (Arm.u[i][1]- Arm.u[i-1][1])**2 * Arm.dt * self.DtorqueCoef[1]
+
             PosTar += (Arm.q[i][0] - Arm.postar)**2 * Arm.dt * self.PostarCoef[0]
             PosTar += (Arm.q[i][1] - np.pi)**2 * Arm.dt * self.PostarCoef[1]
             PosTar += (Arm.q[i][2] - Arm.postar)**2 * Arm.dt * self.PostarCoef[2]
+
             VelTar += (Arm.dq[i][0] - Arm.veltar)**2 * Arm.dt * self.VeltarCoef[0]
             VelTar += (Arm.dq[i][1] - Arm.veltar)**2 * Arm.dt * self.VeltarCoef[1]
             VelTar += (Arm.dq[i][2] - Arm.veltar)**2 * Arm.dt * self.VeltarCoef[2]
@@ -277,10 +286,10 @@ class NLP():
         PosTar += (Arm.q[-1][1] - np.pi)**2 * self.PostarCoef[1]
         PosTar += (Arm.q[-1][2] - Arm.postar)**2 * self.PostarCoef[2]
         VelTar += (Arm.dq[-1][0] - Arm.veltar)**2 * self.VeltarCoef[0]
-        VelTar += (Arm.dq[-1][ 1] - Arm.veltar)**2 * self.VeltarCoef[1]
+        VelTar += (Arm.dq[-1][1] - Arm.veltar)**2 * self.VeltarCoef[1]
         VelTar += (Arm.dq[-1][2] - Arm.veltar)**2 * self.VeltarCoef[2]
 
-        return PosTar + Torque * self.TorqueCoef + VelTar
+        return PosTar + Torque + VelTar + Dtorque
 
     def getConstraints(self, Arm):
         ceq = []
@@ -618,7 +627,7 @@ class DataProcess():
 
     def DirCreate(self):
         date = time.strftime("%Y-%m-%d-%H-%M-%S")
-        dirname = "-MPC-Pos_"+str(self.PostarCoef[1])+"-Tor_"+str(self.TorqueCoef) +"-Vel_"+str(self.VeltarCoef[1])\
+        dirname = "-MPC-Pos_"+str(self.PostarCoef[1])+"-Tor_"+str(self.TorqueCoef[1]) +"-Vel_"+str(self.VeltarCoef[1])\
                 + "-dt_"+str(self.dt)+"-T_"+str(self.T)+"-Tp_"+str(self.Tp)+"-Tc_"+str(self.Nc)+"-ML_"+str(self.ML)+ "k" 
 
         save_dir = self.savepath + date + dirname+ "/"
@@ -871,7 +880,7 @@ class DataProcess():
         
         pass
 
-    def ForceAnalysis(self):
+    def ForceAnalysis(self, saveflag = 0):
         robot = self.robot    # create robot
         # calculate force
         Inertia_main = []
@@ -927,11 +936,19 @@ class DataProcess():
         ax3.yaxis.set_tick_params(labelsize = 12)
         ax3.legend(loc='upper right', fontsize = 12)
         ax3.grid()
+
+        date = self.date
+        name = self.name + "Force.png"
+
+        savename = self.save_dir + date + name
+
+        if saveflag:
+            plt.savefig(savename)
         plt.show()
 
         pass
 
-    def PowerAnalysis(self):
+    def PowerAnalysis(self,saveflag=0):
         from numpy import sin, cos
 
         L0 = self.robot.L[0]
@@ -959,17 +976,28 @@ class DataProcess():
         Momentum0 = m0*np.sqrt(x0**2 + y0**2) + I0 * dq[:, 0]
         Momentum1 = m1*np.sqrt(x1**2 + y1**2) + I1 * dq[:, 1]
         Momentum2 = m2*np.sqrt(x2**2 + y2**2) + I2 * dq[:, 2]
+        Impulse = self.u * self.dt
 
         fig, axes = plt.subplots(1,1, dpi=100,figsize=(12,10))
         axes.plot(self.t, Momentum0, label="link 0 Momentum")
         axes.plot(self.t, Momentum1, label="link 1 Momentum")
         axes.plot(self.t, Momentum2, label="link 2 Momentum")
+        axes.plot(self.t, Impulse[:,0], label="joint 1 Impulse")
+        axes.plot(self.t, Impulse[:,1], label="joint 2 Impulse")
 
         axes.set_ylabel('Momentum ', fontsize = 15)
         axes.xaxis.set_tick_params(labelsize = 12)
         axes.yaxis.set_tick_params(labelsize = 12)
         axes.legend(loc='upper right', fontsize = 12)
         axes.grid()
+
+        date = self.date
+        name = self.name + "Power.png"
+
+        savename = self.save_dir + date + name
+
+        if saveflag:
+            plt.savefig(savename)
         plt.show()
         pass
 
@@ -1270,7 +1298,7 @@ def Sim_main():
     t = np.asarray(t).reshape([-1, 1])
     # endregion
 
-    # region params print
+    # region params print 
     time_run = (time_end - time_start) / 60
     print("="*50)
     print("whole running time of mpc is: ", time_run , " min")
@@ -1285,8 +1313,8 @@ def Sim_main():
     # save_flag = False
     visual = DataProcess(cfg, robot, q, dq, ddq, tor, t, save_dir)
     visual.DataPlot(fig_flag)
-    visual.ForceAnalysis()
-    visual.PowerAnalysis()
+    visual.ForceAnalysis(fig_flag)
+    visual.PowerAnalysis(fig_flag)
     visual.animation(0, ani_flag)
     visual.DataSave(save_flag)
     # endregion
@@ -1298,7 +1326,7 @@ def DataLoad():
     ParamFile = open(ParamFilePath, "r", encoding="utf-8")
     cfg = yaml.load(ParamFile, Loader=yaml.FullLoader)
 
-    DataFile = FilePath + "/data/2022-04-20/2022-04-20-20-56-43-MPC-Pos_80-Tor_5-Vel_10-dt_0.01-T_5.0-Tp_0.8-Tc_1-ML_0.1k/2022-04-20-20-56-43-MPC-Pos_80-Tor_5-Vel_10-dt_0.01-T_5.0-Tp_0.8-Tc_1-ML_0.1k-sol.npy"
+    DataFile = FilePath + "/data/2022-04-21/2022-04-21-14-10-16-MPC-Pos_60-Tor_1-Vel_20-dt_0.02-T_5.0-Tp_0.6-Tc_1-ML_0.1k/2022-04-21-14-10-16-MPC-Pos_60-Tor_1-Vel_20-dt_0.02-T_5.0-Tp_0.6-Tc_1-ML_0.1k-sol.npy"
     Data = np.load(DataFile)
     q = Data[:, 0:3]
     dq = Data[:, 3:6]
