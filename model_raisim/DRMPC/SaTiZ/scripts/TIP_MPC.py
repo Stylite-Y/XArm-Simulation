@@ -20,7 +20,6 @@ from scipy.integrate import odeint
 from Dynamics_MPC import RobotProperty
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from scipy.signal import hilbert, savgol_filter
 
 class TriplePendulum():
     def __init__(self, cfg):
@@ -575,7 +574,10 @@ class DataProcess():
         self.dt = self.cfg['Controller']['dt']
         self.PostarCoef = self.cfg["Optimization"]["CostCoef"]["postarCoef"]
         self.TorqueCoef = self.cfg["Optimization"]["CostCoef"]["torqueCoef"]
+        self.DTorqueCoef = self.cfg["Optimization"]["CostCoef"]["DtorqueCoef"]
         self.VeltarCoef = cfg["Optimization"]["CostCoef"]["VeltarCoef"]
+        self.m = cfg['Robot']['Mass']['mass']
+        self.I = cfg['Robot']['Mass']['inertia']
 
         self.save_dir, self.name, self.date = self.DirCreate()
         pass
@@ -626,9 +628,11 @@ class DataProcess():
         pass
 
     def DirCreate(self):
+        m_M = self.m[1] / self.m[0]
+        I_r = self.I[1] / self.I[0]
         date = time.strftime("%Y-%m-%d-%H-%M-%S")
-        dirname = "-MPC-Pos_"+str(self.PostarCoef[1])+"-Tor_"+str(self.TorqueCoef[1]) +"-Vel_"+str(self.VeltarCoef[1])\
-                + "-dt_"+str(self.dt)+"-T_"+str(self.T)+"-Tp_"+str(self.Tp)+"-Tc_"+str(self.Nc)+"-ML_"+str(self.ML)+ "k" 
+        dirname = "-MPC-Pos_"+str(self.PostarCoef[1])+"-Tor_"+str(self.TorqueCoef[1])+"-DTor_"+str(self.DTorqueCoef[1]) +"-Vel_"+str(self.VeltarCoef[1])\
+                + "-mM_"+str(m_M)+ "-Ir_"+str(I_r)+"-dt_"+str(self.dt)+"-T_"+str(self.T)+"-Tp_"+str(self.Tp)+"-Tc_"+str(self.Nc)+"-ML_"+str(self.ML)+ "k" 
 
         save_dir = self.savepath + date + dirname+ "/"
 
@@ -685,7 +689,7 @@ class DataProcess():
         if saveflag:
             plt.savefig(savename)
     
-        plt.show()
+        # plt.show()
 
     def animation(self, fileflag, saveflag):
         from numpy import sin, cos
@@ -771,7 +775,7 @@ class DataProcess():
         if saveflag:
             ani.save(savename, writer='pillow', fps=72)
 
-        plt.show()
+        # plt.show()
         
         pass
 
@@ -938,13 +942,13 @@ class DataProcess():
         ax3.grid()
 
         date = self.date
-        name = self.name + "Force.png"
+        name = self.name + "-Force.png"
 
         savename = self.save_dir + date + name
 
         if saveflag:
             plt.savefig(savename)
-        plt.show()
+        # plt.show()
 
         pass
 
@@ -992,13 +996,13 @@ class DataProcess():
         axes.grid()
 
         date = self.date
-        name = self.name + "Power.png"
+        name = self.name + "-Power.png"
 
         savename = self.save_dir + date + name
 
         if saveflag:
             plt.savefig(savename)
-        plt.show()
+        # plt.show()
         pass
 
     def DataSave(self, saveflag):
@@ -1189,8 +1193,8 @@ def Sim_main():
     Nc = cfg['Controller']['Nc']        # control time
     N = int(T / dt)                     # samples number
 
-    q0 = [0.1, 3.3, -0.5]
-    # q0 = [0.5, 3.3, -0.5]
+    # q0 = [0.1, 3.3, -0.5]
+    q0 = [0.2, 3.3, -0.5]
     dq0 = [0.0, 0.0, 0.0]
     jointNominalConfig = np.array([q0[0], q0[1], q0[2]])
     jointVelocityTarget = np.array([dq0[0], dq0[1], dq0[2]])
@@ -1326,7 +1330,7 @@ def DataLoad():
     ParamFile = open(ParamFilePath, "r", encoding="utf-8")
     cfg = yaml.load(ParamFile, Loader=yaml.FullLoader)
 
-    DataFile = FilePath + "/data/2022-04-21/2022-04-21-14-10-16-MPC-Pos_60-Tor_1-Vel_20-dt_0.02-T_5.0-Tp_0.6-Tc_1-ML_0.1k/2022-04-21-14-10-16-MPC-Pos_60-Tor_1-Vel_20-dt_0.02-T_5.0-Tp_0.6-Tc_1-ML_0.1k-sol.npy"
+    DataFile = FilePath + "/data/2022-04-21/X-2022-04-21-18-25-52-MPC-Pos_60-Tor_5-Vel_20-dt_0.02-T_5.0-Tp_0.8-Tc_1-ML_0.1k/2022-04-21-18-25-52-MPC-Pos_60-Tor_5-Vel_20-dt_0.02-T_5.0-Tp_0.8-Tc_1-ML_0.1k-sol.npy"
     Data = np.load(DataFile)
     q = Data[:, 0:3]
     dq = Data[:, 3:6]

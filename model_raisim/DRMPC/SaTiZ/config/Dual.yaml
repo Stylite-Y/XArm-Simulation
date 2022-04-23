@@ -4,11 +4,12 @@ Optimization:
 
   CostCoef:
     postarCoef: [100, 60, 60]
-    VeltarCoef: [30, 20, 20]
-    # postarCoef: 100
-    # VeltarCoef: 20
+    VeltarCoef: [25, 4, 4]
     torqueCoef: [5, 5]
-    DtorqueCoef: [10.0, 10.0]
+    # DtorqueCoef: [10.0, 10.0]
+    # VeltarCoef: [30, 30, 30]
+    # torqueCoef: [1, 1]
+    DtorqueCoef: [32.0, 30.0]
 
 Environment:
   Gravity: 9.81
@@ -20,9 +21,9 @@ Controller:
   PosTar: 0.0
   VelTar: 0.0
   dt: 0.02
-  T: 5.0
+  T: 4.0
   Nc: 1
-  Tp: 0.8
+  Tp: 1.0
 
   Boundary:
     theta1: [-1.57, 1.57]
@@ -32,18 +33,18 @@ Controller:
 
 Robot:
   Mass:
-    # inertia: [0.015, 0.006, 0.006]
-    inertia: [0.035, 0.02, 0.02]
+    inertia: [0.015, 0.009, 0.009]
+    # inertia: [0.035, 0.07, 0.07]
     # inertia: [0.035, 0.03, 0.03]
     mass: [0.5, 0.2, 0.2]
     # inertia: [0.367, 0.11067, 0.11067]
     massCenter: [0.4, 0.15, 0.15]
-    # massCenter: [0.75, 0.2, 0.2]
+    # massCenter: [0.5, 0.2, 0.2]
   Geometry:
     L_body: 0.8
     L_thigh: 0.3
     L_shank: 0.3
-    # L_body: 1.5
+    # L_body: 1.0
     # L_thigh: 0.4
     # L_shank: 0.4
   damping: 0.0
