@@ -313,7 +313,17 @@ if __name__ == "__main__":
     # temp = A()
     # # temp.b()
     # print(np.linspace(0, 4, 4))
+    print(sin(1.57))
+
     # visual2()
 
-    print(np.sqrt(4))
+    m1 = 3.3
+    m0 = 58
+    l0 = 1.8
+    l1 = 0.6
+    O = np.linspace(0, 3.14, 100)
+    a = - (m1*l1**2/3 + m1*l0*l1*cos(O)/2) / (m0*l0**2 + m1*l0**2 + m1*l0*l1*cos(O)/2)
+    plt.figure()
+    plt.plot(O, a)
+    plt.show()
 

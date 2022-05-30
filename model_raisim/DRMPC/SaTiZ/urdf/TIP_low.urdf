@@ -27,21 +27,21 @@
 
     <link name="link1">
         <visual>
-            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.5"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.4"/>
             <geometry>
-                <cylinder length="1.0" radius="0.03"/>
+                <cylinder length="0.8" radius="0.03"/>
             </geometry>
         </visual>
         <inertial>
-            <mass value="10.0"/>
-            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.5"/>
-            <inertia ixx="0.83" ixy="0" ixz="0.0" iyy="0.015" iyz="0" izz="0.036"/>
+            <mass value="0.5"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.4"/>
+            <inertia ixx="0.015" ixy="0" ixz="0.0" iyy="0.015" iyz="0" izz="0.036"/>
         </inertial>
     </link>
 
     <joint name="l12l2" type="revolute">
         <axis xyz="-1 0 0"/>
-        <origin rpy="0 0 0" xyz="0.0 0.0 1.0"/>
+        <origin rpy="0 0 0" xyz="0.0 0.0 0.8"/>
         <parent link="link1"/>
         <child link="link2"/>
     </joint>
@@ -54,9 +54,9 @@
             </geometry>
         </visual>
         <inertial>
-            <mass value="3.8"/>
+            <mass value="0.2"/>
             <origin rpy="0.0 0.0 0.0" xyz="0 0 0.15"/>
-            <inertia ixx="0.028" ixy="0" ixz="0.0" iyy="0.0105" iyz="0" izz="0.006"/>
+            <inertia ixx="0.0105" ixy="0" ixz="0.0" iyy="0.0105" iyz="0" izz="0.006"/>
         </inertial>
     </link>
 
@@ -69,15 +69,15 @@
 
     <link name="link3">
         <visual>
-            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.19"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.15"/>
             <geometry>
-                <cylinder length="0.38" radius="0.03"/>
+                <cylinder length="0.3" radius="0.03"/>
             </geometry>
         </visual>
         <inertial>
-            <mass value="3.1"/>
-            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.19"/>
-            <inertia ixx="0.0373" ixy="0" ixz="0.0" iyy="0.0105" iyz="0" izz="0.006"/>
+            <mass value="0.2"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.15"/>
+            <inertia ixx="0.0105" ixy="0" ixz="0.0" iyy="0.0105" iyz="0" izz="0.006"/>
         </inertial>
     </link>
 </robot>

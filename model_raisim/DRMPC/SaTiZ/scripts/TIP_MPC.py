@@ -2,6 +2,7 @@
 三级摆的平衡控制
 """
 
+from re import A
 import casadi as ca
 from casadi import sin as s
 from casadi import cos as c
@@ -9,17 +10,19 @@ from matplotlib.pyplot import savefig
 import numpy as np
 from scipy import signal
 from numpy.random import normal
-import numpy as np
 import time
 import os
 import yaml
 from ruamel.yaml import YAML
 import raisimpy as raisim
 import datetime
-from scipy.integrate import odeint
-from Dynamics_MPC import RobotProperty
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from scipy.integrate import odeint
+
+from Dynamics_MPC import RobotProperty
+from RobotInterface import RobotInterface
+from DataProcess import DataProcess
 
 class TriplePendulum():
     def __init__(self, cfg):
@@ -27,6 +30,7 @@ class TriplePendulum():
         self.dt = cfg['Controller']['dt']       # sample time
         self.Tp = cfg['Controller']['Tp']       # predictive time
         self.NS = int(self.Tp / self.dt)        # samples number
+        self.Frict_coef = cfg['Environment']['Friction_Coeff']
         # print("number of sample: ", self.NS)
         
         # mass and geometry related parameter
@@ -54,8 +58,10 @@ class TriplePendulum():
         self.veltar = cfg['Controller']['VelTar']
 
         # boundary parameter
-        self.u_LB = [-self.motor_mt] * 3
-        self.u_UB = [self.motor_mt] * 3
+        self.bound_fy = cfg['Controller']['Boundary']['Fy']
+        self.bound_fx = cfg['Controller']['Boundary']['Fx']
+        self.u_LB = [-self.motor_mt] * 2
+        self.u_UB = [self.motor_mt] * 2
 
         self.q_LB = [cfg['Controller']['Boundary']['theta1'][0],
                      cfg['Controller']['Boundary']['theta2'][0],
@@ -68,6 +74,9 @@ class TriplePendulum():
 
         self.dq_UB = [self.motor_ms, self.motor_ms, self.motor_ms]
 
+        self.F_LB = [self.bound_fx[0], self.bound_fy[0]]
+        self.F_UB = [self.bound_fx[1], self.bound_fy[1]]
+
         ## define variable
          # * define variable
         # self.q = []
@@ -79,12 +88,17 @@ class TriplePendulum():
         # self.ddq = []
         self.ddq = [(self.dq[i+1]-self.dq[i]) /
                         self.dt for i in range(self.NS-1)]
-        self.ddq.append(self.ddq[0]) 
+        # self.ddq.append(self.ddq[0]) 
         # self.ddq.append([(self.dq[i+1]-self.dq[i]) /
         #                 self.dt for i in range(self.NS-1)])
         # self.u = []
         self.u = [self.opti.variable(2) for _ in range(self.NS)]
         # self.u.append([self.opti.variable(2) for _ in range(self.NS-1)])
+
+        # support force
+        self.F = []
+        self.F = [self.opti.variable(2) for _ in range(self.NS-1)]
+
 
         pass
 
@@ -193,6 +207,49 @@ class TriplePendulum():
         inertia_coupling = [inertia_force[i]-inertia_main[i] for i in range(3)]
         return inertia_main, inertia_coupling
 
+    def SupportForce(self, q, dq, ddq):
+        L0 = self.L[0]
+        L1 = self.L[1]
+        L2 = self.L[2]
+        l0 = self.l[0]
+        l1 = self.l[1]
+        l2 = self.l[2]
+        m0 = self.m[0]
+        m1 = self.m[1]
+        m2 = self.m[2]
+        # acceleration cal
+        ddx0 = -l0*s(q[0])*dq[0]**2 + l0*c(q[0])*ddq[0]
+        ddy0 = -l0*c(q[0])*dq[0]**2 - l0*s(q[0])*ddq[0]
+        ddx1 = -L0*s(q[0])*dq[0]**2 - l1*s(q[0]+q[1])*(dq[0]+dq[1])**2 + \
+                L0*c(q[0])*ddq[0] + l1*c(q[0]+q[:1])*(ddq[0]+ddq[1])
+        ddy1 = -L0*c(q[0])*dq[0]**2 - l1*c(q[0]+q[1])*(dq[0]+dq[1])**2 - \
+                L0*s(q[0])*ddq[0] - l1*s(q[0]+q[1])*(dq[0]+dq[1])
+        ddx2 = -L0*s(q[0])*dq[0]**2 - L1*s(q[0]+q[1])*(dq[0]+dq[1])**2 - l2*s(q[0]+q[1]+q[2])*(dq[0]+dq[1]+dq[2])**2 + \
+                L0*c(q[0])*ddq[0] + L1*c(q[0]+q[1])*(ddq[0]+ddq[1]) + l2*c(q[0]+q[1]+q[2])*(ddq[0]+ddq[1]+ddq[2])
+        ddy2 = -L0*c(q[0])*dq[0]**2 - L1*c(q[0]+q[1])*(dq[0]+dq[1])**2 - l2*c(q[0]+q[1]+q[2])*(dq[0]+dq[1]+dq[2])**2 - \
+                L0*s(q[0])*ddq[0] - L1*s(q[0]+q[1])*(ddq[0]+ddq[1]) - l2*s(q[0]+q[1]+q[2])*(ddq[0]+ddq[1]+ddq[2])
+        
+        AccFx = -(m0*ddx0 + m1*ddx1 + m2*ddx2)
+        AccFy = -(m0*ddy0 + m1*ddy1 + m2*ddy2) - (m0*self.g + m1*self.g + m2*self.g)
+
+        AccF = [AccFx, AccFy]
+
+        return AccF
+        pass
+
+    def MassCenter(self, q):
+        L0 = self.L[0]
+        L1 = self.L[1]
+        L2 = self.L[2]
+        l0 = self.l[0]
+        l1 = self.l[1]
+        l2 = self.l[2]
+
+        z0 = l0*c(q[0])
+        z1 = L0 * c(q[0]) + l1*c(q[0]+q[1])
+        z2 = L0 * c(q[0]) + L1*c(q[0]+q[1]) + l2*c(q[0]+q[1]+q[2])
+        return z0,z1,z2
+        pass
 
 class NLP():
     def __init__(self, robot, cfg, x0, dq0, seed=None):
@@ -203,6 +260,7 @@ class NLP():
         self.PostarCoef = cfg["Optimization"]["CostCoef"]["postarCoef"]
         self.VeltarCoef = cfg["Optimization"]["CostCoef"]["VeltarCoef"]
         self.DtorqueCoef = cfg["Optimization"]["CostCoef"]["DtorqueCoef"]
+        self.SupportFCoef = cfg["Optimization"]["CostCoef"]["SupportFCoef"]
         max_iter = cfg["Optimization"]["MaxLoop"]
         self.random_seed = cfg["Optimization"]["RandomSeed"]
         self.dt = cfg['Controller']['dt']       # sample time
@@ -210,6 +268,7 @@ class NLP():
 
         # self.cost = self.CostFun(robot)
         self.cost = self.CostFunMPC(robot)
+        # self.cost = self.CostFunMPCHuman(robot)
         robot.opti.minimize(self.cost)
 
         self.ceq = self.getConstraints(robot)
@@ -234,43 +293,21 @@ class NLP():
             Arm.opti.set_initial(Arm.q[i][2], 0.0)
             pass    
 
-    def CostFun(self, Arm):
-        Torque = 0
-        PosTar = 0
-        VelTar = 0
-        for i in range(Arm.NS):
-            for j in range(2):
-                Torque += ca.fabs(Arm.u[i][j]/Arm.motor_mt) * Arm.dt
-                pass
-            PosTar += ca.fabs(Arm.q[i][0] - Arm.postar) * Arm.dt * self.PostarCoef[0]
-            PosTar += ca.fabs(Arm.q[i][1] - np.pi) * Arm.dt * self.PostarCoef[1]
-            PosTar += ca.fabs(Arm.q[i][2] - Arm.postar) * Arm.dt * self.PostarCoef[2]
-            VelTar += ca.fabs(Arm.dq[i][0] - Arm.veltar) * Arm.dt * self.VeltarCoef[0]
-            VelTar += ca.fabs(Arm.dq[i][1] - Arm.veltar) * Arm.dt * self.VeltarCoef[1]
-            VelTar += ca.fabs(Arm.dq[i][2] - Arm.veltar) * Arm.dt * self.VeltarCoef[2]
-            pass
-
-        PosTar += ca.fabs(Arm.q[-1][0] - Arm.postar) * self.PostarCoef[0]
-        PosTar += ca.fabs(Arm.q[-1][1] - np.pi) * self.PostarCoef[1]
-        PosTar += ca.fabs(Arm.q[-1][2] - Arm.postar) * self.PostarCoef[2]
-        VelTar += ca.fabs(Arm.dq[-1][0] - Arm.veltar) * self.VeltarCoef[0]
-        VelTar += ca.fabs(Arm.dq[-1][ 1] - Arm.veltar) * self.VeltarCoef[1]
-        VelTar += ca.fabs(Arm.dq[-1][2] - Arm.veltar) * self.VeltarCoef[2]
-
-        return PosTar + Torque * self.TorqueCoef + VelTar
-        # return PosTar * self.PostarCoef + Torque * self.TorqueCoef
-
-    def CostFunMPC(self, Arm):
+    def CostFunMPC(self, Arm):                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
         Torque = 0
         PosTar = 0
         VelTar = 0
         Dtorque = 0
+        FM = [Arm.bound_fx[1], Arm.bound_fy[1]]
         for i in range(Arm.NS):
             Torque += (Arm.u[i][0]/Arm.motor_mt)**2 * Arm.dt * self.TorqueCoef[0]
             Torque += (Arm.u[i][1]/Arm.motor_mt)**2 * Arm.dt * self.TorqueCoef[1]
             if i > 0:
                 Dtorque += (Arm.u[i][0]- Arm.u[i-1][0])**2 * Arm.dt * self.DtorqueCoef[0]
                 Dtorque += (Arm.u[i][1]- Arm.u[i-1][1])**2 * Arm.dt * self.DtorqueCoef[1]
+            if i< Arm.NS-1:
+                Torque += (Arm.F[i][0]/FM[0])**2 * Arm.dt * self.SupportFCoef[0]
+                Torque += (Arm.F[i][1]/FM[1])**2 * Arm.dt * self.SupportFCoef[1]
 
             PosTar += (Arm.q[i][0] - Arm.postar)**2 * Arm.dt * self.PostarCoef[0]
             PosTar += (Arm.q[i][1] - np.pi)**2 * Arm.dt * self.PostarCoef[1]
@@ -290,7 +327,47 @@ class NLP():
 
         return PosTar + Torque + VelTar + Dtorque
 
-    def getConstraints(self, Arm):
+    def CostFunMPCHuman(self, Arm):                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+        Torque = 0
+        AngMom = 0
+        MassCent = 0
+        Dtorque = 0
+        PosTar = 0
+        VelTar = 0
+        FM = [Arm.bound_fx[1], Arm.bound_fy[1]]
+        for i in range(Arm.NS):
+            Torque += (Arm.u[i][0]/Arm.motor_mt)**2 * Arm.dt * self.TorqueCoef[0]
+            Torque += (Arm.u[i][1]/Arm.motor_mt)**2 * Arm.dt * self.TorqueCoef[1]
+            if i > 0:
+                Dtorque += (Arm.u[i][0]- Arm.u[i-1][0])**2 * Arm.dt * self.DtorqueCoef[0]
+                Dtorque += (Arm.u[i][1]- Arm.u[i-1][1])**2 * Arm.dt * self.DtorqueCoef[1]
+            if i< Arm.NS-1:
+                Torque += (Arm.F[i][0]/FM[0])**2 * Arm.dt * self.SupportFCoef[0]
+                Torque += (Arm.F[i][1]/FM[1])**2 * Arm.dt * self.SupportFCoef[1]
+
+            PosTar += (Arm.q[i][1] - np.pi)**2 * Arm.dt * self.PostarCoef[1]
+            PosTar += (Arm.q[i][2] - Arm.postar)**2 * Arm.dt * self.PostarCoef[2]
+
+            # VelTar += (Arm.dq[i][1] - Arm.veltar)**2 * Arm.dt * self.VeltarCoef[1]
+            # VelTar += (Arm.dq[i][2] - Arm.veltar)**2 * Arm.dt * self.VeltarCoef[2]
+
+            MI = Arm.I[0] * Arm.dq[i][0]
+            AngMom += MI ** 2 * Arm.dt * self.PostarCoef[0]
+
+            Mc0, Mc1, Mc2 = Arm.MassCenter(Arm.q[i])
+            Mc = (Arm.m[0]*Mc0 + Arm.m[1]*Mc1 + Arm.m[2]*Mc2) / (Arm.m[0] + Arm.m[1] + Arm.m[2])
+            MassCent += (1/Mc)**2 * Arm.dt * self.VeltarCoef[0]
+            pass
+
+        PosTar += (Arm.q[-1][1] - np.pi)**2 * self.PostarCoef[1]
+        PosTar += (Arm.q[-1][2] - Arm.postar)**2 * self.PostarCoef[2]
+        # VelTar += (Arm.dq[-1][0] - Arm.veltar)**2 * self.VeltarCoef[0]
+        VelTar += (Arm.dq[-1][1] - Arm.veltar)**2 * self.VeltarCoef[1]
+        VelTar += (Arm.dq[-1][2] - Arm.veltar)**2 * self.VeltarCoef[2]
+
+        return Torque + Dtorque + AngMom + MassCent + PosTar + VelTar
+
+    def getConstraints(self, Arm):                     
         ceq = []
 
         ## continuous dynamics constraints
@@ -301,9 +378,11 @@ class NLP():
             Inertia = Arm.InertiaForce(Arm.q[i], Arm.ddq[i])
             Coriolis = Arm.Coriolis(Arm.q[i], Arm.dq[i])
             Gravity = Arm.Gravity(Arm.q[i])
+            AccF = Arm.SupportForce(Arm.q[i], Arm.dq[i], Arm.ddq[i])
 
             ceq.extend([Inertia[0] + Gravity[0] + Coriolis[0] == 0])
             ceq.extend([Inertia[j+1] + Gravity[j+1] + Coriolis[j+1] - Arm.u[i][j] == 0 for j in range(2)])
+            # ceq.extend([Arm.F[i][j] + AccF[j] == 0 for j in range(2)])
             pass
     
         ## Boundary constraints
@@ -319,22 +398,27 @@ class NLP():
             ceq.extend([Arm.opti.bounded(Arm.u_LB[j], temp_u[j], Arm.u_UB[j]) for j in range(2)])
             pass
 
+        # for temp_f in Arm.F:
+        #     ceq.extend([Arm.opti.bounded(Arm.F_LB[j], temp_f[j], Arm.F_UB[j]) for j in range(2)])
+        #     pass
+        
+        ## support force and friction
+        for i in range(Arm.NS-1):
+            # AccF = Arm.SupportForce(Arm.q[i], Arm.dq[i], Arm.ddq[i])
+            # Fx = -AccF[0]
+            # Fy = -AccF[1]
+            # ceq.extend([Fy*Arm.Frict_coef - Fx >= 0.0])
+            # ceq.extend([-Fy*Arm.Frict_coef - Fx <= 0.0])
+            # ceq.extend([Fy >= 0])
+
+            # ceq.extend([Arm.F[i][1]*Arm.Frict_coef - Arm.F[i][0] >= 0.0])
+            # ceq.extend([-Arm.F[i][1]*Arm.Frict_coef - Arm.F[i][0] <= 0.0])
+            pass
+
         ## motion smooth constraint
         for i in range(len(Arm.u) -1):
-            ceq.extend([ca.fabs(Arm.u[i][j] - Arm.u[i+1][j]) <= 10 for j in range(2)])
+            ceq.extend([(Arm.u[i][j] - Arm.u[i+1][j])**2 <= 100 for j in range(2)])
             pass
-        
-        # ceq.extend([Arm.q[0][0]==0.1])
-        # ceq.extend([Arm.q[0][1]==3.2])
-        # ceq.extend([Arm.q[0][2]==-0.2])
-
-        # ceq.extend([Arm.q[0][0]==0])
-        # ceq.extend([Arm.q[0][1]==0])
-        # ceq.extend([Arm.q[0][2]==0])
-
-        # ceq.extend([Arm.q[0][0]==0.1])
-        # ceq.extend([Arm.q[0][1]==-0.2])
-        # ceq.extend([Arm.q[0][2]==0.3])
 
         ceq.extend([Arm.q[0][0]==self.x0[0]])
         ceq.extend([Arm.q[0][1]==self.x0[1]])
@@ -377,7 +461,7 @@ class NLP():
 
         ## motion smooth constraint
         for i in range(len(Arm.u) -1):
-            ceq.extend([ca.fabs(Arm.u[i][j] - Arm.u[i+1][j]) <= 2 for j in range(2)])
+            ceq.extend([(Arm.u[i][j] - Arm.u[i+1][j])**2 <= 4 for j in range(2)])
             pass
         
         ceq.extend([Arm.q[0][0]==self.x0[0]])
@@ -408,18 +492,21 @@ class NLP():
 
     def Solve_StateReturn2(self, robot):
         u = []
+        ddq = []
         try:
             sol = robot.opti.solve()
             for i in range(self.Nc):
                 u.append([sol.value(robot.u[i][j]) for j in range(2)])
+                ddq.append([sol.value(robot.ddq[0][j]) for j in range(3)])
             pass
         except:
             value = robot.opti.debug.value
             for i in range(self.Nc):
                 u.append([value(robot.u[i][j]) for j in range(2)])
+                ddq.append([value(robot.ddq[0][j]) for j in range(3)])
             pass
 
-        return u
+        return u, ddq
 
     def Solve_Output(self, robot, flag_save=True, StorePath="./"):
         # solve the nlp and stroge the solution
@@ -555,469 +642,6 @@ class DynamicsAnalysis():
         MassMatrix = Robot.getMassMatrix(0, np.pi, 0)
         Gravity = Robot.getGravityLinearMatrix()
         pass
-
-class DataProcess():
-    def __init__(self, cfg, robot, q, dq, ddq, u, t, savepath):
-        self.cfg = cfg
-        self.robot = robot
-        self.q = q
-        self.dq = dq
-        self.ddq = ddq
-        self.u = u
-        self.t = t
-        self.savepath = savepath
-
-        self.ML = self.cfg["Optimization"]["MaxLoop"] / 1000
-        self.Tp = self.cfg['Controller']['Tp']
-        self.Nc = self.cfg['Controller']['Nc']
-        self.T = self.cfg['Controller']['T']
-        self.dt = self.cfg['Controller']['dt']
-        self.PostarCoef = self.cfg["Optimization"]["CostCoef"]["postarCoef"]
-        self.TorqueCoef = self.cfg["Optimization"]["CostCoef"]["torqueCoef"]
-        self.DTorqueCoef = self.cfg["Optimization"]["CostCoef"]["DtorqueCoef"]
-        self.VeltarCoef = cfg["Optimization"]["CostCoef"]["VeltarCoef"]
-        self.m = cfg['Robot']['Mass']['mass']
-        self.I = cfg['Robot']['Mass']['inertia']
-
-        self.save_dir, self.name, self.date = self.DirCreate()
-        pass
-
-    def visualization(q, dq, u, t, robot, flag):
-        import matplotlib.pyplot as plt
-        import matplotlib.animation as animation
-        from collections import deque
-
-        if flag:
-
-            FilePath = "/home/stylite-y/Documents/Master/Manipulator/Simulation/model_raisim/DRMPC/SaTiZ_3D/data/2022-04-06" 
-            config_file = FilePath + "/2022-04-06-17-59-06-Pos_1-Tor_0.1-dt_0.01-T_2-ML_1.0k-config.yaml"
-            datafile = FilePath + "/2022-04-06-17-59-06-Pos_1-Tor_0.1-dt_0.01-T_2-ML_1.0k-sol.npy"
-
-            data = np.load(datafile)
-            cfg = YAML().load(open(config_file, 'r'))
-
-            print(data.shape)
-            q = data[:, 0:3]
-            dq = data[:, 3:6]
-            ddq = data[:, 6:9]
-            u = data[:, 9:11]
-            t = data[:, 11:14]
-
-        else:
-            pass
-        fig, axes = plt.subplots(2,1, dpi=100,figsize=(12,10))
-        ax1 = axes[0]
-        ax2 = axes[1]
-
-        ax1.plot(t, q[:, 0], label="theta 1")
-        ax1.plot(t, q[:, 1], label="theta 2")
-        ax1.plot(t, q[:, 2], label="theta 3")
-
-        ax1.set_ylabel('Angular ', fontsize = 15)
-        ax1.legend(loc='upper right', fontsize = 12)
-        ax1.grid()
-
-        ax2.plot(t, u[:, 0], label="torque 1")
-        ax2.plot(t, u[:, 1], label="torque 2")
-        ax2.set_ylabel('Torque ', fontsize = 15)
-        ax2.legend(loc='upper right', fontsize = 12)
-        ax2.grid()
-
-        plt.show()
-        
-        pass
-
-    def DirCreate(self):
-        m_M = self.m[1] / self.m[0]
-        I_r = self.I[1] / self.I[0]
-        date = time.strftime("%Y-%m-%d-%H-%M-%S")
-        dirname = "-MPC-Pos_"+str(self.PostarCoef[1])+"-Tor_"+str(self.TorqueCoef[1])+"-DTor_"+str(self.DTorqueCoef[1]) +"-Vel_"+str(self.VeltarCoef[1])\
-                + "-mM_"+str(m_M)+ "-Ir_"+str(I_r)+"-dt_"+str(self.dt)+"-T_"+str(self.T)+"-Tp_"+str(self.Tp)+"-Tc_"+str(self.Nc)+"-ML_"+str(self.ML)+ "k" 
-
-        save_dir = self.savepath + date + dirname+ "/"
-
-        if not os.path.isdir(save_dir):
-            os.makedirs(save_dir)
-        return save_dir, dirname, date
-
-    def DataPlot(self, saveflag):
-
-        fig, axes = plt.subplots(3,1, dpi=100,figsize=(12,10))
-        ax1 = axes[0]
-        ax2 = axes[1]
-        ax3 = axes[2]
-
-        ax1.plot(self.t, self.q[:, 0], label="theta 1")
-        # ax1.plot(t, q[:, 1], label="theta 2")
-        ax1.plot(self.t, self.q[:, 2], label="theta 3")
-
-        ax11 = ax1.twinx()
-        ax11.plot(self.t, self.q[:, 1], color='forestgreen', label="theta 2")
-        # ax11.plot(t, q[:, 1], color='mediumseagreen', label="theta 2")
-        ax11.legend(loc='lower right', fontsize = 12)
-        ax11.yaxis.set_tick_params(labelsize = 12)
-
-        ax1.set_ylabel('Angle ', fontsize = 15)
-        ax1.xaxis.set_tick_params(labelsize = 12)
-        ax1.yaxis.set_tick_params(labelsize = 12)
-        ax1.legend(loc='upper right', fontsize = 12)
-        ax1.grid()
-
-        ax2.plot(self.t, self.dq[:, 0], label="theta 1 Vel")
-        ax2.plot(self.t, self.dq[:, 1], label="theta 2 Vel")
-        ax2.plot(self.t, self.dq[:, 2], label="theta 3 Vel")
-
-        ax2.set_ylabel('Angular Vel ', fontsize = 15)
-        ax2.xaxis.set_tick_params(labelsize = 12)
-        ax2.yaxis.set_tick_params(labelsize = 12)
-        ax2.legend(loc='upper right', fontsize = 12)
-        ax2.grid()
-
-        ax3.plot(self.t, self.u[:, 0], label="torque 1")
-        ax3.plot(self.t, self.u[:, 1], label="torque 2")
-        ax3.set_ylabel('Torque ', fontsize = 15)
-        ax3.xaxis.set_tick_params(labelsize = 12)
-        ax3.yaxis.set_tick_params(labelsize = 12)
-        ax3.legend(loc='upper right', fontsize = 12)
-        ax3.grid()
-
-        date = self.date
-        name = self.name + ".png"
-
-        savename = self.save_dir + date + name
-
-        if saveflag:
-            plt.savefig(savename)
-    
-        # plt.show()
-
-    def animation(self, fileflag, saveflag):
-        from numpy import sin, cos
-        import matplotlib.pyplot as plt
-        import matplotlib.animation as animation
-        from collections import deque
-
-        # if fileflag:
-
-        #     FilePath = "/home/stylite-y/Documents/Master/Manipulator/Simulation/model_raisim/DRMPC/SaTiZ_3D/data/2022-04-06" 
-        #     config_file = FilePath + "/2022-04-06-17-59-06-Pos_1-Tor_0.1-dt_0.01-T_2-ML_1.0k-config.yaml"
-        #     datafile = FilePath + "/2022-04-06-17-59-06-Pos_1-Tor_0.1-dt_0.01-T_2-ML_1.0k-sol.npy"
-
-        #     data = np.load(datafile)
-        #     cfg = YAML().load(open(config_file, 'r'))
-
-        #     print(data.shape)
-        #     q = data[:, 0:3]
-        #     dq = data[:, 3:6]
-        #     ddq = data[:, 6:9]
-        #     u = data[:, 9:11]
-        #     t = data[:, 11:14]
-
-        # else:
-        #     pass
-
-        ## kinematic equation
-        L0 = self.robot.L[0]
-        L1 = self.robot.L[1]
-        L2 = self.robot.L[2]
-        L_max = L0+L1+L2
-        x1 = L0*sin(self.q[:, 0])
-        y1 = L0*cos(self.q[:, 0])
-        x2 = L1*sin(self.q[:, 0] + self.q[:, 1]) + x1
-        y2 = L1*cos(self.q[:, 0] + self.q[:, 1]) + y1
-        x3 = L2*sin(self.q[:, 0] + self.q[:, 1]+self.q[:, 2]) + x2
-        y3 = L2*cos(self.q[:, 0] + self.q[:, 1]+self.q[:, 2]) + y2
-
-        history_len = 100
-        
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(autoscale_on=False, xlim=(-L0, L0), ylim=(-L2, L0+L1))
-        ax.set_aspect('equal')
-        ax.set_xlabel('X axis ', fontsize = 15)
-        ax.set_ylabel('Y axis ', fontsize = 15)
-        ax.xaxis.set_tick_params(labelsize = 12)
-        ax.yaxis.set_tick_params(labelsize = 12)
-        ax.grid()
-
-        line, = ax.plot([], [], 'o-', lw=3,markersize=8)
-        trace, = ax.plot([], [], '.-', lw=1, ms=1)
-        time_template = 'time = %.1fs'
-        time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes, fontsize=15)
-        history_x, history_y = deque(maxlen=history_len), deque(maxlen=history_len)
-
-        def animate(i):
-            thisx = [0, x1[i], x2[i], x3[i]]
-            thisy = [0, y1[i], y2[i], y3[i]]
-
-            if i == 0:
-                history_x.clear()
-                history_y.clear()
-
-            history_x.appendleft(thisx[3])
-            history_y.appendleft(thisy[3])
-
-            alpha = (i / history_len) ** 2
-            line.set_data(thisx, thisy)
-            trace.set_data(history_x, history_y)
-            # trace.set_alpha(alpha)
-            time_text.set_text(time_template % (i*self.dt))
-            return line, trace, time_text
-        
-        ani = animation.FuncAnimation(
-            fig, animate, len(self.t), interval=self.dt*1000, blit=True)
-
-        ## animation save to gif
-        date = self.date
-        name = self.name + ".gif"
-
-        savename = self.save_dir + date + name
-
-        if saveflag:
-            ani.save(savename, writer='pillow', fps=72)
-
-        # plt.show()
-        
-        pass
-
-    def animation2(q, dq, u, t, robot, savepath, cfg, flag):
-        from numpy import sin, cos
-        import matplotlib.pyplot as plt
-        import matplotlib.animation as animation
-        from collections import deque
-        from matplotlib.patches import Circle
-
-        if flag:
-
-            FilePath = "/home/stylite-y/Documents/Master/Manipulator/Simulation/model_raisim/DRMPC/SaTiZ_3D/data/2022-04-06" 
-            config_file = FilePath + "/2022-04-06-17-59-06-Pos_1-Tor_0.1-dt_0.01-T_2-ML_1.0k-config.yaml"
-            datafile = FilePath + "/2022-04-06-17-59-06-Pos_1-Tor_0.1-dt_0.01-T_2-ML_1.0k-sol.npy"
-
-            data = np.load(datafile)
-            cfg = YAML().load(open(config_file, 'r'))
-
-            print(data.shape)
-            q = data[:, 0:3]
-            dq = data[:, 3:6]
-            ddq = data[:, 6:9]
-            u = data[:, 9:11]
-            t = data[:, 11:14]
-
-        else:
-            pass
-
-        ## kinematic equation
-        L0 = robot.L[0]
-        L1 = robot.L[1]
-        L2 = robot.L[2]
-        L_max = L0+L1+L2
-        x1 = L0*sin(q[:, 0])
-        y1 = L0*cos(q[:, 0])
-        x2 = L1*sin(q[:, 0] + q[:, 1]) + x1
-        y2 = L1*cos(q[:, 0] + q[:, 1]) + y1
-        x3 = L2*sin(q[:, 0] + q[:, 1]+q[:, 2]) + x2
-        y3 = L2*cos(q[:, 0] + q[:, 1]+q[:, 2]) + y2
-
-        fig = plt.figure(figsize=(10, 8))
-        # ax = fig.add_subplot(autoscale_on=False, xlim=(-L0, L0), ylim=(-L2, L0+L1))
-        # ax.set_aspect('equal')
-        # ax.set_xlabel('X axis ', fontsize = 15)
-        # ax.set_ylabel('Y axis ', fontsize = 15)
-        # ax.grid()
-
-        # Plotted bob circle radius
-        r = 0.05
-        # This corresponds to max_trail time points.
-        max_trail = int(1.0 / robot.dt)
-
-        def make_plot(i):
-            # Plot and save an image of the double pendulum configuration for time
-            # point i.
-            # The pendulum rods.
-            ax.plot([0, x1[i], x2[i], x3[i]], [0, y1[i], y2[i], y3[i]], lw=2, c='k')
-            # Circles representing the anchor point of rod 1, and bobs 1 and 2.
-            c0 = Circle((0, 0), r/2, fc='k', zorder=10)
-            c1 = Circle((x1[i], y1[i]), r, fc='b', ec='b', zorder=10)
-            c2 = Circle((x2[i], y2[i]), r, fc='r', ec='r', zorder=10)
-            c3 = Circle((x3[i], y3[i]), r, fc='r', ec='r', zorder=10)
-            ax.add_patch(c0)
-            ax.add_patch(c1)
-            ax.add_patch(c2)
-            ax.add_patch(c3)
-
-            # The trail will be divided into ns segments and plotted as a fading line.
-            ns = 20
-            s = max_trail // ns
-
-            for j in range(ns):
-                imin = i - (ns-j)*s
-                if imin < 0:
-                    continue
-                imax = imin + s + 1
-                # The fading looks better if we square the fractional length along the
-                # trail.
-                alpha = (j/ns)**2
-                ax.plot(x3[imin:imax], y3[imin:imax], c='r', solid_capstyle='butt',
-                        lw=2, alpha=alpha)
-
-            # Centre the image on the fixed anchor point, and ensure the axes are equal
-            ax.set_xlabel('X axis ', fontsize = 15)
-            ax.set_ylabel('Y axis ', fontsize = 15)
-            ax.set_xlim(-L0, L0)
-            ax.set_ylim(-L2, L0+L1)
-            ax.set_aspect('equal', adjustable='box')
-            plt.axis('off')
-            # plt.savefig('frames/_img{:04d}.png'.format(i//di), dpi=72)
-            plt.cla()
-
-
-        # Make an image every di time points, corresponding to a frame rate of fps
-        # frames per second.
-        # Frame rate, s-1
-        fps = 10
-        di = int(1/fps/robot.dt)
-        fig = plt.figure(figsize=(8.3333, 6.25), dpi=72)
-        ax = fig.add_subplot(111)
-
-        for i in range(0, t.size, di):
-            print(i // di, '/', t.size // di)
-            make_plot(i)
-        
-        pass
-
-    def ForceAnalysis(self, saveflag = 0):
-        robot = self.robot    # create robot
-        # calculate force
-        Inertia_main = []
-        Inertia_coupling = []
-        Corialis = []
-        Gravity = []
-        for i in range(len(self.t)):
-            temp1, temp2 = robot.inertia_force2(self.q[i, :], self.ddq[i, :])
-            Inertia_main.append(temp1)
-            Inertia_coupling.append(temp2)
-            Corialis.append(robot.Coriolis(self.q[i, :], self.dq[i, :]))
-            Gravity.append(robot.Gravity(self.q[i, :]))
-
-        Inertia_main = np.asarray(Inertia_main)
-        Inertia_coupling = np.asarray(Inertia_coupling)
-        Corialis = np.asarray(Corialis)
-        Gravity = np.asarray(Gravity)
-        print(Gravity.shape)
-
-        fig, axes = plt.subplots(3,1, dpi=100,figsize=(12,10))
-        ax1 = axes[0]
-        ax2 = axes[1]
-        ax3 = axes[2]
-        ax1.plot(self.t, Inertia_main[:, 0], label="Inertia_main")
-        ax1.plot(self.t, Inertia_coupling[:, 0], label="Inertia_coupling")
-        ax1.plot(self.t, Corialis[:, 0], label="Corialis")
-        ax1.plot(self.t, Gravity[:, 0], label="Gravity")
-
-        ax1.set_ylabel('Force ', fontsize = 15)
-        ax1.xaxis.set_tick_params(labelsize = 12)
-        ax1.yaxis.set_tick_params(labelsize = 12)
-        ax1.legend(loc='upper right', fontsize = 12)
-        ax1.grid()
-
-        ax2.plot(self.t, Inertia_main[:, 1], label="Inertia_main")
-        ax2.plot(self.t, Inertia_coupling[:, 1], label="Inertia_coupling")
-        ax2.plot(self.t, Corialis[:, 1], label="Corialis")
-        ax2.plot(self.t, Gravity[:, 1], label="Gravity")
-
-        ax2.set_ylabel('Force ', fontsize = 15)
-        ax2.xaxis.set_tick_params(labelsize = 12)
-        ax2.yaxis.set_tick_params(labelsize = 12)
-        ax2.legend(loc='upper right', fontsize = 12)
-        ax2.grid()
-
-        ax3.plot(self.t, Inertia_main[:, 2], label="Inertia_main")
-        ax3.plot(self.t, Inertia_coupling[:, 2], label="Inertia_coupling")
-        ax3.plot(self.t, Corialis[:, 2], label="Corialis")
-        ax3.plot(self.t, Gravity[:, 2], label="Gravity")
-
-        ax3.set_ylabel('Force ', fontsize = 15)
-        ax3.xaxis.set_tick_params(labelsize = 12)
-        ax3.yaxis.set_tick_params(labelsize = 12)
-        ax3.legend(loc='upper right', fontsize = 12)
-        ax3.grid()
-
-        date = self.date
-        name = self.name + "-Force.png"
-
-        savename = self.save_dir + date + name
-
-        if saveflag:
-            plt.savefig(savename)
-        # plt.show()
-
-        pass
-
-    def PowerAnalysis(self,saveflag=0):
-        from numpy import sin, cos
-
-        L0 = self.robot.L[0]
-        L1 = self.robot.L[1]
-        L2 = self.robot.L[2]
-        l0 = self.robot.l[0]
-        l1 = self.robot.l[1]
-        l2 = self.robot.l[2]
-        I0 = self.robot.I[0]
-        I1 = self.robot.I[1]
-        I2 = self.robot.I[2]
-        m0 = self.robot.m[0]
-        m1 = self.robot.m[1]
-        m2 = self.robot.m[2]
-        q = self.q
-        dq = self.dq
-        
-        x0 = l0*cos(q[:, 0])*dq[:, 0]
-        y0 = -l0*sin(q[:, 0])*dq[:, 0]
-        x1 = L0*cos(q[:, 0])*dq[:, 0] + l1*cos(q[:, 0]+q[:, 1])*(dq[:, 0]+dq[:, 1])
-        y1 = -L0*sin(q[:, 0])*dq[:, 0] - l1*sin(q[:, 0]+q[:, 1])*(dq[:, 0]+dq[:, 1])
-        x2 = L0*cos(q[:, 0])*dq[:, 0] + L1*cos(q[:, 0]+q[:, 1])*(dq[:, 0]+dq[:, 1]) + l2*cos(q[:, 0]+q[:, 1]+q[:, 2])*(dq[:, 0]+dq[:, 1]+dq[:, 2])
-        y2 = -L0*sin(q[:, 0])*dq[:, 0] - L1*sin(q[:, 0]+q[:, 1])*(dq[:, 0]+dq[:, 1]) - l2*sin(q[:, 0]+q[:, 1]+q[:, 2])*(dq[:, 0]+dq[:, 1]+dq[:, 2])
-
-        Momentum0 = m0*np.sqrt(x0**2 + y0**2) + I0 * dq[:, 0]
-        Momentum1 = m1*np.sqrt(x1**2 + y1**2) + I1 * dq[:, 1]
-        Momentum2 = m2*np.sqrt(x2**2 + y2**2) + I2 * dq[:, 2]
-        Impulse = self.u * self.dt
-
-        fig, axes = plt.subplots(1,1, dpi=100,figsize=(12,10))
-        axes.plot(self.t, Momentum0, label="link 0 Momentum")
-        axes.plot(self.t, Momentum1, label="link 1 Momentum")
-        axes.plot(self.t, Momentum2, label="link 2 Momentum")
-        axes.plot(self.t, Impulse[:,0], label="joint 1 Impulse")
-        axes.plot(self.t, Impulse[:,1], label="joint 2 Impulse")
-
-        axes.set_ylabel('Momentum ', fontsize = 15)
-        axes.xaxis.set_tick_params(labelsize = 12)
-        axes.yaxis.set_tick_params(labelsize = 12)
-        axes.legend(loc='upper right', fontsize = 12)
-        axes.grid()
-
-        date = self.date
-        name = self.name + "-Power.png"
-
-        savename = self.save_dir + date + name
-
-        if saveflag:
-            plt.savefig(savename)
-        # plt.show()
-        pass
-
-    def DataSave(self, saveflag):
-        date = self.date
-        name = self.name 
-
-        if saveflag:
-            np.save(self.save_dir+date+name+"-sol.npy",
-                    np.hstack((self.q, self.dq, self.ddq, self.u, self.t)))
-            # output the config yaml file
-            # with open(os.path.join(StorePath, date + name+"-config.yaml"), 'wb') as file:
-            #     yaml.dump(self.cfg, file)
-            with open(self.save_dir+date+name+"-config.yaml", mode='w') as file:
-                YAML().dump(self.cfg, file)
-            pass
 
 ## trajectory optimizaition main function
 def main():
@@ -1166,7 +790,9 @@ def Sim_main():
 
     raisim.World.setLicenseFile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/activation.raisim")
     # TIP_urdf = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/urdf/TIP.urdf"
-    TIP_urdf = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/urdf/TIP copy.urdf"
+    # TIP_urdf = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/urdf/TIP_low.urdf"
+    TIP_urdf = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/urdf/TIP_high_inertia.urdf"
+    # TIP_urdf = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/urdf/TIP_params.urdf"
     world = raisim.World()
     # endregion
 
@@ -1178,6 +804,8 @@ def Sim_main():
 
     gravity = world.getGravity()
     print(gravity,t_step)
+    UrdfParams = RobotInterface.LoadUrdfParam(cfg)
+    # TIP = world.addArticulatedSystem(TIP_urdf, UrdfParams)
     TIP = world.addArticulatedSystem(TIP_urdf)
     TIP.setName("TIP")
     print(TIP.getDOF())
@@ -1194,8 +822,8 @@ def Sim_main():
     N = int(T / dt)                     # samples number
 
     # q0 = [0.1, 3.3, -0.5]
-    q0 = [0.2, 3.3, -0.5]
-    dq0 = [0.0, 0.0, 0.0]
+    q0 = cfg["Robot"]["q_init"]["q0"]
+    dq0 = cfg["Robot"]["q_init"]["dq0"]
     jointNominalConfig = np.array([q0[0], q0[1], q0[2]])
     jointVelocityTarget = np.array([dq0[0], dq0[1], dq0[2]])
     TIP.setGeneralizedCoordinate(jointNominalConfig)
@@ -1263,7 +891,7 @@ def Sim_main():
     #     if Nc_flag == 0:
     #         robot = TriplePendulum(cfg)
     #         nonlinearOptimization = NLP(robot, cfg, JointPos, JointVel)
-    #         tor = nonlinearOptimization.Solve_StateReturn2(robot)
+    #         tor, ddq0 = nonlinearOptimization.Solve_StateReturn2(robot)
     #         # print(tor)
     #         u1 = tor[Nc_flag][0]
     #         u2 = tor[Nc_flag][1]
@@ -1273,7 +901,8 @@ def Sim_main():
     #         u2 = tor[Nc_flag][1]
     #         Nc_flag += 1
     #         pass
-
+    #     if Nc_flag <= Nc:
+    #         ddq.append([ddq0[Nc_flag-1][0], ddq0[Nc_flag-1][1], ddq0[Nc_flag-1][2]])
     #     u_temp = [u1, u2]
 
     #     t.append((i)*robot.dt)
@@ -1318,30 +947,196 @@ def Sim_main():
     visual = DataProcess(cfg, robot, q, dq, ddq, tor, t, save_dir)
     visual.DataPlot(fig_flag)
     visual.ForceAnalysis(fig_flag)
+    visual.SupportForce(fig_flag)
+    visual.MomentumAnalysis(fig_flag)
     visual.PowerAnalysis(fig_flag)
     visual.animation(0, ani_flag)
     visual.DataSave(save_flag)
+
     # endregion
     pass
 
-def DataLoad():
+def DataVisual():
     FilePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # print(FilePath)
     ParamFilePath = FilePath + "/config/Dual.yaml"
     ParamFile = open(ParamFilePath, "r", encoding="utf-8")
     cfg = yaml.load(ParamFile, Loader=yaml.FullLoader)
 
-    DataFile = FilePath + "/data/2022-04-21/X-2022-04-21-18-25-52-MPC-Pos_60-Tor_5-Vel_20-dt_0.02-T_5.0-Tp_0.8-Tc_1-ML_0.1k/2022-04-21-18-25-52-MPC-Pos_60-Tor_5-Vel_20-dt_0.02-T_5.0-Tp_0.8-Tc_1-ML_0.1k-sol.npy"
+    DataFile = FilePath + "/data/2022-04-21/X-2022-04-21-18-00-29-MPC-Pos_50-Tor_5-Vel_20-dt_0.02-T_5.0-Tp_0.8-Tc_1-ML_0.1k/2022-04-21-18-00-29-MPC-Pos_50-Tor_5-Vel_20-dt_0.02-T_5.0-Tp_0.8-Tc_1-ML_0.1k-sol.npy"
     Data = np.load(DataFile)
     q = Data[:, 0:3]
     dq = Data[:, 3:6]
     ddq = Data[:, 6:9]
     u = Data[:, 9:11]
     t = Data[:, 11]
+    print(max(t))
 
+    todaytime=datetime.date.today()
+    save_dir = FilePath + "/data/" + str(todaytime) + "/"
     robot = TriplePendulum(cfg)
-    visual = DataProcess(cfg, robot, q, dq, ddq, u, t, FilePath)
-    visual.ForceAnalysis()
-    visual.PowerAnalysis()
+    visual = DataProcess(cfg, robot, q, dq, ddq, u, t, save_dir)
+    visual.DataPlot()
+    visual.SupportForce()
+    # visual.ForceAnalysis()
+    # visual.PowerAnalysis()
+    # visual.MomentumAnalysis()
+    pass
+
+def DataResLoad(Data):
+    q = Data[:, 0:3]
+    dq = Data[:, 3:6]
+    ddq = Data[:, 6:9]
+    u = Data[:, 9:11]
+    t = Data[:, 11]
+    return q, dq, ddq, u, t
+
+def ParamsAnalysis():
+    FilePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # print(FilePath)
+    ParamFilePath = FilePath + "/config/Dual.yaml"
+    ParamFile = open(ParamFilePath, "r", encoding="utf-8")
+    cfg = yaml.load(ParamFile, Loader=yaml.FullLoader)
+
+    MaxTor_m = []
+    MaxTime_m = []
+    MaxAngle_m = []
+    MaxTor_r = []
+    MaxTime_r = []
+    MaxAngle_r = []
+    q_ref = 0.04 * 0.2
+    mM = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    Ir = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 2.0, 5.0, 8.0, 10.0, 20.0]
+    # Ir = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    for i in range(len(mM)):
+        DataFile_m = FilePath + "/data/2022-04-25/mM_" + str(mM[i]) + "/mM_" + str(mM[i]) + "-sol.npy"
+        Data_m = np.load(DataFile_m)
+        q_m, dq_m, ddq_m, u_m, t_m = DataResLoad(Data_m)
+        for j in range(len(t_m)):
+            if j >0:
+                ## min recovery time
+                if q_m[j][0] <= q_ref and q_m[j-1][0] > q_ref:
+                    MaxTime_m.append(t_m[j])
+        
+        ## max theta 2 angle
+        theta2_m = q_m[:, 1]
+        theta2_m_max = max(theta2_m)
+        MaxAngle_m.append(theta2_m_max)
+
+        ## max tor 1, 2
+        tor1_m = u_m[:, 0]
+        tor2_m = u_m[:, 1]
+        tor1_m_max = max(tor1_m)
+        tor2_m_max = max(tor2_m)
+        MaxTor_m.append([tor1_m_max, tor2_m_max])
+    
+    for i in range(len(Ir)):
+        DataFile_I = FilePath + "/data/2022-04-25/Ir_" + str(Ir[i]) + "/Ir_" + str(Ir[i]) + "-sol.npy"
+        Data_r = np.load(DataFile_I)
+        q_r, dq_r, ddq_r, u_r, t_r = DataResLoad(Data_r)
+        flag = 0
+        for j in range(len(t_r)):
+            if j >0:
+                ## min recovery time
+                if q_r[j][0] <= q_ref and q_r[j-1][0] > q_ref:
+                    if flag == 0:
+                        MaxTime_r.append(t_r[j])
+                    else:
+                        MaxTime_r[-1] = t_r[j]
+                    print(i, t_r[j])
+                    flag = 1
+
+        ## max theta 2 angle
+        theta2_r = q_r[:, 1]
+        theta2_r_max = max(theta2_r)
+        MaxAngle_r.append(theta2_r_max)
+
+        ## max tor 1, 2
+        tor1_r = u_r[:, 0]
+        tor2_r = u_r[:, 1]
+        tor1_r_max = max(tor1_r)
+        tor2_r_max = max(tor2_r)
+        MaxTor_r.append([tor1_r_max, tor2_r_max])
+
+    MaxTor_m = np.asarray(MaxTor_m)
+    MaxTor_r = np.asarray(MaxTor_r)
+    
+    fig, axes = plt.subplots(2,1, dpi=100,figsize=(12,10))
+    ax1 = axes[0]
+    ax2 = axes[1]
+    x_index = ['0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '1.0', '2.0', '5.0', '8.0', '10.0','20.0']
+    values = range(len(Ir))
+    ax1.plot(mM, MaxTime_m, label="Settling time", linewidth = 3)
+
+    ax1.set_xlabel('M_arm / M_body', fontsize = 18)
+    ax1.set_ylabel('Settling time(s) ', fontsize = 20)
+    ax1.xaxis.set_tick_params(labelsize = 20)
+    ax1.yaxis.set_tick_params(labelsize = 20)
+    ax1.legend(loc='lower right', fontsize = 20)
+    # ax1.grid()
+
+    ax2.plot(values, MaxTime_r, label="Settling time", linewidth = 3)
+
+    ax2.set_xlabel('I_arm / I_body ', fontsize = 18)
+    ax2.set_ylabel('Settling time(s) ', fontsize = 20)
+    ax2.xaxis.set_tick_params(labelsize = 20)
+    ax2.xaxis.set_ticks(values)
+    ax2.xaxis.set_ticklabels(x_index)
+    ax2.yaxis.set_tick_params(labelsize = 20)
+    ax2.legend(loc='upper right', fontsize = 20)
+    # ax2.grid()
+    plt.show()
+
+    fig, axes = plt.subplots(2,1, dpi=100,figsize=(12,10))
+    ax1 = axes[0]
+    ax2 = axes[1]
+    ax1.plot(mM, MaxAngle_m, label="Max Joint 2 angle", linewidth = 3)
+
+    ax1.set_xlabel('M_arm / M_body', fontsize = 18)
+    ax1.set_ylabel('Angle(rad)', fontsize = 20)
+    ax1.xaxis.set_tick_params(labelsize = 20)
+    ax1.yaxis.set_tick_params(labelsize = 20)
+    ax1.legend(loc='lower right', fontsize = 20)
+    # ax1.grid()
+
+    ax2.plot(values, MaxAngle_r, label="Max Joint 2 angle", linewidth = 3)
+
+    ax2.set_xlabel('I_arm / I_body ', fontsize = 18)
+    ax2.set_ylabel('Angle(rad) ', fontsize = 20)
+    ax2.xaxis.set_tick_params(labelsize = 20)
+    ax2.xaxis.set_ticks(values)
+    ax2.xaxis.set_ticklabels(x_index)
+    ax2.yaxis.set_tick_params(labelsize = 20)
+    ax2.legend(loc='upper right', fontsize = 20)
+    # ax2.grid()
+    plt.show()
+
+    fig, axes = plt.subplots(2,1, dpi=100,figsize=(12,10))
+    ax1 = axes[0]
+    ax2 = axes[1]
+    ax1.plot(mM, MaxTor_m[:, 0], label="Max Joint 2 Torque", linewidth = 3)
+    ax1.plot(mM, MaxTor_m[:, 1], label="Max Joint 3 Torque", linewidth = 3)
+
+    ax1.set_xlabel('M_arm / M_body', fontsize = 18)
+    ax1.set_ylabel('Torque(N.m) ', fontsize = 20)
+    ax1.xaxis.set_tick_params(labelsize = 20)
+    ax1.yaxis.set_tick_params(labelsize = 20)
+    ax1.legend(loc='lower right', fontsize = 20)
+    # ax1.grid()
+
+    ax2.plot(values, MaxTor_r[:, 0], label="Max Joint 2 Torque", linewidth = 3)
+    ax2.plot(values, MaxTor_r[:, 1], label="Max Joint 3 Torque", linewidth = 3)
+
+    ax2.set_xlabel('I_arm / I_body ', fontsize = 18)
+    ax2.set_ylabel('Torque(N.m) ', fontsize = 25)
+    ax2.xaxis.set_tick_params(labelsize = 20)
+    ax2.xaxis.set_ticks(values)
+    ax2.xaxis.set_ticklabels(x_index)
+    ax2.yaxis.set_tick_params(labelsize = 20)
+    ax2.legend(loc='upper right', fontsize = 20)
+    # ax2.grid()
+    plt.show()
+    
     pass
 
 if __name__ == "__main__":
@@ -1349,6 +1144,6 @@ if __name__ == "__main__":
     # visualization()
     # MPC_main()
     Sim_main()
-    # DataLoad()
-    # test()
+    # DataVisual()
+    # DataAnalysis()
     pass
