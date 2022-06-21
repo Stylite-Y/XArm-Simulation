@@ -1,0 +1,74 @@
+<?xml version="1.0" ?>
+<robot name="LISM_Arm">
+    
+    <link name="base">
+        <!-- <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.01"/>
+            <geometry>
+                <box size = "0.2 0.3 0.02"/>
+            </geometry>
+        </visual> -->
+		<inertial>
+			<origin rpy = "0 0 0" xyz = "0 0 0" />
+			<mass value = "0.0001" />
+			<inertia ixx = "0.00001" ixy = "0" ixz = "0" iyy = "0.00001" iyz = "0" izz = "0.00001" />
+		</inertial>
+    </link>
+
+    <joint name="BaseToLink" type="continuous">
+        <axis xyz="-1 0 0"/>
+        <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+        <parent link="base"/>
+        <child link="link1"/>
+    </joint>
+
+    <link name="link1">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.25"/>
+            <geometry>
+                <cylinder length="0.5" radius="0.03"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <mass value="0.5"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.25"/>
+            <inertia ixx="0.0104167" ixy="0" ixz="0.0" iyy="0.0104167" iyz="0" izz="0.000225"/>
+        </inertial>
+        <collision>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.25"/>
+            <geometry>
+                <cylinder length="0.5" radius="0.03"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <joint name="l12l2" type="continuous">
+        <axis xyz="-1 0 0"/>
+        <origin rpy="0 0 0" xyz="0.0 0.0 0.5"/>
+        <parent link="link1"/>
+        <child link="link2"/>
+    </joint>
+
+    <link name="link2">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.5"/>
+            <geometry>
+                <cylinder length="1.0" radius="0.03"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <mass value="0.2"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.5"/>
+            <inertia ixx="0.0167" ixy="0" ixz="0.0" iyy="0.0015" iyz="0" izz="0.000225"/>
+        </inertial>
+        <collision>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.5"/>
+            <geometry>
+                <cylinder length="1.0" radius="0.03"/>
+            </geometry>
+        </collision>
+    </link>
+
+    
+
+</robot>

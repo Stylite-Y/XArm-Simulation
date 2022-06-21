@@ -1,0 +1,596 @@
+<?xml version="1.0"?>
+<robot name="body">
+
+  <material name="blue">
+      <color rgba="0 0 0.8 1"/>
+  </material>
+  <material name="black">
+      <color rgba="0 0 0 1"/>
+  </material>
+  <material name="white">
+      <color rgba="1 1 1 1"/>
+  </material>
+  <material name="green">
+      <color rgba="0.8 0 0 1"/>
+  </material>
+  <material name="grey">
+      <color rgba="0.41 0.36 0.33 1"/>
+  </material>
+
+  <link name="base">
+      <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+          <mass value="0.00100"/>
+          <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+      </inertial>
+  </link>
+
+  <link name="body part1">
+    <visual>
+      <geometry>
+        <cylinder length="0.08" radius="0.13"/>
+
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <material name="white"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.08" radius="0.13"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="0.23" ixy="0.0" ixz="0.0" iyy="0.23" iyz="0.0" izz="0.1"/>
+    </inertial>
+  </link>
+
+  <joint name="hip" type="spherical">
+		<parent link="base"/>
+ 		<child link="body part1"/>
+		<origin rpy="0 0 0" xyz="0.000000 0.00000 0.00000"/>
+  </joint>
+
+  <link name="body part2">
+    <visual>
+      <geometry>
+        <cylinder length="0.08" radius="0.16"/>
+      </geometry>
+      <material name="white"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.08" radius="0.16"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="0.23" ixy="0.0" ixz="0.0" iyy="0.23" iyz="0.0" izz="0.1"/>
+    </inertial>
+  </link>
+
+  <joint name="p12" type="spherical">
+    <axis xyz="1 0 0"/>
+    <parent link="body part1"/>
+    <child link="body part2"/>
+    <origin rpy="0 0 0" xyz="0 0 0.1"/>
+
+  </joint>
+
+  <link name="body part3">
+    <visual>
+      <geometry>
+        <cylinder length="0.08" radius="0.19"/>
+      </geometry>
+      <material name="white"/>
+      <origin rpy="0 0 0" xyz="0 0 0.05"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.08" radius="0.19"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="0.23" ixy="0.0" ixz="0.0" iyy="0.23" iyz="0.0" izz="0.1"/>
+    </inertial>
+  </link>
+
+  <joint name="p23" type="spherical">
+    <parent link="body part2"/>
+    <child link="body part3"/>
+    <origin rpy="0 0 0" xyz="0 0 0.05"/>
+
+  </joint>
+
+  <link name="body part4">
+    <visual>
+      <geometry>
+        <cylinder length="0.08" radius="0.12"/>
+      </geometry>
+      <material name="white"/>
+      <origin rpy="0 0 0" xyz="0 0 0.05"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.08" radius="0.12"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="0.23" ixy="0.0" ixz="0.0" iyy="0.23" iyz="0.0" izz="0.1"/>
+    </inertial>
+  </link>
+
+  <joint name="p34" type="spherical">
+    <parent link="body part3"/>
+    <child link="body part4"/>
+    <origin rpy="0 0 0" xyz="0 0 0.1"/>
+
+  </joint>
+
+  <link name="body part5">
+    <visual>
+      <geometry>
+        <box size="0.05 0.05 0.08"/>
+      </geometry>
+      <material name="white"/>
+      <origin rpy="0 0 0" xyz="0 0 0.05"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.05 0.05 0.08"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+  </link>
+
+  <joint name="p45" type="spherical">
+    <parent link="body part4"/>
+    <child link="body part5"/>
+    <origin rpy="0 0 0" xyz="0 0 0.1"/>
+
+  </joint>
+
+  <link name="head">
+    <visual>
+      <geometry>
+        <sphere radius="0.1"/>
+      </geometry>
+      <material name="grey"/>
+      <origin rpy="0 0 0" xyz="0 0 0.1"/>
+    </visual>
+    <collision>
+      <geometry>
+        <sphere radius="0.1"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0.1"/>
+    </collision>
+    <inertial>
+      <mass value="4.29"/>
+      <inertia ixx="0.01716" ixy="0.0" ixz="0.0" iyy="0.01716" iyz="0.0" izz="0.01716"/>
+    </inertial>
+ </link>
+
+  <joint name="bozi" type="spherical">
+    <parent link="body part5"/>
+    <child link="head"/>
+    <origin rpy="0 0 0" xyz="0 0 0.08"/>
+
+  </joint>
+
+  <link name="kua">
+    <visual>
+      <geometry>
+        <box size="0.3 0.15 0.1"/>
+      </geometry>
+      <material name="grey"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.05"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.3 0.3 0.1"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.05"/>
+    </collision>
+    <inertial>
+      <mass value="4.29"/>
+      <inertia ixx="0.03575" ixy="0.0" ixz="0.0" iyy="0.03575" iyz="0.0" izz="0.0644"/>
+    </inertial>
+  </link>
+
+  <joint name="duqi" type="spherical">
+    <parent link="body part1"/>
+    <child link="kua"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.05"/>
+  </joint>
+
+  <link name="left leg">
+    <visual>
+      <geometry>
+        <capsule length="0.27" radius="0.075"/>
+      </geometry>
+      <material name="white"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.205"/>
+    </visual>
+    <collision>
+      <geometry>
+        <capsule length="0.27" radius="0.075"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.205"/>
+    </collision>
+    <inertial>
+      <mass value="5.5"/>
+      <inertia ixx="0.055" ixy="0.0" ixz="0.0" iyy="0.055" iyz="0.0" izz="0.2475"/>
+    </inertial>
+ </link>
+
+  <joint name="left tuigen" type="spherical">
+    <parent link="kua"/>
+    <child link="left leg"/>
+    <origin rpy="0.07222 0 -0.1" xyz="0.15 0 -0.13"/>
+  </joint>
+
+  <link name="right leg">
+    <visual>
+      <geometry>
+        <capsule length="0.27" radius="0.075"/>
+      </geometry>
+      <material name="white"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.205"/>
+    </visual>
+    <collision>
+      <geometry>
+        <capsule length="0.27" radius="0.075"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.205"/>
+    </collision>
+    <inertial>
+      <mass value="5.5"/>
+      <inertia ixx="0.055" ixy="0.0" ixz="0.0" iyy="0.055" iyz="0.0" izz="0.2475"/>
+    </inertial>
+  </link>
+
+  <joint name="right tuigen" type="spherical">
+    <parent link="kua"/>
+    <child link="right leg"/>
+    <origin rpy="0.07222 0 0" xyz="-0.15 0 -0.13"/>
+  </joint>
+
+  <link name="right leg zh">
+    <visual>
+      <geometry>
+        <capsule length="0.3" radius="0.05"/>
+      </geometry>
+      <material name="grey"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.2"/>
+    </visual>
+    <collision>
+      <geometry>
+        <capsule length="0.3" radius="0.05"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.2"/>
+    </collision>
+    <inertial>
+      <mass value="2.9425"/>
+      <inertia ixx="0.0275" ixy="0.0" ixz="0.0" iyy="0.0275" iyz="0.0" izz="0.12"/>
+    </inertial>
+  </link>
+
+  <joint name="right tuizh" type="spherical">
+    <parent link="right leg"/>
+    <child link="right leg zh"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.435"/>
+
+  </joint>
+
+  <link name="left leg zh">
+    <visual>
+      <geometry>
+
+        <capsule length="0.3" radius="0.05"/>
+      </geometry>
+      <material name="grey"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.2"/>
+    </visual>
+    <collision>
+      <geometry>
+        <capsule length="0.3" radius="0.05"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.2"/>
+    </collision>
+    <inertial>
+      <mass value="2.9425"/>
+      <inertia ixx="0.0275" ixy="0.0" ixz="0.0" iyy="0.0275" iyz="0.0" izz="0.12"/>
+    </inertial>
+  </link>
+
+  <joint name="left tuizh" type="spherical">
+    <parent link="left leg"/>
+    <child link="left leg zh"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.435"/>
+
+  </joint>
+
+  <link name="left foot">
+    <visual>
+      <geometry>
+        <box size="0.04 0.04 0.04"/>
+
+      </geometry>
+      <material name="white"/>
+      <origin rpy="0 0 0" xyz="0 0.03 -0.05"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.04 0.04 0.04"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0.02 -0.02"/>
+    </collision>
+    <inertial>
+      <mass value="1.045"/>
+      <inertia ixx="0.008" ixy="0.0" ixz="0.0" iyy="0.008" iyz="0.0" izz="0.002"/>
+    </inertial>
+  </link>
+
+  <joint name="left tuidi" type="spherical">
+    <parent link="left leg zh"/>
+    <child link="left foot"/>
+    <origin rpy="0.01 0 -3.14" xyz="0 0 -0.4"/>
+
+  </joint>
+
+  <link name="right foot">
+    <visual>
+      <geometry>
+        <box size="0.04 0.04 0.04"/>
+      </geometry>
+      <material name="white"/>
+      <origin rpy="0 0 0" xyz="0 0.02 -0.05"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.04 0.04 0.04"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0.2 -0.05"/>
+    </collision>
+    <inertial>
+      <mass value="1.045"/>
+      <inertia ixx="0.008" ixy="0.0" ixz="0.0" iyy="0.008" iyz="0.0" izz="0.002"/>
+    </inertial>
+  </link>
+
+  <joint name="right tuidi" type="spherical">
+    <parent link="right leg zh"/>
+    <child link="right foot"/>
+    <origin rpy="0.01 0 3.14" xyz="0 0 -0.4"/>
+
+  </joint>
+
+
+
+  <link name="left jian">
+    <visual>
+      <geometry>
+        <box size="0.2 0.05 0.05"/>
+      </geometry>
+      <material name="grey"/>
+      <origin rpy="0 0 0" xyz="0.1 0 0.025"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.2 0.05 0.05"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0.1 0 0.025"/>
+    </collision>
+    <inertial>
+      <mass value="1"/>
+      <inertia ixx="0.06" ixy="0.0" ixz="0.0" iyy="0.060" iyz="0.0" izz="0.02"/>
+    </inertial>
+  </link>
+
+  <joint name="left jianjia" type="spherical">
+
+    <parent link="body part4"/>
+    <child link="left jian"/>
+    <origin rpy="0 0 0" xyz="0.1 0 0.05"/>
+
+  </joint>
+
+  <link name="right jian">
+    <visual>
+      <geometry>
+        <box size="0.2 0.05 0.05"/>
+      </geometry>
+      <material name="grey"/>
+      <origin rpy="0 0 0" xyz="-0.1 0 0.025"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.2 0.05 0.05"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="-0.1 0 0.025"/>
+    </collision>
+    <inertial>
+      <mass value="1"/>
+      <inertia ixx="0.06" ixy="0.0" ixz="0.0" iyy="0.060" iyz="0.0" izz="0.02"/>
+    </inertial>
+  </link>
+
+  <joint name="right jianjia" type="spherical">
+
+    <parent link="body part4"/>
+    <child link="right jian"/>
+    <origin rpy="0 0 0" xyz="-0.1 0 0.05"/>
+
+  </joint>
+
+  <link name="right hand s">
+    <visual>
+      <geometry>
+        <capsule length="0.15" radius="0.05"/>
+      </geometry>
+      <material name="white"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.1"/>
+    </visual>
+    <collision>
+      <geometry>
+        <capsule length="0.15" radius="0.05"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.1"/>
+    </collision>
+    <inertial>
+      <mass value="1.46"/>
+      <inertia ixx="0.0058" ixy="0.0" ixz="0.0" iyy="0.0058" iyz="0.0" izz="0.0018"/>
+    </inertial>
+  </link>
+
+  <joint name="right jian hand" type="spherical">
+    <parent link="right jian"/>
+    <child link="right hand s"/>
+    <origin rpy="0 0 0.4" xyz="-0.15 0 -0.05"/>
+  </joint>
+
+  <link name="left hand s">
+    <visual>
+      <geometry>
+        <capsule length="0.15" radius="0.05"/>
+      </geometry>
+      <material name="white"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.1"/>
+    </visual>
+    <collision>
+      <geometry>
+        <capsule length="0.15" radius="0.05"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.1"/>
+    </collision>
+    <inertial>
+      <mass value="1.46"/>
+      <inertia ixx="0.0058" ixy="0.0" ixz="0.0" iyy="0.0058" iyz="0.0" izz="0.0018"/>
+    </inertial>
+  </link>
+
+  <joint name="left jian hand" type="spherical">
+    <parent link="left jian"/>
+    <child link="left hand s"/>
+    <origin rpy="0 0 -0.4" xyz="0.15 0 -0.05"/>
+  </joint>
+
+  <link name="right hand zh">
+    <visual>
+      <geometry>
+        <capsule length="0.24" radius="0.04"/>
+      </geometry>
+      <material name="grey"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.16"/>
+    </visual>
+    <collision>
+      <geometry>
+        <capsule length="0.24" radius="0.04"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.16"/>
+    </collision>
+    <inertial>
+      <mass value="0.825"/>
+      <inertia ixx="0.002" ixy="0.0" ixz="0.0" iyy="0.002" iyz="0.0" izz="0.0009"/>
+    </inertial>
+  </link>
+
+  <joint name="right handzh" type="spherical">
+
+    <parent link="right hand s"/>
+    <child link="right hand zh"/>
+    <origin rpy="0 0 -0.1" xyz="0 0 -0.25"/>
+
+  </joint>
+
+  <link name="left hand zh">
+    <visual>
+      <geometry>
+        <capsule length="0.24" radius="0.04"/>
+      </geometry>
+      <material name="grey"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.16"/>
+    </visual>
+    <collision>
+      <geometry>
+        <capsule length="0.24" radius="0.04"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.16"/>
+    </collision>
+    <inertial>
+      <mass value="0.825"/>
+      <inertia ixx="0.002" ixy="0.0" ixz="0.0" iyy="0.002" iyz="0.0" izz="0.0009"/>
+    </inertial>
+  </link>
+
+  <joint name="left handzh" type="spherical">
+
+    <parent link="left hand s"/>
+    <child link="left hand zh"/>
+    <origin rpy="0 0 0.1" xyz="0 0 -0.25"/>
+
+  </joint>
+
+  <link name="left quan">
+    <visual>
+      <geometry>
+        <box size="0.08 0.08 0.08"/>
+      </geometry>
+      <material name="white"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.04"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.08 0.08 0.08"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.04"/>
+    </collision>
+    <inertial>
+      <mass value="0.495"/>
+      <inertia ixx="0.00245" ixy="0.0" ixz="0.0" iyy="0.00245" iyz="0.0" izz="0.00245"/>
+    </inertial>
+  </link>
+
+  <joint name="left handquan" type="spherical">
+
+    <parent link="left hand zh"/>
+    <child link="left quan"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.32"/>
+
+  </joint>
+
+  <link name="right quan">
+    <visual>
+      <geometry>
+        <box size="0.08 0.08 0.08"/>
+      </geometry>
+      <material name="white"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.04"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.08 0.08 0.08"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.04"/>
+    </collision>
+    <inertial>
+      <mass value="0.495"/>
+      <inertia ixx="0.00245" ixy="0.0" ixz="0.0" iyy="0.00245" iyz="0.0" izz="0.00245"/>
+    </inertial>
+  </link>
+
+  <joint name="right handquan" type="spherical">
+
+    <parent link="right hand zh"/>
+    <child link="right quan"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.32"/>
+
+  </joint>
+
+</robot>

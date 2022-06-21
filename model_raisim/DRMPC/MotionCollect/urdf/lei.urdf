@@ -1,0 +1,511 @@
+<?xml version="1.0"?>
+    <!--
+    a nice human model for motion capture
+    Author: Kevin Cheng, learning from Wooden Jin
+    -->
+	<robot name="match_localcal">
+
+
+	<link name="base">
+        <inertial>
+            <origin rpy="0.3 -1.570796 -0.5" xyz="0 0 0"/>
+            <mass value="0.00100"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertial>
+	</link>
+
+
+
+	<joint name="body" type="spherical">
+		<parent link="hip"/>
+ 		<child link="body"/>
+		<origin rpy="-0.785398 -1.570796 0" xyz="0.0 0.00000 0.0"/>
+	</joint>
+
+	<link name="body">
+	    <inertial>
+			<origin rpy="1.570796  0 0" xyz="0.000 0.000000 0.2350"/>
+            <mass value="10.81"/>
+            <inertia ixx="0.24665" ixy="0" ixz="0" iyy="0.208" iyz="0" izz="0.05666"/>
+        </inertial>
+ 		<visual>
+ 			<geometry>
+				<box size="0.1 0.470000 0.23"/>
+ 			</geometry>
+			<origin rpy="1.570796 0 0" xyz="0.00000 0.000000 0.235"/>
+		</visual>
+        <collision>
+			<origin rpy="0 0 0" xyz="0.00000 0.000000 0.235"/>
+            <geometry>
+				<box size="0.1 0.230000 0.47"/>
+            </geometry>
+        </collision>
+	</link>
+
+    <joint name="left_shoulder" type="spherical">
+		<parent link="body"/>
+ 		<child link="left_shoulder"/>
+		<origin rpy="3.1415926 0 0" xyz="0 0.115000  0.47"/>
+	</joint>
+
+	<link name="left_shoulder">
+	    <inertial>
+			<origin rpy="0 0 0" xyz="0.0000 0.0200 0.000000"/>
+            <mass value="0.0335"/>
+            <inertia ixx="0.00000536" ixy="0" ixz="0" iyy="0.00000536" iyz="0" izz="0.00000536"/>
+        </inertial>
+ 		<visual>
+ 			<geometry>
+				<sphere radius="0.0200"/>
+ 			</geometry>
+			<origin rpy="0 0 0" xyz="0.00000 0.020000 0.00000"/>
+		</visual>
+        <collision>
+			<origin rpy="0 0 0" xyz="0.00000 0.020000 0.00000"/>
+            <geometry>
+				<sphere radius="0.0200"/>
+            </geometry>
+        </collision>
+	</link>
+
+    <joint name="neck" type="spherical">
+		<parent link="body"/>
+ 		<child link="neck"/>
+		<origin rpy="0 0 0.000" xyz="0 0 0.47"/>
+	</joint>
+
+	<link name="neck">
+	    <inertial>
+			<origin rpy="0 0 0" xyz="0.0000 0.000 0.05"/>
+            <mass value="0.6362"/>
+            <inertia ixx="0.0008522" ixy="0" ixz="0" iyy="0.0008522" iyz="0" izz="0.003181"/>
+        </inertial>
+ 		<visual>
+ 			<geometry>
+				<capsule length="0.1" radius=" 0.045"/>
+ 			</geometry>
+			<origin rpy="0 0 0" xyz="0.00000 0.00000 0.050000"/>
+		</visual>
+        <collision>
+			<origin rpy="0 0 0" xyz="0.00000 0.00000 0.050000"/>
+            <geometry>
+				<capsule length="0.1" radius=" 0.045"/>
+            </geometry>
+        </collision>
+	</link>
+
+    <joint name="head" type="spherical">
+		<parent link="neck"/>
+ 		<child link="head"/>
+		<origin rpy="0 0 0.000" xyz="0 0.0 0.1"/>
+	</joint>
+
+	<link name="head">
+	    <inertial>
+			<origin rpy="0 0 0" xyz="0.0000 0.000 0.0865"/>
+            <mass value="2.7110"/>
+            <inertia ixx="0.008114" ixy="0" ixz="0" iyy="0.008114" iyz="0" izz="0.00814"/>
+        </inertial>
+ 		<visual>
+ 			<geometry>
+				<sphere radius="0.086500"/>
+ 			</geometry>
+			<origin rpy="0 0 0" xyz="0.00000 0.00000 0.086500000"/>
+		</visual>
+        <collision>
+			<origin rpy="0 0 0" xyz="0.00000 0.00000 0.086500000"/>
+            <geometry>
+				<sphere radius="0.086500"/>
+            </geometry>
+        </collision>
+	</link>
+
+	<joint name="right_shoulder" type="spherical">
+		<parent link="body"/>
+ 		<child link="right_shoulder"/>
+		<origin rpy="0 -1.570796 1.570796" xyz="0.0 -0.115000  0.47"/>
+	</joint>
+
+	<link name="right_shoulder">
+	    <inertial>
+			<origin rpy="0 0 0" xyz="0.0000 -0.0200 0.000000"/>
+            <mass value="0.0335"/>
+            <inertia ixx="0.00000536" ixy="0" ixz="0" iyy="0.00000536" iyz="0" izz="0.00000536"/>
+        </inertial>
+ 		<visual>
+ 			<geometry>
+				<sphere radius="0.0200"/>
+ 			</geometry>
+			<origin rpy="0 0 0" xyz="0.00000 -0.020000 0.00000"/>
+		</visual>
+        <collision>
+			<origin rpy="0 0 0" xyz="0.00000 -0.020000 0.00000"/>
+            <geometry>
+				<sphere radius="0.0200"/>
+            </geometry>
+        </collision>
+	</link>
+
+     <joint name="right_uparm" type="spherical">
+		<parent link="right_shoulder"/>
+ 		<child link="right_uparm"/>
+		<origin rpy="0 3.141592 0" xyz="0.0 0.0  0"/>
+	</joint>
+
+	<link name="right_uparm">
+	    <inertial>
+			<origin rpy="0 1.570796 0" xyz="0.13 -0.03500 0.000000"/>
+            <mass value="1.0006"/>
+            <inertia ixx="0.005943" ixy="0" ixz="0" iyy="0.005943" iyz="0" izz="0.000613"/>
+        </inertial>
+ 		<visual>
+ 			<geometry>
+				<capsule length="0.26" radius=" 0.035"/>
+ 			</geometry>
+			<origin rpy="0 1.570796 0" xyz="0.130 -0.0350000 0.00000"/>
+		</visual>
+        <collision>
+			<origin rpy="0 0 0" xyz="0.13000 -0.0350000 0.00000"/>
+            <geometry>
+				<capsule length="0.26" radius=" 0.0350000"/>
+            </geometry>
+        </collision>
+	</link>
+
+     <joint name="right_arm" type="spherical">
+        <parent link="right_uparm"/>
+        <child link="right_arm"/>
+        <origin rpy="0 -1.570796 1.570796" xyz="0.26 0.0000000 -0.000000"/>
+    </joint>
+
+    <link name="right_arm">
+        <inertial>
+            <origin rpy="0 1.570796 0" xyz="0.1250 -0.0350000 0.000000"/>
+            <mass value="0.9621"/>
+            <inertia ixx="0.00531" ixy="0" ixz="0" iyy="0.00531" iyz="0" izz="0.0005893"/>
+        </inertial>
+        <visual>
+             <geometry>
+					<capsule length="0.25" radius=" 0.0350000"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.1250 -0.0350000 0.000000"/>
+        </visual>
+        <collision>
+             <geometry>
+					<capsule length="0.25" radius=" 0.0350000"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.1250000 -0.0350000 0.000000"/>
+        </collision>
+	</link>
+
+	<joint name="right_hand" type="spherical">
+        <parent link="right_arm"/>
+        <child link="right_hand"/>
+        <origin rpy="0 0 0" xyz="0.25 -0.0000000 -0.0"/>
+    </joint>
+
+    <link name="right_hand">
+        <inertial>
+            <origin rpy="0 1.570796 0" xyz="0.08 -0.00000 -0.000000"/>
+            <mass value="2.145"/>
+            <inertia ixx="0.00549" ixy="0" ixz="0" iyy="0.00549" iyz="0" izz="0.00549"/>
+        </inertial>
+        <visual>
+             <geometry>
+					<sphere radius="0.0800"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.08000 -0.0350000 -0.000000"/>
+        </visual>
+        <collision>
+             <geometry>
+					<sphere radius="0.0800"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.0000 -0.0350000 -0.000000"/>
+        </collision>
+	</link>
+
+    <joint name="left_uparm" type="spherical">
+		<parent link="left_shoulder"/>
+ 		<child link="left_uparm"/>
+		<origin rpy="-1.570796 1.570796 0" xyz="0 0 0"/>
+	</joint>
+
+ <link name="left_uparm">
+	    <inertial>
+			<origin rpy="0 1.570796 0" xyz="0.13 0.03500 -0.000000"/>
+            <mass value="1.0006"/>
+            <inertia ixx="0.00593" ixy="0" ixz="0" iyy="0.00593" iyz="0" izz="0.000613"/>
+        </inertial>
+ 		<visual>
+ 			<geometry>
+				<capsule length="0.26" radius=" 0.0350000"/>
+ 			</geometry>
+			<origin rpy="0 1.570796 0" xyz="0.130 0.0350000 -0.00000"/>
+		</visual>
+        <collision>
+			<origin rpy="0 1.570796 0" xyz="0.130 0.0350000 -0.00000"/>
+            <geometry>
+				<capsule length="0.26" radius=" 0.0350000"/>
+            </geometry>
+        </collision>
+ </link>
+
+      <joint name="left_arm" type="spherical">
+        <parent link="left_uparm"/>
+        <child link="left_arm"/>
+        <origin rpy="0 0 0" xyz="0.26 0.0000000 -0.000000"/>
+      </joint>
+
+    <link name="left_arm">
+        <inertial>
+            <origin rpy="0 1.570796 1.570796" xyz="0.1250 0.035 -0.000000"/>
+            <mass value="0.9621"/>
+            <inertia ixx="0.00531" ixy="0" ixz="0" iyy="0.00531" iyz="0" izz="0.0005893"/>
+        </inertial>
+        <visual>
+             <geometry>
+					<capsule length="0.25" radius=" 0.0350000"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.1250000 0.0350000 -0.000000"/>
+        </visual>
+        <collision>
+             <geometry>
+					<capsule length="0.25" radius=" 0.0350000"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.1250000 0.0350000 -0.000000"/>
+        </collision>
+	</link>
+
+    <joint name="left_hand" type="spherical">
+        <parent link="left_arm"/>
+        <child link="left_hand"/>
+        <origin rpy="0 0 0" xyz="0.25 0.0000000 -0.000000"/>
+    </joint>
+
+    <link name="left_hand">
+        <inertial>
+            <origin rpy="0 1.570796 0" xyz="0.08 0.0350000 -0.0000000"/>
+            <mass value="2.145"/>
+            <inertia ixx="0.00549" ixy="0" ixz="0" iyy="0.00549" iyz="0" izz="0.00549"/>
+        </inertial>
+        <visual>
+             <geometry>
+					<sphere radius="0.0800"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.08000 0.0350000 -0.000000"/>
+        </visual>
+        <collision>
+             <geometry>
+					<sphere radius="0.06500"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.08000 0.0350000 -0.000000"/>
+        </collision>
+	</link>
+
+
+	<joint name="root1" type="spherical">
+		<parent link="base"/>
+ 		<child link="root1"/>
+		<origin rpy="0 0 0" xyz="0.000000 0.00000 0.00000"/>
+	</joint>
+
+	<link name="root1">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.00100"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertial>
+
+	</link>
+
+	<joint name="hip" type="spherical">
+		<parent link="root1"/>
+ 		<child link="hip"/>
+		<origin rpy="0 1.570796 0" xyz="0.000000 0.00000 0.00000"/>
+	</joint>
+
+	<link name="hip">
+	    <inertial>
+			<origin rpy="0 0 0" xyz="0.115000 0.000000 0.000000"/>
+            <mass value="6.371"/>
+            <inertia ixx="0.0337" ixy="0" ixz="0" iyy="0.0337" iyz="0" izz="0.0337"/>
+        </inertial>
+ 		<visual>
+ 			<geometry>
+				<sphere radius="0.11500"/>
+ 			</geometry>
+			<origin rpy="0 -1.570796 0" xyz="0.115000 0.000000 0.000000"/>
+		</visual>
+        <collision>
+			<origin rpy="0 -1.570796 0" xyz="0.115000 0.000000 0.000000"/>
+            <geometry>
+				<sphere radius="0.06500"/>
+            </geometry>
+        </collision>
+	</link>
+
+	<joint name="right_upleg" type="spherical">
+        <parent link="hip"/>
+        <child link="right_upleg"/>
+        <origin rpy="0 0 0" xyz="0.000000  -0.115  0.0000000"/>
+    </joint>
+
+	 <link name="right_upleg">
+	    <inertial>
+            <origin rpy="0 1.570796 0" xyz="0.235000 0.0000 0.000000"/>
+            <mass value="7.2351"/>
+            <inertia ixx="0.142" ixy="0" ixz="0" iyy="0.142" iyz="0" izz="0.01773"/>
+        </inertial>
+        <visual>
+             <geometry>
+                <capsule length="0.47" radius=" 0.070000"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.235000 0.0000 0.000000"/>
+        </visual>
+        <collision>
+             <geometry>
+                <capsule length="0.47" radius=" 0.070000"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.21000 0.0000 0.000000"/>
+        </collision>
+	</link>
+
+	<joint name="right_leg" type="spherical">
+        <parent link="right_upleg"/>
+        <child link="right_leg"/>
+        <origin rpy="0 0 0" xyz="0.47 0.0000000 0.000000"/>
+    </joint>
+
+    <link name="right_leg">
+        <inertial>
+            <origin rpy="0 1.570796 0" xyz="0.210000 0.00000 0.000000"/>
+            <mass value="3.30"/>
+            <inertia ixx="0.051" ixy="0" ixz="0" iyy="0.051" iyz="0" izz="0.004125"/>
+        </inertial>
+        <visual>
+             <geometry>
+					<capsule length="0.42" radius=" 0.050000"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.210000 0.00000 0.000000"/>
+        </visual>
+        <collision>
+             <geometry>
+					<capsule length="0.42" radius=" 0.050000"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.210000 0.00000 0.000000"/>
+        </collision>
+	</link>
+
+    <joint name="right_foot" type="spherical">
+        <parent link="right_leg"/>
+        <child link="right_foot"/>
+        <origin rpy="0 0 0" xyz="0.42 0.0000000 0.0"/>
+		<!--Panning first and then rotating
+		-->
+    </joint>
+
+	<link name="right_foot">
+        <inertial>
+            <origin rpy="0 1.570796 0" xyz="0.12750000 0.000000  0.00000"/>
+            <mass value="1.785"/>
+            <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.011" iyz="0" izz="0.00222"/>
+        </inertial>
+        <visual>
+             <geometry>
+                <box size="0.10 0.07 0.255"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.12750000 0.000000  0.0000000"/>
+        </visual>
+		<collision>
+             <geometry>
+                <box size="0.1 0.070000 0.255"/>
+            </geometry>
+            <origin rpy="0 0 0" xyz="0.050000 0.000000  0.1275000000"/>
+		</collision>
+	</link>
+
+
+
+	<joint name="left_upleg" type="spherical">
+        <parent link="hip"/>
+        <child link="left_upleg"/>
+        <origin rpy="0 0 0" xyz="0.000000  0.115  0.0000000"/>
+    </joint>
+
+	 <link name="left_upleg">
+	    <inertial>
+            <origin rpy="0 1.570796 0" xyz="0.235000 0 0.000000"/>
+            <mass value="7.2351"/>
+            <inertia ixx="0.142" ixy="0" ixz="0" iyy="0.142" iyz="0" izz="0.01773"/>
+        </inertial>
+        <visual>
+             <geometry>
+                <capsule length="0.47" radius=" 0.070000"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.235000 0 0.000000"/>
+        </visual>
+		<collision>
+             <geometry>
+                <capsule length="0.47" radius=" 0.070000"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.235000 0 0.000000"/>
+		</collision>
+	</link>
+
+
+
+
+	<joint name="left_leg" type="spherical">
+        <parent link="left_upleg"/>
+        <child link="left_leg"/>
+        <origin rpy="0 0 0" xyz="0.43 0.0000000 0.000000"/>
+    </joint>
+
+    <link name="left_leg">
+        <inertial>
+            <origin rpy="0 1.570796 0" xyz="0.210000 0.00000 0.000000"/>
+            <mass value="3.3"/>
+            <inertia ixx="0.051" ixy="0" ixz="0" iyy="0.051" iyz="0" izz="0.004125"/>
+        </inertial>
+        <visual>
+             <geometry>
+					<capsule length="0.42" radius=" 0.050000"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.210000 0.00000 0.000000"/>
+        </visual>
+		<collision>
+             <geometry>
+					<capsule length="0.42" radius=" 0.050000"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.210000 0.00000 0.000000"/>
+		</collision>
+	</link>
+
+
+
+    <joint name="left_foot" type="spherical">
+        <parent link="left_leg"/>
+        <child link="left_foot"/>
+        <origin rpy="0 0 0" xyz="0.42 0.0000000 0.0"/>
+    </joint>
+
+	<link name="left_foot">
+        <inertial>
+              <origin rpy="0 1.570796 0" xyz="0.12750000 0.000000  0.000000"/>
+            <mass value="1.785"/>
+            <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.011" iyz="0" izz="0.00222"/>
+        </inertial>
+        <visual>
+             <geometry>
+                <box size="0.1 0.070000 0.255"/>
+            </geometry>
+            <origin rpy="0 1.570796 0" xyz="0.12750000 0.000000  0.000000"/>
+        </visual>
+		<collision>
+             <geometry>
+                <box size="0.1 0.070000 0.255"/>
+            </geometry>
+            <origin rpy="0 0 0" xyz="0.050000 0.000000  0.1275000000"/>
+		</collision>
+	</link>
+</robot>
