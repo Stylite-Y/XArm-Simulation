@@ -161,7 +161,12 @@ def LocalAxis(Data, rm0, m, time, i):
         P_ho = np.array([Data[n][(m-1)*16], Data[n][(m-1)*16+1], Data[n][(m-1)*16+2]])
         P_lo = np.array([Data[n][(i-1)*16], Data[n][(i-1)*16+1], Data[n][(i-1)*16+2]])
         Pos_res = P_lo - P_ho
-        Pos_res = rm0.T @ Pos_res
+        Pos_res = rm0.T @ Pos_res   # 足底坐标系旋转到与身体一致
+        # 将参考坐标系从足底做一个平移偏置转换到身体对称轴上，但是坐标系方向不变
+        Trans_m = np.array([[1, 0, 0, -0.2],
+                            [0, 1, 0, 0],
+                            [0, 0, 1, 0],
+                            [0, 0, 0, 1],])
         Pos_lh = np.concatenate((Pos_lh, [Pos_res]), axis = 0)
         if n == 0 and i == 7:
             print(Pos_res)    
@@ -199,7 +204,14 @@ def AnaBVH():
     # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/Calibra_Walk_yuan1-4500.calc'
     # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/Calibra_yuan-4000.calc'
     # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/Calibra_Walk_yuan4.calc'
-    filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/yuan/walk_arm_yuan.calc'
+    # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/yuan/walk_arm_yuan.calc'
+    # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu1.calc'
+    ## balance 工况下，y指向前方，z向下，x指向侧面
+    ## walk工况下，x向前，z向下
+    # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu_bal.calc'
+    # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu_bal2.calc'
+    filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu_bal3.calc'
+    # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu1_walk4.calc'
     # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/yuan/walk_noarm_yuan.calc'
     # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/yuan/walk_yuan2.calc'
 
@@ -212,16 +224,17 @@ def AnaBVH():
     Data = np.asarray(Data)
 
     # time = [3000, 4000] # walk_yuan2
-    time = [0, 4000] # celabri yuan1
-    RefIndex = 7
+    time = [0, 10000] # celabri yuan1
+    RefIndex = 4
     # walk yuan3 L
     # index = [184, 248]
     # index = [910, 980]
 
     # walk arm yuan
-    # index = [611, 671]      # R
+    # index = [2227, 2284]      # R
     # ticks = ['Right 1']
-    index = [959, 1032]      # L
+    # index = [2805, 3020]      # L
+    index = [9700, 9945]      # L
     ticks = ['Left 1']
 
     t = np.linspace(time[0], time[1]-1, time[1]-time[0]-1)
@@ -231,7 +244,7 @@ def AnaBVH():
     # TestAni.animation(Anidata, t)
 
     # orientation matrix
-    V_ore = Data[100, (11*16):(11*16+3)] - Data[100, (7*16):(7*16+3)]
+    V_ore = Data[50, (11*16):(11*16+3)] - Data[50, (7*16):(7*16+3)]
     Ang_ore = np.arctan(np.abs(V_ore[0] / V_ore[1]))
     r = Rotation.from_euler('xyz', [0, 0, Ang_ore])
     quad0 = r.as_quat()
@@ -285,6 +298,12 @@ def AnaBVH():
     RLegMomt = np.array([[0.0, 0.0, 0.0]])
     LLegMomt = np.array([[0.0, 0.0, 0.0]])
     TrunkMomt = np.array([[0.0, 0.0, 0.0]])
+
+    RArmE = np.array([0.0])
+    LArmE = np.array([0.0])
+    RLegE = np.array([0.0])
+    LLegE = np.array([0.0])
+    TrunkE = np.array([0.0])
 
     ORArmMomt = np.array([[0.0, 0.0, 0.0]])
     OLArmMomt = np.array([[0.0, 0.0, 0.0]])
@@ -373,6 +392,19 @@ def AnaBVH():
         V_lh17_m = np.concatenate((V_lh17_m, [V_lh17]), axis = 0)
 
         # endregion
+
+        # 动能计算
+        RArmE1 = 0.5*m[1]*(np.linalg.norm(V_lh9))**2 + 0.5*m[2]*(np.linalg.norm(V_lh10))**2
+        LArmE1 = 0.5*m[1]*(np.linalg.norm(V_lh13))**2 + 0.5*m[2]*(np.linalg.norm(V_lh14))**2
+        RLegE1 = 0.5*m[3]*(np.linalg.norm(V_lh2))**2 + 0.5*m[4]*(np.linalg.norm(V_lh3))**2
+        LLegE1 = 0.5*m[3]*(np.linalg.norm(V_lh5))**2 + 0.5*m[4]*(np.linalg.norm(V_lh6))**2
+        TrunkE1 = 0.5*m[0]*(np.linalg.norm(V_lh1_17))**2
+
+        RArmE = np.concatenate((RArmE, [RArmE1]))
+        LArmE = np.concatenate((LArmE, [LArmE1]))
+        RLegE = np.concatenate((RLegE, [RLegE1]))
+        LLegE = np.concatenate((LLegE, [LLegE1]))
+        TrunkE = np.concatenate((TrunkE, [TrunkE1]))
 
         # Moment17 = I_t @ Data[i][(13):(16)] + m[0]*np.cross(P_lh1[i,:], V_lh1)
         Moment17 = I_t @ Data[i][(13):(16)] + m[0]*np.cross(P_lh1_17[i,:], V_lh1_17)
@@ -483,6 +515,12 @@ def AnaBVH():
     RLegMomt = RLegMomt[1:,]
     TrunkMomt = TrunkMomt[1:,]
 
+    RArmE = RArmE[1:]
+    LArmE = LArmE[1:]
+    RLegE = RLegE[1:]
+    LLegE = LLegE[1:]
+    TrunkE = TrunkE[1:]
+
     ORArmMomt = ORArmMomt[1:,]
     OLArmMomt = OLArmMomt[1:,]
     OLLegMomt = OLLegMomt[1:,]
@@ -537,6 +575,13 @@ def AnaBVH():
 
     # region: 数据高频滤波
     b,a = signal.butter(4, 0.1, 'lowpass')
+
+    RArmE = signal.filtfilt(b, a, RArmE)
+    LArmE = signal.filtfilt(b, a, LArmE)
+    RLegE = signal.filtfilt(b, a, RLegE)
+    LLegE = signal.filtfilt(b, a, LLegE)
+    TrunkE = signal.filtfilt(b, a, TrunkE)
+
     XF_RS_m = signal.filtfilt(b, a, XF_RS_m)
     YF_RS_m = signal.filtfilt(b, a, YF_RS_m)
     ZF_RS_m = signal.filtfilt(b, a, ZF_RS_m)
@@ -561,9 +606,9 @@ def AnaBVH():
     YWholeMomt = signal.filtfilt(b, a, YWholeMomt)
     ZWholeMomt = signal.filtfilt(b, a, ZWholeMomt)
 
-    # XTrunkMomt = signal.filtfilt(b, a, XTrunkMomt)
-    # YTrunkMomt = signal.filtfilt(b, a, YTrunkMomt)
-    # ZTrunkMomt = signal.filtfilt(b, a, ZTrunkMomt)
+    XTrunkMomt = signal.filtfilt(b, a, XTrunkMomt)
+    YTrunkMomt = signal.filtfilt(b, a, YTrunkMomt)
+    ZTrunkMomt = signal.filtfilt(b, a, ZTrunkMomt)
 
     XLegMomt = signal.filtfilt(b, a, XLegMomt)
     YLegMomt = signal.filtfilt(b, a, YLegMomt)
@@ -572,34 +617,34 @@ def AnaBVH():
     XRLegMomt = RLegMomt[:, 0]
     YRLegMomt = RLegMomt[:, 1]
     ZRLegMomt = RLegMomt[:, 2]
-    # XRLegMomt = signal.filtfilt(b, a, XRLegMomt)
-    # YRLegMomt = signal.filtfilt(b, a, YRLegMomt)
-    # ZRLegMomt = signal.filtfilt(b, a, ZRLegMomt)
+    XRLegMomt = signal.filtfilt(b, a, XRLegMomt)
+    YRLegMomt = signal.filtfilt(b, a, YRLegMomt)
+    ZRLegMomt = signal.filtfilt(b, a, ZRLegMomt)
 
     XLLegMomt = LLegMomt[:, 0]
     YLLegMomt = LLegMomt[:, 1]
     ZLLegMomt = LLegMomt[:, 2]
-    # XLLegMomt = signal.filtfilt(b, a, XLLegMomt)
-    # YLLegMomt = signal.filtfilt(b, a, YLLegMomt)
-    # ZLLegMomt = signal.filtfilt(b, a, ZLLegMomt)
+    XLLegMomt = signal.filtfilt(b, a, XLLegMomt)
+    YLLegMomt = signal.filtfilt(b, a, YLLegMomt)
+    ZLLegMomt = signal.filtfilt(b, a, ZLLegMomt)
 
-    # XArmMomt = signal.filtfilt(b, a, XArmMomt)
-    # YArmMomt = signal.filtfilt(b, a, YArmMomt)
-    # ZArmMomt = signal.filtfilt(b, a, ZArmMomt)
+    XArmMomt = signal.filtfilt(b, a, XArmMomt)
+    YArmMomt = signal.filtfilt(b, a, YArmMomt)
+    ZArmMomt = signal.filtfilt(b, a, ZArmMomt)
 
     XRArmMomt = RArmMomt[:, 0]
     YRArmMomt = RArmMomt[:, 1]
     ZRArmMomt = RArmMomt[:, 2]
-    # XRArmMomt = signal.filtfilt(b, a, XRArmMomt)
-    # YRArmMomt = signal.filtfilt(b, a, YRArmMomt)
-    # ZRArmMomt = signal.filtfilt(b, a, ZRArmMomt)
+    XRArmMomt = signal.filtfilt(b, a, XRArmMomt)
+    YRArmMomt = signal.filtfilt(b, a, YRArmMomt)
+    ZRArmMomt = signal.filtfilt(b, a, ZRArmMomt)
 
     XLArmMomt = LArmMomt[:, 0]
     YLArmMomt = LArmMomt[:, 1]
     ZLArmMomt = LArmMomt[:, 2]
-    # XLArmMomt = signal.filtfilt(b, a, XLArmMomt)
-    # YLArmMomt = signal.filtfilt(b, a, YLArmMomt)
-    # ZLArmMomt = signal.filtfilt(b, a, ZLArmMomt)
+    XLArmMomt = signal.filtfilt(b, a, XLArmMomt)
+    YLArmMomt = signal.filtfilt(b, a, YLArmMomt)
+    ZLArmMomt = signal.filtfilt(b, a, ZLArmMomt)
     
     # omega
     OXTrunkMomt = OTrunkMomt[:, 0]
@@ -712,9 +757,9 @@ def AnaBVH():
     # ax1.legend()
     # ax1.grid()
 
-    # index = 1
+    # index = 7
     # print("quad is :")
-    # print(Data[100, (index-1)*16+6:(index-1)*16+10])
+    # print(Data[50, (index-1)*16+6:(index-1)*16+10])
     # ax2.plot(tt, Data[time[0]:time[1],(index-1)*16], label="x")
     # # ax2.plot(tt, Data[time[0]:time[1],(index)*16], label="x2")
     # ax2.plot(tt, Data[time[0]:time[1],(index-1)*16+1], label="y")
@@ -752,245 +797,285 @@ def AnaBVH():
     ax1 = axes[0]
     ax2 = axes[1]
     ax3 = axes[2]
-    lw = 3  # linewidth
+    lw = 4  # linewidth
+    linref = 3
+    labelsize = 30
+    axissize = 25
+    legdsize = 20
     # ax4 = axes[3]
 
     # ax1.plot(t, Data[300:700, 192])
     # ax1.plot(t, Data[300:700, 193])
     # ax1.plot(t, Data[300:700, 194])
 
-    ax1.plot(t, YTrunkMomt, label = "Trunk", linewidth=lw)
+    ax1.plot(t, XTrunkMomt, label = "Trunk", linewidth=lw)
     # ax1.plot(t, OXTrunkMomt, label = "OTrunk")
-    ax1.plot(t, YLegMomt, label = "All leg", linewidth=lw)
-    # ax1.plot(t, XRLegMomt, label = "Right leg")
-    # ax1.plot(t, XLLegMomt, label = "Left leg")
+    # ax1.plot(t, XLegMomt, label = "All leg", linewidth=lw)
+    ax1.plot(t, XArmMomt, label = "All Arm", linewidth=lw)
+    ax1.plot(t, XRLegMomt, label = "Right leg", linewidth=lw)
+    ax1.plot(t, XLLegMomt, label = "Left leg", linewidth=lw)
     # ax1.plot(t, XRArmMomt, label = "Right arm")
     # ax1.plot(t, XLArmMomt, label = "Left arm")
     # ax1.plot(t, OXRArmMomt, label = "ORight arm")
     # ax1.plot(t, OXLArmMomt, label = "OLeft arm")
-    ax1.plot(t, YArmMomt, label = "All Arm", linewidth=lw)
-    # ax1.plot(t, XBodyMomt, label = "whole body except arm")
+    ax1.plot(t, XBodyMomt, label = "Trunk + Leg", linewidth=lw)
     # ax1.plot(t, XWholeMomt, label = "whole body")
     # ax1.axvline(2022, color ='red', lw = 2) 
-    ax1.set_ylabel('Angular Momt (X-aixs)', fontsize = 15)
-    ax1.set_title('Angular Momentum (kg.m2/s)', fontsize = 25)
-    ax1.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax1.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax1.legend()
+    ax1.set_ylabel('L (X-aixs)', fontsize = labelsize)
+    ax1.set_title('Angular Momentum (kg.m2/s)', fontsize = 30)
+    ax1.axvline(time[0]+index[0], color ='red', lw = linref)
+    ax1.axvline(3418, color ='red', lw = linref)
+    ax1.axvline(time[0]+index[1], color ='red', lw = linref)
+    ax1.xaxis.set_tick_params(labelsize = axissize)
+    ax1.yaxis.set_tick_params(labelsize = axissize)
+    ax1.legend(fontsize=legdsize, loc='lower right')
     ax1.grid()
     
-    ax2.plot(t, XTrunkMomt, label = "Trunk", linewidth=lw)
+    ax2.plot(t, YTrunkMomt, label = "Trunk", linewidth=lw)
     # ax2.plot(t, OYTrunkMomt, label = "OTrunk")
-    ax2.plot(t, XLegMomt, label = "All leg", linewidth=lw)
-    ax2.plot(t, XArmMomt, label = "All Arm", linewidth=lw)
+    # ax2.plot(t, XLegMomt, label = "All leg", linewidth=lw)
+    ax2.plot(t, YArmMomt, label = "All Arm", linewidth=lw)
+    ax2.plot(t, YRLegMomt, label = "Right leg", linewidth=lw)
+    ax2.plot(t, YLLegMomt, label = "Left leg", linewidth=lw)
     # ax2.plot(t, YArmMomt, label = " Arm")
     # ax2.plot(t, OYRArmMomt, label = "OR Arm")
     # ax2.plot(t, OYLArmMomt, label = "OL Arm")
-    # ax2.plot(t, YBodyMomt, label = "whole body except arm")
+    ax2.plot(t, YBodyMomt, label = "Trunk + Leg", linewidth=lw)
     # ax2.plot(t, YWholeMomt, label = "whole body")
-    ax2.set_ylabel('Angular Momt (Y-aixs)', fontsize = 15)
-    ax2.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax2.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax2.legend()
+    ax2.set_ylabel('L (Y-aixs)', fontsize = labelsize)
+    ax2.axvline(time[0]+index[0], color ='red', lw = linref)
+    ax2.axvline(3418, color ='red', lw = linref)
+    ax2.axvline(time[0]+index[1], color ='red', lw = linref)
+    ax2.xaxis.set_tick_params(labelsize = axissize)
+    ax2.yaxis.set_tick_params(labelsize = axissize)
+    ax2.legend(fontsize=legdsize, loc='lower right')
     ax2.grid()
 
     ax3.plot(t, ZTrunkMomt, label = "Trunk", linewidth=lw)
     # ax3.plot(t, ZLegMomt, label = "All leg", linewidth=lw)
     ax3.plot(t, ZArmMomt, label = "All Arm", linewidth=lw)
+    # ax3.plot(t, ZRArmMomt, label = "Right Arm", linewidth=lw)
+    # ax3.plot(t, ZLArmMomt, label = "Left Arm", linewidth=lw)
     # ax3.plot(t, OZTrunkMomt, label = "OTrunk")
     # ax3.plot(t, VZTrunkMomt, label = "VTrunk")
-    ax3.plot(t, ZRLegMomt, label = "R Leg", linewidth=lw)
-    ax3.plot(t, ZLLegMomt, label = "L Leg", linewidth=lw)
-    # ax3.plot(t, ZRArmMomt, label = "Right Arm")
+    ax3.plot(t, ZRLegMomt, label = "Right Leg", linewidth=lw)
+    ax3.plot(t, ZLLegMomt, label = "Left Leg", linewidth=lw)
     # ZRArmLeg = ZLLegMomt + ZRArmMomt
     # ax3.plot(t, ZLLegMomt + ZRArmMomt, label = "Right Arm + leg")
     # ax3.plot(t, ZRLegMomt + ZLArmMomt, label = "left Arm + leg")
-    # ax3.plot(t, ZLArmMomt, label = "Left Arm")
     # ax3.plot(t, VZRArmMomt, label = "VRight Arm")
     # ax3.plot(t, VZLArmMomt, label = "VLeft Arm")
     # ax3.plot(t, ZTrunkArmMomt, label = "Trunk + Arm", linewidth=lw)
     # ax3.plot(t, ZBodyMomt, label = "Trunk + leg", linewidth=lw)
     # ax3.plot(t, ZWholeMomt, label = "whole body")
-    ax3.set_ylabel('Angular Momt (Z-aixs)', fontsize = 15)
+    ax3.set_ylabel('L (Z-aixs)', fontsize = labelsize)
     # yuan
-    ax3.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax3.axvline(time[0]+index[1], color ='red', lw = 1)
+    ax3.axvline(time[0]+index[0], color ='red', lw = linref)
+    ax3.axvline(3418, color ='red', lw = linref)
+    ax3.axvline(time[0]+index[1], color ='red', lw = linref)
+    ax3.xaxis.set_tick_params(labelsize = axissize)
+    ax3.yaxis.set_tick_params(labelsize = axissize)
 
-    ax3.legend()
+    ax3.legend(fontsize=legdsize, loc='lower right')
     ax3.grid()
-    ax3.set_xlabel("time(s)", fontsize = 15)
+    ax3.set_xlabel("time(s)", fontsize = labelsize)
     plt.show()
     # endregion
 
     # region: Vel data visualization
-    fig, axes = plt.subplots(3,1, dpi=100,figsize=(12,10))
-    ax1 = axes[0]
-    ax2 = axes[1]
-    ax3 = axes[2]
+    # fig, axes = plt.subplots(3,1, dpi=100,figsize=(12,10))
+    # ax1 = axes[0]
+    # ax2 = axes[1]
+    # ax3 = axes[2]
 
-    ax1.plot(t, V_lh1_m[1:, 0], label = "body", linewidth=lw)
-    ax1.plot(t, V_lh4_m[1:, 0], label = "leg", linewidth=lw)
-    ax1.plot(t, V_lh10_m[1:, 0], label = "right arm", linewidth=lw)
-    ax1.plot(t, V_lh14_m[1:, 0], label = "left arm", linewidth=lw)
-    # ax1.axvline(2022, color ='red', lw = 2) 
-    ax1.set_ylabel('Velocity (X-aixs)', fontsize = 15)
-    ax1.set_title('Velocity (m/s)', fontsize = 25)
-    ax1.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax1.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax1.legend()
-    ax1.grid()
+    # ax1.plot(t, V_lh1_m[1:, 0], label = "body", linewidth=lw)
+    # ax1.plot(t, V_lh4_m[1:, 0], label = "leg", linewidth=lw)
+    # ax1.plot(t, V_lh10_m[1:, 0], label = "right arm", linewidth=lw)
+    # ax1.plot(t, V_lh14_m[1:, 0], label = "left arm", linewidth=lw)
+    # # ax1.axvline(2022, color ='red', lw = 2) 
+    # ax1.set_ylabel('Velocity (X-aixs)', fontsize = 15)
+    # ax1.set_title('Velocity (m/s)', fontsize = 25)
+    # ax1.axvline(time[0]+index[0], color ='red', lw = 1)
+    # ax1.axvline(time[0]+index[1], color ='red', lw = 1)
+    # ax1.legend()
+    # ax1.grid()
     
-    ax2.plot(t, V_lh1_m[1:, 1], label = "body", linewidth=lw)
-    ax2.plot(t, V_lh4_m[1:, 1], label = "leg", linewidth=lw)
-    ax2.plot(t, V_lh10_m[1:, 1], label = "right arm", linewidth=lw)
-    ax2.plot(t, V_lh14_m[1:, 1], label = "left arm", linewidth=lw)
-    ax2.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax2.axvline(time[0]+index[1], color ='red', lw = 1)
-    # ax1.axvline(2022, color ='red', lw = 2) 
-    ax2.set_ylabel('Velocity (Y-aixs)', fontsize = 15)
-    ax2.legend()
-    ax2.grid()
+    # ax2.plot(t, V_lh1_m[1:, 1], label = "body", linewidth=lw)
+    # ax2.plot(t, V_lh4_m[1:, 1], label = "leg", linewidth=lw)
+    # ax2.plot(t, V_lh10_m[1:, 1], label = "right arm", linewidth=lw)
+    # ax2.plot(t, V_lh14_m[1:, 1], label = "left arm", linewidth=lw)
+    # ax2.axvline(time[0]+index[0], color ='red', lw = 1)
+    # ax2.axvline(time[0]+index[1], color ='red', lw = 1)
+    # # ax1.axvline(2022, color ='red', lw = 2) 
+    # ax2.set_ylabel('Velocity (Y-aixs)', fontsize = 15)
+    # ax2.legend()
+    # ax2.grid()
 
-    ax3.plot(t, V_lh1_m[1:, 2], label = "body", linewidth=lw)
-    ax3.plot(t, V_lh4_m[1:, 2], label = "leg", linewidth=lw)
-    ax3.plot(t, V_lh11_m[1:, 2], label = "right arm", linewidth=lw)
-    ax3.plot(t, V_lh15_m[1:, 2], label = "left arm", linewidth=lw)
-    # ax1.axvline(2022, color ='red', lw = 2) 
-    ax3.set_ylabel('Velocity (Z-aixs)', fontsize = 15)
-    ax3.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax3.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax3.legend()
-    ax3.grid()
-    ax3.set_xlabel("time(s)", fontsize = 15)
-    plt.show()
+    # ax3.plot(t, V_lh1_m[1:, 2], label = "body", linewidth=lw)
+    # ax3.plot(t, V_lh4_m[1:, 2], label = "leg", linewidth=lw)
+    # ax3.plot(t, V_lh11_m[1:, 2], label = "right arm", linewidth=lw)
+    # ax3.plot(t, V_lh15_m[1:, 2], label = "left arm", linewidth=lw)
+    # # ax1.axvline(2022, color ='red', lw = 2) 
+    # ax3.set_ylabel('Velocity (Z-aixs)', fontsize = 15)
+    # ax3.axvline(time[0]+index[0], color ='red', lw = 1)
+    # ax3.axvline(time[0]+index[1], color ='red', lw = 1)
+    # ax3.legend()
+    # ax3.grid()
+    # ax3.set_xlabel("time(s)", fontsize = 15)
+    # plt.show()
     # endregion
     
     # region: angular data visualization
-    fig, axes = plt.subplots(3,1, dpi=100,figsize=(12,10))
-    ax1 = axes[0]
-    ax2 = axes[1]
-    ax3 = axes[2]
+    # fig, axes = plt.subplots(3,1, dpi=100,figsize=(12,10))
+    # ax1 = axes[0]
+    # ax2 = axes[1]
+    # ax3 = axes[2]
 
-    ax1.plot(tt, Data[1:, 13], label = "body", linewidth=lw)
-    ax1.plot(tt, Data[1:, 2*16+13], label = "leg", linewidth=lw)
-    ax1.plot(tt, Data[1:, 9*16+13], label = "right arm", linewidth=lw)
-    ax1.plot(tt, Data[1:, 13*16+13], label = "left arm", linewidth=lw)
-    # ax1.axvline(2022, color ='red', lw = 2) 
-    ax1.set_ylabel('angular Velocity (X-aixs)', fontsize = 15)
-    ax1.set_title('angular Velocity (rad/s)', fontsize = 25)
-    ax1.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax1.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax1.legend()
-    ax1.grid()
+    # ax1.plot(tt, Data[1:, 13], label = "body", linewidth=lw)
+    # ax1.plot(tt, Data[1:, 2*16+13], label = "leg", linewidth=lw)
+    # ax1.plot(tt, Data[1:, 9*16+13], label = "right arm", linewidth=lw)
+    # ax1.plot(tt, Data[1:, 13*16+13], label = "left arm", linewidth=lw)
+    # # ax1.axvline(2022, color ='red', lw = 2) 
+    # ax1.set_ylabel('angular Velocity (X-aixs)', fontsize = 15)
+    # ax1.set_title('angular Velocity (rad/s)', fontsize = 25)
+    # ax1.axvline(time[0]+index[0], color ='red', lw = 1)
+    # ax1.axvline(time[0]+index[1], color ='red', lw = 1)
+    # ax1.legend()
+    # ax1.grid()
     
-    ax2.plot(tt, Data[1:, 14], label = "body", linewidth=lw)
-    ax2.plot(tt, Data[1:, 2*16+14], label = "leg", linewidth=lw)
-    ax2.plot(tt, Data[1:, 9*16+14], label = "right arm", linewidth=lw)
-    ax2.plot(tt, Data[1:, 13*16+14], label = "left arm", linewidth=lw)
-    # ax1.axvline(2022, color ='red', lw = 2) 
-    ax2.set_ylabel('angular Velocity (Y-aixs)', fontsize = 15)
-    ax2.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax2.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax2.legend()
-    ax2.grid()
+    # ax2.plot(tt, Data[1:, 14], label = "body", linewidth=lw)
+    # ax2.plot(tt, Data[1:, 2*16+14], label = "leg", linewidth=lw)
+    # ax2.plot(tt, Data[1:, 9*16+14], label = "right arm", linewidth=lw)
+    # ax2.plot(tt, Data[1:, 13*16+14], label = "left arm", linewidth=lw)
+    # # ax1.axvline(2022, color ='red', lw = 2) 
+    # ax2.set_ylabel('angular Velocity (Y-aixs)', fontsize = 15)
+    # ax2.axvline(time[0]+index[0], color ='red', lw = 1)
+    # ax2.axvline(time[0]+index[1], color ='red', lw = 1)
+    # ax2.legend()
+    # ax2.grid()
 
-    ax3.plot(tt, Data[1:, 15], label = "body", linewidth=lw)
-    ax3.plot(tt, Data[1:, 2*16+15], label = "leg", linewidth=lw)
-    ax3.plot(tt, Data[1:, 9*16+15], label = "right arm", linewidth=lw)
-    ax3.plot(tt, Data[1:, 13*16+15], label = "left arm", linewidth=lw)
-    # ax1.axvline(2022, color ='red', lw = 2) 
-    ax3.set_ylabel('angular Velocity (Z-aixs)', fontsize = 15)
-    ax3.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax3.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax3.legend()
-    ax3.grid()
-    ax3.set_xlabel("time(s)", fontsize = 15)
-    plt.show()
+    # ax3.plot(tt, Data[1:, 15], label = "body", linewidth=lw)
+    # ax3.plot(tt, Data[1:, 2*16+15], label = "leg", linewidth=lw)
+    # ax3.plot(tt, Data[1:, 9*16+15], label = "right arm", linewidth=lw)
+    # ax3.plot(tt, Data[1:, 13*16+15], label = "left arm", linewidth=lw)
+    # # ax1.axvline(2022, color ='red', lw = 2) 
+    # ax3.set_ylabel('angular Velocity (Z-aixs)', fontsize = 15)
+    # ax3.axvline(time[0]+index[0], color ='red', lw = 1)
+    # ax3.axvline(time[0]+index[1], color ='red', lw = 1)
+    # ax3.legend()
+    # ax3.grid()
+    # ax3.set_xlabel("time(s)", fontsize = 15)
+    # plt.show()
+    # # endregion
+    
+    # # region: Force data visualization
+    # fig, axes = plt.subplots(3,1, dpi=100,figsize=(12,10))
+    # ax1 = axes[0]
+    # ax2 = axes[1]
+    # ax3 = axes[2]
+
+    # ax1.plot(t[:-1], XF_RS_m, label = "Right shoulder", linewidth=lw)
+    # ax1.plot(t[:-1], XF_LS_m, label = "Left shoulder", linewidth=lw)
+    # ax1.plot(t[:-1], XF_RL_m, label = "Right leg", linewidth=lw)
+    # ax1.plot(t[:-1], XF_LL_m, label = "Left leg", linewidth=lw)
+    # # ax1.axvline(2022, color ='red', lw = 2) 
+    # ax1.set_ylabel('Force (X-aixs)', fontsize = 15)
+    # ax1.set_title('Force (kg.m2/s)', fontsize = 25)
+    # ax1.axvline(time[0]+index[0], color ='red', lw = 1)
+    # ax1.axvline(time[0]+index[1], color ='red', lw = 1)
+    # ax1.legend()
+    # ax1.grid()
+    
+    # ax2.plot(t[:-1], YF_RS_m, label = "Right shoulder", linewidth=lw)
+    # ax2.plot(t[:-1], YF_LS_m, label = "Left shoulder", linewidth=lw)
+    # ax2.plot(t[:-1], YF_RL_m, label = "Right leg", linewidth=lw)
+    # ax2.plot(t[:-1], YF_LL_m, label = "Left leg", linewidth=lw)
+    # # ax1.axvline(2022, color ='red', lw = 2) 
+    # ax2.set_ylabel('Force (Y-aixs)', fontsize = 15)
+    # ax2.axvline(time[0]+index[0], color ='red', lw = 1)
+    # ax2.axvline(time[0]+index[1], color ='red', lw = 1)
+    # ax2.legend()
+    # ax2.grid()
+
+    # ax3.plot(t[:-1], ZF_RS_m, label = "Right shoulder", linewidth=lw)
+    # ax3.plot(t[:-1], ZF_LS_m, label = "Left shoulder", linewidth=lw)
+    # ax3.plot(t[:-1], ZF_RL_m, label = "Right leg", linewidth=lw)
+    # ax3.plot(t[:-1], ZF_LL_m, label = "Left leg", linewidth=lw)
+    # # ax1.axvline(2022, color ='red', lw = 2) 
+    # ax3.set_ylabel('Force (Z-aixs)', fontsize = 15)
+    # ax3.axvline(time[0]+index[0], color ='red', lw = 1)
+    # ax3.axvline(time[0]+index[1], color ='red', lw = 1)
+    # ax3.legend()
+    # ax3.grid()
+    # ax3.set_xlabel("time(s)", fontsize = 15)
+    # # plt.show()
     # endregion
-    
+
     # region: Force data visualization
-    fig, axes = plt.subplots(3,1, dpi=100,figsize=(12,10))
-    ax1 = axes[0]
-    ax2 = axes[1]
-    ax3 = axes[2]
+    # fig, axes = plt.subplots(3,1, dpi=100,figsize=(12,10))
+    # ax1 = axes[0]
+    # ax2 = axes[1]
+    # ax3 = axes[2]
 
-    ax1.plot(t[:-1], XF_RS_m, label = "Right shoulder", linewidth=lw)
-    ax1.plot(t[:-1], XF_LS_m, label = "Left shoulder", linewidth=lw)
-    ax1.plot(t[:-1], XF_RL_m, label = "Right leg", linewidth=lw)
-    ax1.plot(t[:-1], XF_LL_m, label = "Left leg", linewidth=lw)
-    # ax1.axvline(2022, color ='red', lw = 2) 
-    ax1.set_ylabel('Force (X-aixs)', fontsize = 15)
-    ax1.set_title('Force (kg.m2/s)', fontsize = 25)
-    ax1.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax1.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax1.legend()
-    ax1.grid()
+    # ax1.plot(t[:-1], F_RS_m[1:, 0], label = "Right shoulder", linewidth=lw)
+    # ax1.plot(t[:-1], F_LS_m[1:, 0], label = "Left shoulder", linewidth=lw)
+    # ax1.plot(t[:-1], F_RL_m[1:, 0], label = "Right leg", linewidth=lw)
+    # ax1.plot(t[:-1], F_LL_m[1:, 0], label = "Left leg", linewidth=lw)
+    # # ax1.axvline(2022, color ='red', lw = 2) 
+    # ax1.set_ylabel('Force (X-aixs)', fontsize = 15)
+    # ax1.set_title('Force (kg.m2/s)', fontsize = 25)
+    # ax1.axvline(time[0]+index[0], color ='red', lw = 1)
+    # ax1.axvline(time[0]+index[1], color ='red', lw = 1)
+    # ax1.legend()
+    # ax1.grid()
     
-    ax2.plot(t[:-1], YF_RS_m, label = "Right shoulder", linewidth=lw)
-    ax2.plot(t[:-1], YF_LS_m, label = "Left shoulder", linewidth=lw)
-    ax2.plot(t[:-1], YF_RL_m, label = "Right leg", linewidth=lw)
-    ax2.plot(t[:-1], YF_LL_m, label = "Left leg", linewidth=lw)
-    # ax1.axvline(2022, color ='red', lw = 2) 
-    ax2.set_ylabel('Force (Y-aixs)', fontsize = 15)
-    ax2.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax2.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax2.legend()
-    ax2.grid()
+    # ax2.plot(t[:-1], F_RS_m[1:, 1], label = "Right shoulder", linewidth=lw)
+    # ax2.plot(t[:-1], F_LS_m[1:, 1], label = "Left shoulder", linewidth=lw)
+    # ax2.plot(t[:-1], F_RL_m[1:, 1], label = "Right leg", linewidth=lw)
+    # ax2.plot(t[:-1], F_LL_m[1:, 1], label = "Left leg", linewidth=lw)
+    # # ax1.axvline(2022, color ='red', lw = 2) 
+    # ax2.set_ylabel('Force (Y-aixs)', fontsize = 15)
+    # ax2.axvline(time[0]+index[0], color ='red', lw = 1)
+    # ax2.axvline(time[0]+index[1], color ='red', lw = 1)
+    # ax2.legend()
+    # ax2.grid()
 
-    ax3.plot(t[:-1], ZF_RS_m, label = "Right shoulder", linewidth=lw)
-    ax3.plot(t[:-1], ZF_LS_m, label = "Left shoulder", linewidth=lw)
-    ax3.plot(t[:-1], ZF_RL_m, label = "Right leg", linewidth=lw)
-    ax3.plot(t[:-1], ZF_LL_m, label = "Left leg", linewidth=lw)
-    # ax1.axvline(2022, color ='red', lw = 2) 
-    ax3.set_ylabel('Force (Z-aixs)', fontsize = 15)
-    ax3.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax3.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax3.legend()
-    ax3.grid()
-    ax3.set_xlabel("time(s)", fontsize = 15)
+    # ax3.plot(t[:-1], F_RS_m[1:, 2], label = "Right shoulder", linewidth=lw)
+    # ax3.plot(t[:-1], F_LS_m[1:, 2], label = "Left shoulder", linewidth=lw)
+    # ax3.plot(t[:-1], F_RL_m[1:, 2], label = "Right leg", linewidth=lw)
+    # ax3.plot(t[:-1], F_LL_m[1:, 2] ,label = "Left leg", linewidth=lw)
+    # # ax1.axvline(2022, color ='red', lw = 2) 
+    # ax3.set_ylabel('Force (Z-aixs)', fontsize = 15)
+    # ax3.axvline(time[0]+index[0], color ='red', lw = 1)
+    # ax3.axvline(time[0]+index[1], color ='red', lw = 1)
+    # ax3.legend()
+    # ax3.grid()
+    # ax3.set_xlabel("time(s)", fontsize = 15)
     # plt.show()
     # endregion
-
-    # region: Force data visualization
-    fig, axes = plt.subplots(3,1, dpi=100,figsize=(12,10))
-    ax1 = axes[0]
-    ax2 = axes[1]
-    ax3 = axes[2]
-
-    ax1.plot(t[:-1], F_RS_m[1:, 0], label = "Right shoulder", linewidth=lw)
-    ax1.plot(t[:-1], F_LS_m[1:, 0], label = "Left shoulder", linewidth=lw)
-    ax1.plot(t[:-1], F_RL_m[1:, 0], label = "Right leg", linewidth=lw)
-    ax1.plot(t[:-1], F_LL_m[1:, 0], label = "Left leg", linewidth=lw)
-    # ax1.axvline(2022, color ='red', lw = 2) 
-    ax1.set_ylabel('Force (X-aixs)', fontsize = 15)
-    ax1.set_title('Force (kg.m2/s)', fontsize = 25)
-    ax1.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax1.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax1.legend()
-    ax1.grid()
     
-    ax2.plot(t[:-1], F_RS_m[1:, 1], label = "Right shoulder", linewidth=lw)
-    ax2.plot(t[:-1], F_LS_m[1:, 1], label = "Left shoulder", linewidth=lw)
-    ax2.plot(t[:-1], F_RL_m[1:, 1], label = "Right leg", linewidth=lw)
-    ax2.plot(t[:-1], F_LL_m[1:, 1], label = "Left leg", linewidth=lw)
-    # ax1.axvline(2022, color ='red', lw = 2) 
-    ax2.set_ylabel('Force (Y-aixs)', fontsize = 15)
-    ax2.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax2.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax2.legend()
-    ax2.grid()
+    # region: Moment data visualization
+    fig, ax1 = plt.subplots(1,1, dpi=100,figsize=(12,10))
+    offs_p = 30
+    offs_b = 50
 
-    ax3.plot(t[:-1], F_RS_m[1:, 2], label = "Right shoulder", linewidth=lw)
-    ax3.plot(t[:-1], F_LS_m[1:, 2], label = "Left shoulder", linewidth=lw)
-    ax3.plot(t[:-1], F_RL_m[1:, 2], label = "Right leg", linewidth=lw)
-    ax3.plot(t[:-1], F_LL_m[1:, 2] ,label = "Left leg", linewidth=lw)
-    # ax1.axvline(2022, color ='red', lw = 2) 
-    ax3.set_ylabel('Force (Z-aixs)', fontsize = 15)
-    ax3.axvline(time[0]+index[0], color ='red', lw = 1)
-    ax3.axvline(time[0]+index[1], color ='red', lw = 1)
-    ax3.legend()
-    ax3.grid()
-    ax3.set_xlabel("time(s)", fontsize = 15)
+    Allarm = RArmE + LArmE
+    ax1.plot(t[(index[0]-offs_p):(index[1]+offs_b)], Allarm[(index[0]-offs_p):(index[1]+offs_b)], label = "All Arm", linewidth=lw)
+    # ax1.plot(t[(index[0]-offs_p):(index[1]+offs_b)], RArmE[(index[0]-offs_p):(index[1]+offs_b)], label = "Right Arm", linewidth=lw)
+    # ax1.plot(t[(index[0]-offs_p):(index[1]+offs_b)], LArmE[(index[0]-offs_p):(index[1]+offs_b)], label = "Left Arm", linewidth=lw)
+    ax1.plot(t[(index[0]-offs_p):(index[1]+offs_b)], RLegE[(index[0]-offs_p):(index[1]+offs_b)], label = "Right leg", linewidth=lw)
+    ax1.plot(t[(index[0]-offs_p):(index[1]+offs_b)], LLegE[(index[0]-offs_p):(index[1]+offs_b)], label = "Left leg", linewidth=lw)
+    ax1.plot(t[(index[0]-offs_p):(index[1]+offs_b)], TrunkE[(index[0]-offs_p):(index[1]+offs_b)], label = "Trunk", linewidth=lw)
+    ax1.set_ylabel('K (X-aixs)', fontsize = labelsize)
+    ax1.set_title('Kinetic Energy (kg.m2/s)', fontsize = 30)
+    ax1.axvline(time[0]+index[0], color ='red', lw = linref)
+    # ax1.axvline(3418, color ='red', lw = linref)
+    ax1.axvline(time[0]+index[1], color ='red', lw = linref)
+    ax1.xaxis.set_tick_params(labelsize = axissize)
+    ax1.yaxis.set_tick_params(labelsize = axissize)
+    ax1.legend(fontsize=legdsize, loc='lower right')
+    ax1.grid()
+    ax1.set_xlabel("time(s)", fontsize = labelsize)
     plt.show()
     # endregion
     pass

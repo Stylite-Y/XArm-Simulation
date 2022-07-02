@@ -14,38 +14,50 @@ from ruamel.yaml import YAML
 
 
 class DataProcess():
-    def __init__(self, cfg, robot, q, dq, ddq, u, t, savepath):
+    def __init__(self, cfg, robot, q, dq, ddq, u, F, t, savepath):
         self.cfg = cfg
         self.robot = robot
         self.q = q
         self.dq = dq
         self.ddq = ddq
         self.u = u
+        self.F = F
         self.t = t
         self.savepath = savepath
 
-        self.ML = self.cfg["Optimization"]["MaxLoop"] / 1000
-        self.Tp = self.cfg['Controller']['Tp']
-        self.Nc = self.cfg['Controller']['Nc']
-        self.T = self.cfg['Controller']['T']
-        self.dt = self.cfg['Controller']['dt']
-        self.PostarCoef = self.cfg["Optimization"]["CostCoef"]["postarCoef"]
-        self.TorqueCoef = self.cfg["Optimization"]["CostCoef"]["torqueCoef"]
-        self.DTorqueCoef = self.cfg["Optimization"]["CostCoef"]["DtorqueCoef"]
-        self.VeltarCoef = cfg["Optimization"]["CostCoef"]["VeltarCoef"]
-        self.m = cfg['Robot']['Mass']['mass']
-        self.I = cfg['Robot']['Mass']['inertia']
+        # self.ML = self.cfg["Optimization"]["MaxLoop"] / 1000
+        # self.Tp = self.cfg['Controller']['Tp']
+        # self.Nc = self.cfg['Controller']['Nc']
+        # self.T = self.cfg['Controller']['T']
+        # self.dt = self.cfg['Controller']['dt']
+        # self.PostarCoef = self.cfg["Optimization"]["CostCoef"]["postarCoef"]
+        # self.TorqueCoef = self.cfg["Optimization"]["CostCoef"]["torqueCoef"]
+        # self.DTorqueCoef = self.cfg["Optimization"]["CostCoef"]["DtorqueCoef"]
+        # self.VeltarCoef = cfg["Optimization"]["CostCoef"]["VeltarCoef"]
+        # self.m = cfg['Robot']['Mass']['mass']
+        # self.I = cfg['Robot']['Mass']['inertia']
 
         self.save_dir, self.name, self.date = self.DirCreate()
-        self.Inertia_main, self.Inertia_coupling, self.Corialis, self.Gravity = self.ForceCal()
+        # self.Inertia_main, self.Inertia_coupling, self.Corialis, self.Gravity = self.ForceCal()
         pass
 
-    def DirCreate(self):
-        m_M = np.around(self.m[1] / self.m[0], decimals=2)
-        I_r = np.around(self.I[1] / self.I[0], decimals=2)
+    def DirCreate(self, method_choice=True):
+        trackingCoeff = self.cfg["Optimization"]["CostCoeff"]["trackingCoeff"]
+        powerCoeff = self.cfg["Optimization"]["CostCoeff"]["powerCoeff"]
+        forceCoeff = self.cfg["Optimization"]["CostCoeff"]["forceCoeff"]
+        smoothCoeff = self.cfg["Optimization"]["CostCoeff"]["smoothCoeff"]
+        impactCoeff = self.cfg["Optimization"]["CostCoeff"]["ImpactCoeff"]
+        Vt = self.cfg["Controller"]["Target"]
+        Tp = self.cfg["Controller"]["Period"]
+        Tst = self.cfg["Controller"]["Stance"]
+        
         date = time.strftime("%Y-%m-%d-%H-%M-%S")
-        dirname = "-MPC-Pos_"+str(self.PostarCoef[1])+"-Tor_"+str(self.TorqueCoef[1])+"-DTor_"+str(self.DTorqueCoef[1]) +"-Vel_"+str(self.VeltarCoef[1])\
-                + "-mM_"+str(m_M)+ "-Ir_"+str(I_r)+"-dt_"+str(self.dt)+"-T_"+str(self.T)+"-Tp_"+str(self.Tp)+"-Tc_"+str(self.Nc)+"-ML_"+str(self.ML)+ "k" 
+        if method_choice:
+            dirname = "-Traj-Tcf_"+str(trackingCoeff)+"-Pcf_"+str(powerCoeff)+"-Fcf_"+str(forceCoeff)+\
+                        "-Scf_"+str(smoothCoeff)+"-Icf_"+str(impactCoeff)+"-Vt_"+str(Vt)+"-Tp_"+str(Tp)+"-Tst_"+str(Tst)
+        else:
+            dirname = "-MPC-Pos_"+str(self.PostarCoef[1])+"-Tor_"+str(self.TorqueCoef[1])+"-DTor_"+str(self.DTorqueCoef[1]) +"-Vel_"+str(self.VeltarCoef[1])\
+                    +"-dt_"+str(self.dt)+"-T_"+str(self.T)+"-Tp_"+str(self.Tp)+"-Tc_"+str(self.Nc)+"-ML_"+str(self.ML)+ "k" 
 
         # dirname = "-mM_"+str(m_M)
         # dirname = "-Ir_"+str(I_r)
@@ -513,12 +525,12 @@ class DataProcess():
 
         if saveflag:
             np.save(self.save_dir+date+name+"-sol.npy",
-                    np.hstack((self.q, self.dq, self.ddq, self.u, self.t)))
+                    np.hstack((self.q, self.dq, self.ddq, self.u, self.F, self.t)))
             # output the config yaml file
             # with open(os.path.join(StorePath, date + name+"-config.yaml"), 'wb') as file:
             #     yaml.dump(self.cfg, file)
             with open(self.save_dir+date+name+"-config.yaml", mode='w') as file:
                 YAML().dump(self.cfg, file)
             pass
-
-
+        
+        return self.save_dir
