@@ -3,11 +3,11 @@ Optimization:
   RandomSeed: 1
 
   CostCoeff:
-    trackingCoeff: 0.0
+    trackingCoeff: 0.6
     powerCoeff: 0.0
-    forceCoeff: 0.6
+    forceCoeff: 0.2
     smoothCoeff: 0.2
-    ImpactCoeff: 0.2
+    ImpactCoeff: 0.0
 
 Environment:
   Gravity: 9.8
@@ -45,17 +45,18 @@ Robot:
     # mass: [7.5, 2, 0.28, 0.5]
     # inertia: [0, 0.016, 0.01, 0.012]
     # massCenter: [0, 0.05, 0.05, 0.15]
-    mass: [30, 10, 3.2, 3.3]
-    inertia: [0, 0.15, 0.06, 0.12]
-    massCenter: [0, 0.17, 0.22, 0.3]
+    mass: [30, 20, 6.8, 4, 2.6]
+    inertia: [0.625, 0.3, 0.14, 0.03, 0.03]
+    massCenter: [0.25, 0.17, 0.22, 0.12, 0.18]
   Geometry:
-    L_body: 0
+    L_body: 0.5
     L_thigh: 0.42
     L_shank: 0.5
-    L_arm: 0.67
+    L_arm: 0.3
+    L_forearm: 0.37
   damping: 0.0
   Motor:
-    MaxTorque: 1000
+    MaxTorque: 100
     MaxSpeed: 53
     CriticalSpeed: 27
   

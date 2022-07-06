@@ -604,7 +604,7 @@ def test2():
 
 if __name__ == "__main__":
     # test()
-    test2()
+    # test2()
     # DynamicsModel()
     # TwoLinkDynamics()
-    # TwoLink2ndDown()
+    TwoLink2ndDown()

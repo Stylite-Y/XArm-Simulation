@@ -103,8 +103,8 @@ def HumanModelJin():
             print("-"*50)
 
             try:
-                pprint(sympy.trigsimp(temp[s]), use_unicode=True)
-                # pprint(temp[s], use_unicode=True)
+                pprint((sympy.trigsimp(temp[s])), use_unicode=True)
+                # pprint(sympy.simplify(temp[s]), use_unicode=True)
             except:
                 print("")
             pass
@@ -197,7 +197,7 @@ def HumanModelJin():
     print("\n"*5)
     get_gravity_term(eq)
     # print("\n"*5)
-    get_coriolis_term(eq[3])
+    get_coriolis_term(eq[1])
     pass
 
 def HumanModel():
@@ -445,11 +445,11 @@ def HumanModel():
         # pprint(cor, use_unicode=True)
         pass
 
-    # get_inertia_term(eq)
-    # print("\n"*5)
-    # get_gravity_term(eq)
-    # print("\n"*5)
-    i=10
+    get_inertia_term(eq)
+    print("\n"*5)
+    get_gravity_term(eq)
+    print("\n"*5)
+    i=0
     print("="*50)
     if i < 2:
         print("Ineria term wrt. disp", i)
@@ -480,6 +480,7 @@ def HumanModelHalf():
     dtheta4 = theta4.diff(t)
     
     # define geometry and mass parameter
+    # body, thigh, shank, uparm, forearm
     m = [sym('m'+str(i)) for i in range(5)]
     I = [sym('I'+str(i)) for i in range(5)]
     L = [sym('L'+str(i)) for i in range(5)]
@@ -489,41 +490,41 @@ def HumanModelHalf():
     # ==================== geometry constraint ===================
     # position relationship
     htheta0 = theta0
-    htheta1 = theta0 + theta1
-    htheta2 = theta0 + theta1 + theta2
+    htheta1 = theta1
+    htheta2 = theta1 + theta2
     htheta3 = theta0 + theta3
     htheta4 = theta0 + theta3 + theta4
 
-    x1 = x0 + l[0]* sin(theta0)       # link 2 x mcp
-    z1 = z0 - l[0]* cos(theta0)       # link 2 y mcp
-    x2 = x0 + L[0]* sin(theta0) + l[1] * sin(theta0 + theta1)       # link 2 x mcp
-    z2 = z0 - L[0]* cos(theta0) - l[1] * cos(theta0 + theta1)       # link 2 y mcp
-    x3 = x0 + L[0]* sin(theta0) + L[1] * sin(theta0 + theta1) + l[2] * sin(theta0 + theta1 + theta2)       # link 2 x mcp
-    z3 = z0 - L[0]* cos(theta0) - L[1] * cos(theta0 + theta1) - l[2] * cos(theta0 + theta1 + theta2)       # link 2 y mcp
-    x4 = x0 + l[3]* sin(theta0 + theta3)       # link 2 x mcp
-    z4 = z0 - l[3]* cos(theta0 + theta3)       # link 2 y mcp
-    x5 = x0 + L[3]* sin(theta0 + theta3) + l[4] * sin(theta0 + theta3 + theta4)       # link 2 x mcp
-    z5 = z0 - L[3]* cos(theta0 + theta3) - l[4] * cos(theta0 + theta3 + theta4)
+    x1 = x0 - l[0]* sin(theta0)       # link 2 x mcp
+    z1 = z0 + l[0]* cos(theta0)       # link 2 y mcp
+    x2 = x0 + l[1]* sin(htheta1)       # link 2 x mcp
+    z2 = z0 - l[1]* cos(htheta1)       # link 2 y mcp
+    x3 = x0 + L[1]* sin(htheta1) + l[2]* sin(htheta2)       # link 2 x mcp
+    z3 = z0 - L[1]* cos(htheta1) - l[2]* cos(htheta2)       # link 2 y mcp
+    x4 = x0 - L[0]* sin(theta0) + l[3]* sin(htheta3)       # link 2 x mcp
+    z4 = z0 + L[0]* cos(theta0) - l[3]* cos(htheta3)       # link 2 y mcp
+    x5 = x0 - L[0]* sin(theta0) + L[3]* sin(htheta3) + l[4] * sin(htheta4)       # link 2 x mcp
+    z5 = z0 + L[0]* cos(theta0) - L[3]* cos(htheta3) - l[4] * cos(htheta4)
 
     # velocity relationship
     dhtheta0 = dtheta0
-    dhtheta1 = dtheta0 + dtheta1
-    dhtheta2 = dtheta0 + dtheta1 + dtheta2
+    dhtheta1 = dtheta1
+    dhtheta2 = dtheta1 + dtheta2
     dhtheta3 = dtheta0 + dtheta3
     dhtheta4 = dtheta0 + dtheta3 + dtheta4
 
-    dx1 = dx0 + l[0]* cos(theta0)*dtheta0       # link 2 x mcp
-    dz1 = dz0 + l[0]* sin(theta0)*dtheta0       # link 2 y mcp
-    dx2 = dx0 + L[0]* cos(theta0)*dtheta0 + l[1] * cos(theta0 + theta1)*(dtheta0 + dtheta1)       # link 2 x mcp
-    dz2 = dz0 + L[0]* sin(theta0)*dtheta0 + l[1] * sin(theta0 + theta1)*(dtheta0 + dtheta1)      # link 2 y mcp
-    dx3 = dx0 + L[0]* cos(theta0)*dtheta0 + L[1] * cos(theta0 + theta1)*(dtheta0 + dtheta1) + \
-          l[2] * cos(theta0 + theta1 + theta2)*(dtheta0 + dtheta1 + dtheta2)       # link 2 x mcp
-    dz3 = dz0 + L[0]* sin(theta0)*dtheta0 + L[1] * sin(theta0 + theta1)*(dtheta0 + dtheta1) + \
-          l[2] * sin(theta0 + theta1 + theta2)*(dtheta0 + dtheta1 + dtheta2)       # link 2 y mcp
-    dx4 = dx0 + l[3]* cos(theta0 + theta3)*(dtheta0 + dtheta3)       # link 2 x mcp
-    dz4 = dz0 + l[3]* sin(theta0 + theta3)*(dtheta0 + dtheta3)       # link 2 y mcp
-    dx5 = dx0 + L[3]* cos(theta0 + theta3)*(dtheta0 + dtheta3) + l[4] * cos(theta0 + theta3 + theta4)*(dtheta0 + dtheta3 + dtheta4)       # link 2 x mcp
-    dz5 = dz0 + L[3]* sin(theta0 + theta3)*(dtheta0 + dtheta3) + l[4] * sin(theta0 + theta3 + theta4)*(dtheta0 + dtheta3 + dtheta4)
+    dx1 = dx0 - l[0]* cos(theta0)*dtheta0       # link 2 x mcp
+    dz1 = dz0 - l[0]* sin(theta0)*dtheta0       # link 2 y mcp
+    dx2 = dx0 + l[1]* cos(htheta1)*(dhtheta1)       # link 2 x mcp
+    dz2 = dz0 + l[1]* sin(htheta1)*(dhtheta1)      # link 2 y mcp
+    dx3 = dx0 + L[1]* cos(htheta1)*(dhtheta1) + \
+          l[2] * cos(htheta2)*(dhtheta2)       # link 2 x mcp
+    dz3 = dz0 + L[1] * sin(htheta1)*(dhtheta1) + \
+          l[2] * sin(htheta2)*(dhtheta2)       # link 2 y mcp
+    dx4 = dx0 - L[0]* cos(theta0)*dtheta0 + l[3]* cos(htheta3)*(dhtheta3)       # link 2 x mcp
+    dz4 = dz0 - L[0]* sin(theta0)*dtheta0 + l[3]* sin(htheta3)*(dhtheta3)       # link 2 y mcp
+    dx5 = dx0 - L[0]* cos(theta0)*dtheta0 + L[3]* cos(htheta3)*(dhtheta3) + l[4] * cos(htheta4)*(dhtheta4)       # link 2 x mcp
+    dz5 = dz0 - L[0]* sin(theta0)*dtheta0 + L[3]* sin(htheta3)*(dhtheta3) + l[4] * sin(htheta4)*(dhtheta4)
     
     # ==================== kinematic and potential energy ===================
     # 动能计算： 刚体动能 = 刚体质心平移动能 + 绕质心转动动能 = 1 / 2 * m * vc ** 2 + 1 / 2 * Ic * dtheta ** 2
@@ -624,7 +625,7 @@ def HumanModelHalf():
                 pass
             pass
         # print(sss)
-        # s = [Xb.diff(t), Yb.diff(t), Ob.diff(t), O1[0].diff(t),
+        # s = [Xb.diff(t), Yb.diff(t), Ob.diff(t), O1many  negative sign[0].diff(t),
         #      O2[0].diff(t), O3[0].diff(t)]
         # temp = sympy.collect(
         #     f.expand(), sss, evaluate=False)
@@ -661,7 +662,7 @@ def HumanModelHalf():
     # print("\n"*5)
     # get_gravity_term(eq)
     # print("\n"*5)
-    i=10
+    i=6
     print("="*50)
     if i < 2:
         print("Ineria term wrt. disp", i)
@@ -672,5 +673,6 @@ def HumanModelHalf():
 
 
 if __name__ == "__main__":
-    HumanModel()
+    # HumanModel()
+    HumanModelHalf()
     # HumanModelJin()
