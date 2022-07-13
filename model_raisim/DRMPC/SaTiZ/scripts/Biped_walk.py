@@ -6,6 +6,7 @@
 5. 加入双臂的运动
 '''
 
+from cProfile import label
 import os
 import yaml
 import datetime
@@ -312,6 +313,14 @@ class Bipedal_hybrid():
         inertia_main = [mm[i][i]*acc[i] for i in range(8)]
         inertia_coupling = [inertia_force[i]-inertia_main[i] for i in range(8)]
         return inertia_main, inertia_coupling
+    
+    def inertia_coupling_force(self, q, acc):
+        mm = self.mass_matrix(q[2:])
+        inertia_coupling_x = [mm[0][1]*acc[1], mm[0][2]*acc[2]+mm[0][3]*acc[3], mm[0][4]*acc[4]+mm[0][5]*acc[5],
+                              mm[0][6]*acc[6], mm[0][7]*acc[7]]
+        inertia_coupling_y = [mm[1][0]*acc[0], mm[1][2]*acc[2]+mm[1][3]*acc[3], mm[1][4]*acc[4]+mm[1][5]*acc[5],
+                              mm[1][6]*acc[6], mm[1][7]*acc[7]]
+        return inertia_coupling_x, inertia_coupling_y
 
     def foot_pos(self, q):
         # region calculate foot coordinate in world frame
@@ -382,11 +391,13 @@ class Bipedal_hybrid():
 
         lax[0] = q[0]
         lax[1] = lax[0] + L[3]*np.sin(q[6])
+        # lay[0] = 0.2+q[1]
         lay[0] = 0.5+q[1]
         lay[1] = lay[0] - L[3]*np.cos(q[6])
 
         rax[0] = q[0]
         rax[1] = rax[0] + L[3]*np.sin(q[7])
+        # ray[0] = 0.2+q[1]
         ray[0] = 0.5+q[1]
         ray[1] = ray[0] - L[3]*np.cos(q[7])
         return (lx, ly, rx, ry, lax, lay, rax, ray)
@@ -774,14 +785,14 @@ class nlp():
         cs = walker.motor_cs
         ms = walker.motor_ms
         mt = walker.motor_mt
-        for i in range(2):
-            for j in range(len(walker.u[i])):
-                ceq.extend([walker.u[i][j][k]-ca.fmax(mt - (walker.dq[i][j][k+2] -
-                                                            cs)/(ms-cs)*mt, 0) <= 0 for k in range(6)])
-                ceq.extend([walker.u[i][j][k]-ca.fmin(-mt + (walker.dq[i][j][k+2] +
-                                                             cs)/(-ms+cs)*mt, 0) >= 0 for k in range(6)])
-                pass
-            pass
+        # for i in range(2):
+        #     for j in range(len(walker.u[i])):
+        #         ceq.extend([walker.u[i][j][k]-ca.fmax(mt - (walker.dq[i][j][k+2] -
+        #                                                     cs)/(ms-cs)*mt, 0) <= 0 for k in range(6)])
+        #         ceq.extend([walker.u[i][j][k]-ca.fmin(-mt + (walker.dq[i][j][k+2] +
+        #                                                      cs)/(-ms+cs)*mt, 0) >= 0 for k in range(6)])
+        #         pass
+        #     pass
         # endregion
 
         # region smooth constraint
@@ -932,12 +943,12 @@ class SolutionData():
             self.sudden_id = None
             pass
         else:
-            self.q = old_solution[:, 0:6]
-            self.dq = old_solution[:, 6:12]
-            self.ddq = old_solution[:, 12:18]
-            self.u = old_solution[:, 18:22]
-            self.f = old_solution[:, 22:26]
-            self.t = old_solution[:, 26]
+            self.q = old_solution[:, 0:8]
+            self.dq = old_solution[:, 8:16]
+            self.ddq = old_solution[:, 16:24]
+            self.u = old_solution[:, 24:30]
+            self.f = old_solution[:, 30:34]
+            self.t = old_solution[:, 34]
 
             index = 0
             while(self.t[index] != self.t[index+1]):
@@ -989,32 +1000,37 @@ def main():
     q, dq, ddq, u, F, t = nonlinearOptimization.solve_and_output(
         robot, flag_save=save_flag, StorePath=StorePath)
     # endregion
-
-    visual = DataProcess(cfg, robot, q, dq, ddq, u, F, t, save_dir)
-    SaveDir = visual.DataSave(save_flag)
+    if save_flag:
+        visual = DataProcess(cfg, robot, q, dq, ddq, u, F, t, save_dir)
+        SaveDir = visual.DataSave(save_flag)
 
     if vis_flag:
         import matplotlib.pyplot as plt
         import matplotlib.patches as patches
         import matplotlib as mpl
         from matplotlib.patches import ConnectionPatch
-        # plt.style.use("science")
-        # params = {
-        #     'text.usetex': True,
-        #     'font.size': 8,
-        # }
-        # mpl.rcParams.update(params)
+        plt.style.use("science")
+        cmap = mpl.cm.get_cmap('Paired')
+        params = {
+            'text.usetex': True,
+            'font.size': 8,
+            'pgf.preamble': [r'\usepackage{color}'],
+        }
+        mpl.rcParams.update(params)
 
         labelfont = 12
         labelfonty = 10
 
-        cmap = mpl.cm.get_cmap('viridis')
+        # cmap = mpl.cm.get_cmap('viridis')
         fig = plt.figure(figsize=(10, 7), dpi=180, constrained_layout=False)
+        fig2 = plt.figure(figsize=(10, 7), dpi=180, constrained_layout=False)
         gs = fig.add_gridspec(2, 1, height_ratios=[1, 1.8],
                               wspace=0.3, hspace=0.33)
-        g_data = gs[1].subgridspec(3, 5, wspace=0.3, hspace=0.33)
+        gs = fig.add_gridspec(1, 1)
+        gm = fig2.add_gridspec(1, 1)
+        g_data = gs[0].subgridspec(3, 5, wspace=0.3, hspace=0.33)
 
-        ax_m = fig.add_subplot(gs[0])
+        ax_m = fig2.add_subplot(gm[0])
         ax_p = [fig.add_subplot(g_data[0, i]) for i in range(5)]
         ax_v = [fig.add_subplot(g_data[1, i]) for i in range(5)]
         ax_u = [fig.add_subplot(g_data[2, i]) for i in range(5)]
@@ -1027,7 +1043,8 @@ def main():
         for tt in np.linspace(0, robot.T, num_frame):
             idx = np.argmin(np.abs(t-tt))
             pos = Bipedal_hybrid.get_posture(q[idx, :])
-            bodyy = [pos[1][0], pos[1][0]+0.5]
+            bodyy = [pos[1][0], pos[1][0]+0.5]     # Biped params len
+            # bodyy = [pos[1][0], pos[1][0]+0.2]     # quadruped params len
             bodyx = [pos[0][0], pos[0][0]]
             ax_m.plot(pos[0], pos[1], 'o-', ms=1,
                       color=cmap(tt/robot.T), alpha=tt/robot.T*0.8+0.2, lw=1)
@@ -1042,7 +1059,7 @@ def main():
             patch = patches.Rectangle(
                 (pos[0][0]-0.02, pos[1][0]-0.05), 0.04, 0.1, alpha=tt/robot.T*0.8+0.2, lw=0, color=cmap(tt/robot.T))
             ax_m.add_patch(patch)
-            # ax_m.axis('equal')
+            ax_m.axis('equal')
 
             # plot velocity
             vel_st = (pos[0][-1], pos[1][-1])
@@ -1053,6 +1070,10 @@ def main():
             # ax_m.add_patch(vel_con)
             pass
         # ax_m.axis('equal')
+        ax_m.set_ylabel('z(m)', fontsize = 15)
+        ax_m.set_xlabel('x(m)', fontsize = 15)
+        ax_m.xaxis.set_tick_params(labelsize = 12)
+        ax_m.yaxis.set_tick_params(labelsize = 12)
         # title_v = [r'$\dot{x}$', r'$\dot{y}$',
         #            r'$\dot{\theta}_1$', r'$\dot{\theta}_2$']
         # title_u = [r'$F_x$', r'$F_y$', r'$\tau_1$', r'$\tau_2$']
@@ -1069,32 +1090,187 @@ def main():
         # [ax_v[i].set_title(title_v[i]) for i in range(4)]
 
         ax_u[0].plot(t, F[:, 0])
-        ax_u[0].plot(t, F[:, 2], color='C' + str(3))
+        ax_u[0].plot(t, F[:, 2])
         ax_u[0].set_ylabel('Force(N)', fontsize = labelfonty)
         ax_u[0].set_xlabel('x', fontsize = labelfont)
         ax_u[1].plot(t, F[:, 1])
-        ax_u[1].plot(t, F[:, 3], color='C' + str(3))
+        ax_u[1].plot(t, F[:, 3])
         ax_u[1].set_xlabel('y', fontsize = labelfont)
         ax_u[2].plot(t, u[:, 0])
-        ax_u[2].plot(t, u[:, 2], color='C' + str(3))
+        ax_u[2].plot(t, u[:, 2])
         ax_u[2].set_xlabel('hip', fontsize = labelfont)
         ax_u[3].plot(t, u[:, 1])
-        ax_u[3].plot(t, u[:, 3], color='C' + str(3))
+        ax_u[3].plot(t, u[:, 3])
         ax_u[3].set_xlabel('knee', fontsize = labelfont)
         ax_u[4].plot(t, u[:, 4])
-        ax_u[4].plot(t, u[:, 5], color='C' + str(3))
+        ax_u[4].plot(t, u[:, 5])
         ax_u[4].set_xlabel('shoulder', fontsize = labelfont)
 
         # [ax_u[j].set_title(title_u[j]) for j in range(4)]
-        savename =  SaveDir + "Traj-Vel-uF"
+        
 
         if save_flag:
-            plt.savefig(savename)
+            savename1 =  SaveDir + "Traj"
+            savename2 =  SaveDir + "Pos-Vel-uF"
+            fig.savefig(savename2)
+            fig2.savefig(savename1)
         plt.show()
 
         pass
 
     pass
+
+
+def VelAndAcc():
+    # 这部分的脚本是用于对每个时刻的受力状态可视化
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    from matplotlib import transforms
+
+    # ------------------------------------------------
+    # load data and preprocess
+    armflag = False
+    # armflag = True
+    store_path = "/home/stylite-y/Documents/Master/Manipulator/Simulation/model_raisim/DRMPC/SaTiZ/data/"
+    today = "2022-07-06/"
+    if armflag:
+        date = "2022-07-06-09-30-18-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_5-Tp_0.26-Tst_0.3"
+    else:
+        date = "2022-07-06-09-29-45-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_5-Tp_0.26-Tst_0.3"
+    
+    solution_file = store_path + today + date + "/" + date + "-sol.npy"
+    config_file = store_path + today + date + "/" + date + "-config.yaml"
+    solution = np.load(solution_file)
+    cfg = YAML().load(open(config_file, 'r'))
+
+    robot = Bipedal_hybrid(cfg)    # create robot
+    data = SolutionData(old_solution=solution)  # format solution data
+
+    foot_lx = []
+    foot_ly = []
+    foot_rx = []
+    foot_ry = []
+    for i in range(data.N):
+        df_lx, df_ly, df_rx, df_ry = robot.foot_vel(data.q[i, :], data.dq[i, :])
+        # df_lx, df_ly, df_rx, df_ry = robot.foot_pos(data.q[i, :])
+        foot_lx.append(df_lx)
+        foot_ly.append(df_ly)
+        foot_rx.append(df_rx)
+        foot_ry.append(df_ry)
+        pass
+
+    fig, axes = plt.subplots(2,1, dpi=100,figsize=(12,10))
+    ax1 = axes[0]
+    ax2 = axes[1]
+
+    ax1.plot(data.t, foot_lx, label="left foot x", lw=3)
+    ax1.plot(data.t, foot_rx, label="right foot x", lw=3)
+    ax1.set_ylabel('x-vel(m/s)', fontsize = 18)
+    ax1.set_xlabel('Time(s)', fontsize = 18)
+    ax1.xaxis.set_tick_params(labelsize = 15)
+    ax1.yaxis.set_tick_params(labelsize = 15)
+    ax1.legend(loc='upper right',fontsize = 15)
+
+    ax2.plot(data.t, foot_ly, label="left foot y", lw=3)
+    ax2.plot(data.t, foot_ry, label="right foot y", lw=3)
+    ax2.set_ylabel('z-vel(m/s)', fontsize = 18)
+    ax2.set_xlabel('Time(s)', fontsize = 18)
+    ax2.xaxis.set_tick_params(labelsize = 15)
+    ax2.yaxis.set_tick_params(labelsize = 15)
+    ax2.legend(loc='upper right',fontsize = 15)
+
+    plt.show()
+    pass
+
+
+def ForceAnalysis():
+    # 这部分的脚本是用于对每个时刻的受力状态可视化
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    from matplotlib import transforms
+
+    # ------------------------------------------------
+    # load data and preprocess
+    # armflag = False
+    armflag = True
+    store_path = "/home/stylite-y/Documents/Master/Manipulator/Simulation/model_raisim/DRMPC/SaTiZ/data/"
+    today = "2022-07-06/"
+    if armflag:
+        date = "2022-07-06-09-30-18-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_5-Tp_0.26-Tst_0.3"
+    else:
+        date = "2022-07-06-09-29-45-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_5-Tp_0.26-Tst_0.3"
+    
+    solution_file = store_path + today + date + "/" + date + "-sol.npy"
+    config_file = store_path + today + date + "/" + date + "-config.yaml"
+    solution = np.load(solution_file)
+    cfg = YAML().load(open(config_file, 'r'))
+
+    robot = Bipedal_hybrid(cfg)    # create robot
+    data = SolutionData(old_solution=solution)  # format solution data
+    # print(data.sudden_id)
+
+    # ------------------------------------------------
+    # calculate force
+    Inertia_main = []
+    Inertia_coupling = []
+    Inertia_coupling_x = []
+    Inertia_coupling_y = []
+    Corialis = []
+    Gravity = []
+    Contact = []
+    Control = np.hstack((np.zeros([data.N, 2]), data.u))
+    for i in range(data.N):
+        temp1, temp2 = robot.inertia_force2(data.q[i, :], data.ddq[i, :])
+        temp3, temp4 = robot.inertia_coupling_force(data.q[i, :], data.ddq[i, :])
+        Inertia_coupling_x.append(temp3)
+        Inertia_coupling_y.append(temp4)
+        Inertia_main.append(temp1)
+        Inertia_coupling.append(temp2)
+        Corialis.append(robot.coriolis(
+            data.q[i, 2:8], data.dq[i, 2:8]) if i != data.sudden_id else np.zeros(8))
+        Gravity.append(robot.gravity(
+            data.q[i, 2:8]) if i != data.sudden_id else np.zeros(8))
+        Contact.append(robot.contact_force(data.q[i, 2:8], data.f[i, :]))
+        pass
+
+    Force = [np.asarray(temp) for temp in [Inertia_main, Corialis,
+                                           Inertia_coupling, Gravity, Contact, Control]]
+    Force[4] = -Force[4]
+    Force[5] = -Force[5]
+    print(np.array(Inertia_coupling_x).shape)
+    Inertia_coupling_x = np.asarray(Inertia_coupling_x)
+    Inertia_coupling_y = np.asarray(Inertia_coupling_y)
+    # temp1 = Inertia_coupling_x[:,0]
+    # print(len(temp1))
+    linewd = 3
+    fig, axes = plt.subplots(1,1, dpi=100,figsize=(12,10))
+    # ax1 = axes[0]
+    # ax2 = axes[1]
+    # ax3 = axes[2]
+    ax4 = axes
+    
+    labeltex = ["Inertia_main","Corialis", "Inertia_coupling", "Gravity", "Contact", "Control"]
+    labeltex2 = ["xy","lg","rg", "la", "ra"]
+    for i in range(6):
+        if i < 5:
+            temp1 = Inertia_coupling_x[:, i]
+        #     ax1.plot(data.t, temp1, label=labeltex2[i], lw=linewd)
+        #     ax2.plot(data.t, Inertia_coupling_y[:, i], label=labeltex2[i], lw=linewd)
+        # ax3.plot(data.t, Force[i][:,0], label=labeltex[i], lw=linewd)
+        ax4.plot(data.t, Force[i][:,0], label=labeltex[i], lw=linewd)
+    # ax1.plot(data.t, Force[0][:,0], label = "Inertia_main", lw=linewd)
+    # ax2.plot(data.t, Force[0][:,1], label = "Inertia_main", lw=linewd)
+    
+    # ax1.legend(loc='upper right')
+    # ax2.legend(loc='upper right')
+    # ax3.legend(loc='upper right')
+    ax4.set_xlabel('Time(s)', fontsize = 18)
+    ax4.set_ylabel('Torque(N/m)', fontsize = 18)
+    ax4.xaxis.set_tick_params(labelsize = 15)
+    ax4.yaxis.set_tick_params(labelsize = 15)
+    ax4.legend(loc='upper right')
+
+    plt.show()
 
 
 def ForceVisualization():
@@ -1105,23 +1281,18 @@ def ForceVisualization():
 
     # ------------------------------------------------
     # load data and preprocess
-    store_path = "/home/wooden/Desktop/spring-leg/data/TrajOpt/"
-    # date = "11_03_2022_22_25_22"
-    # date = "13_03_2022_16_08_24"
-    # date = "24_03_2022_19_48_57"
-    # date = "25_03_2022_08_42_47"
-    # date = "25_03_2022_08_48_47"  # FF, 8m/s
-    # date = "25_03_2022_08_56_29"  # BB, 8m/s
-    # date = "25_03_2022_09_06_40"  # BF, 8m/s
+    armflag = False
+    saveflag = True
+    store_path = "/home/stylite-y/Documents/Master/Manipulator/Simulation/model_raisim/DRMPC/SaTiZ/data/"
+    today = "2022-07-13/"
+    if armflag:
+        date = "2022-07-13-11-21-51-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_5-Tp_0.26-Tst_0.3"
+    else:
+        date = "2022-07-13-11-57-05-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_5-Tp_0.26-Tst_0.3"
 
-    # date = "04_04_2022_15_54_42"  # FF, 8m/s, right dynamics
-    # date = "17_05_2022_15_15_31"  # FF, 8m/s, right dynamics
-    # date = "17_05_2022_15_21_43"  # FF, 8m/s, right dynamics   low mass of leg
-    # FF, 8m/s, right dynamics     low mass of leg and low inertia
-    date = "17_05_2022_15_29_05"
-
-    solution_file = store_path + date + "_sol.npy"
-    config_file = store_path + date + "config.yaml"
+    pic_store_path = store_path + today + date + "/" 
+    solution_file = store_path + today + date + "/" + date + "-sol.npy"
+    config_file = store_path + today + date + "/" + date + "-config.yaml"
     solution = np.load(solution_file)
     cfg = YAML().load(open(config_file, 'r'))
 
@@ -1141,17 +1312,17 @@ def ForceVisualization():
         Inertia_main.append(temp1)
         Inertia_coupling.append(temp2)
         Corialis.append(robot.coriolis(
-            data.q[i, 2:6], data.dq[i, 2:6]) if i != data.sudden_id else np.zeros(6))
+            data.q[i, 2:8], data.dq[i, 2:8]) if i != data.sudden_id else np.zeros(8))
         Gravity.append(robot.gravity(
-            data.q[i, 2:6]) if i != data.sudden_id else np.zeros(6))
-        Contact.append(robot.contact_force(data.q[i, 2:6], data.f[i, :]))
+            data.q[i, 2:8]) if i != data.sudden_id else np.zeros(8))
+        Contact.append(robot.contact_force(data.q[i, 2:8], data.f[i, :]))
         pass
     Force = [np.asarray(temp) for temp in [Inertia_main,
                                            Inertia_coupling, Corialis, Gravity, Contact, Control]]
     Force[4] = -Force[4]
     Force[5] = -Force[5]
-    # Force = [Force[4], Force[0], Force[1], Force[2], Force[3]]
-    # Force = [Force[5], Force[4], Force[0], Force[1], Force[2], Force[3]]
+    print(np.array(Force).shape)
+
     # ------------------------------------------------
     plt.style.use("science")
     cmap = mpl.cm.get_cmap('Paired')
@@ -1162,73 +1333,23 @@ def ForceVisualization():
     }
     mpl.rcParams.update(params)
 
+    # axis and labels
+    labelfont = 8
+    labelfonty = 10
+    ## arm
+    up = [1000, 2400, 800, 300, 800, 300, 300, 300]
+    textlim = [1100, 2700, 900, 340, 900, 340, 340, 340]
+    ## noarm
+    up = [2000, 2400, 800, 300, 800, 300, 30, 30]
+    textlim = [2200, 2700, 900, 340, 900, 340, 35, 35]
+    labels = ['X', 'Y', 'Hip-L', 'Knee-L', 'Hip-R', 'Knee-R', 'Shoulder-L', 'Shoulder-R']
+
+
     # fig = plt.figure(figsize=(7, 3), dpi=300, constrained_layout=False)
     # ax = fig.subplots(2, 3)
 
-    fig_zero_holder = plt.figure(
-        figsize=(7, 3), dpi=300, constrained_layout=False)
-    ax_zero_holder = fig_zero_holder.subplots(2, 3, sharex=True)
-
-    def pos_or_neg_flag(value_list):
-        res = 0
-        s = np.sign(np.asarray(value_list))
-
-        pass
-
-    # ColorCandidate = [cmap(i/6) for i in range(6)]
-    ColorCandidate = ['C'+str(i) for i in range(6)]
-
-    for i in range(2):
-        for j in range(3):
-            for k in range(data.N):
-                dof_id = i + j * 2
-                pos = 0
-                neg = 0
-                for kk in range(6):
-                    ax_zero_holder[i, j].bar(data.t[k], Force[kk][k, dof_id], width=data.dt[k],
-                                             bottom=pos if Force[kk][k, dof_id] >= 0 else neg, align='edge', color=ColorCandidate[kk], linewidth=0, ecolor=ColorCandidate[kk])
-                    if Force[kk][k, dof_id] >= 0:
-                        pos += Force[kk][k, dof_id]
-                    else:
-                        neg += Force[kk][k, dof_id]
-                    pass
-                pass
-            pass
-        pass
-    [a.set_xlim([0, 0.2]) for a in ax_zero_holder.reshape(-1)]
-    ax_zero_holder[0, 0].set_ylim([-600, 600])
-    ax_zero_holder[1, 0].set_ylim([-600, 600])
-    ax_zero_holder[0, 1].set_ylim([-100, 100])
-    ax_zero_holder[1, 1].set_ylim([-100, 100])
-    ax_zero_holder[0, 2].set_ylim([-100, 100])
-    ax_zero_holder[1, 2].set_ylim([-100, 100])
-
-    # -------------------------------------------------
-    # plot the force of each dof separately
-    fig = [plt.figure(figsize=(4, 7), dpi=300, constrained_layout=False)
-           for _ in range(6)]
-    gs = [f.add_gridspec(2, 1, height_ratios=[1, 2.2],
-                         wspace=0.3, hspace=0.33) for f in fig]
-    ax_posture = [fig[i].add_subplot(gs[i][0]) for i in range(len(fig))]
-    ax_force = [fig[i].add_subplot(gs[i][1]) for i in range(len(fig))]
-
-    # plot posture
-    # ------------------------------------------
-    for tt in [0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2]:
-        idx = np.argmin(np.abs(data.t-tt))
-        pos = Bipedal_hybrid.get_posture(data.q[idx, :])
-        for a in ax_posture:
-            a.axhline(y=0, color='k')
-            a.plot(pos[0], pos[1], color=cmap(tt/data.t[-1]))
-            a.plot(pos[2], pos[3], color=cmap(tt/data.t[-1]), ls=':')
-            a.scatter(pos[0][0], pos[1][0], marker='s',
-                      color=cmap(tt/data.t[-1]), s=30)
-            a.set_xlim([-1.5, 1.5])
-            a.axis('equal')
-            a.set_xticklabels([])
-            pass
-        pass
-
+    # ------------------------------------------------
+    # self-define function
     def rainbow_text(fig, ax, x, y, ls, lc, **kw):
 
         # t = plt.gca().transData
@@ -1243,27 +1364,98 @@ def ForceVisualization():
                 text._transform, x=ex.width, units='dots')
         pass
 
+    def pos_or_neg_flag(value_list):
+        res = 0
+        s = np.sign(np.asarray(value_list))
+
+        pass
+
+    # ------------------------------------------------
+    # fig plot setting
+    fig_zero_holder = plt.figure(
+        figsize=(7, 4), dpi=300, constrained_layout=False)
+    ax_zero_holder = fig_zero_holder.subplots(2, 4, sharex=True)
+
+    ColorCandidate = ['C'+str(i) for i in range(6)]
+    rainbow_text(fig_zero_holder, ax_zero_holder[0, 0], 0.01, textlim[0]+300, [r'$M_{ii}\ddot{q}_i$', r'$+$',
+                                                                             r'$\sum M_{ij}\ddot{q}_j$', r'+',
+                                                                             r'$C(q,\dot{q})$', r'+',
+                                                                             r'$G({q})$', r'+',
+                                                                             r'$-J^T\lambda$', r'+',
+                                                                             r'$-u$', r'$=0$'],
+                     ['C0', 'k', 'C1', 'k', 'C2', 'k', 'C3', 'k', 'C4', 'k', 'C5', 'k'], size=10)
+
+    for i in range(2):
+        for j in range(4):
+            for k in range(data.N):
+                dof_id = i + j * 2
+                pos = 0
+                neg = 0
+                for kk in range(6):
+                    # print(Force[kk][k][dof_id])
+                    ax_zero_holder[i, j].bar(data.t[k], Force[kk][k][dof_id], width=data.dt[k],
+                                             bottom=pos if Force[kk][k][dof_id] >= 0 else neg, align='edge', color=ColorCandidate[kk], linewidth=0, ecolor=ColorCandidate[kk])
+                    if Force[kk][k][dof_id] >= 0:
+                        pos += Force[kk][k][dof_id]
+                    else:
+                        neg += Force[kk][k][dof_id]
+                    pass
+                pass
+            ax_zero_holder[i, j].set_ylim([-up[dof_id], up[dof_id]])
+            ax_zero_holder[i, j].set_xlabel(labels[dof_id], fontsize = labelfont)
+            pass
+        pass
+    [a.set_xlim([0, 0.2]) for a in ax_zero_holder.reshape(-1)]
+    
+    if saveflag:
+        savename = pic_store_path + 'dynamics-eq'
+        fig_zero_holder.savefig(savename)
+
+    # -------------------------------------------------
+    # plot the force of each dof separately
+    fig = [plt.figure(figsize=(4, 7), dpi=300, constrained_layout=False)
+           for _ in range(len(textlim))]
+    gs = [f.add_gridspec(2, 1, height_ratios=[1, 2.2],
+                         wspace=0.3, hspace=0.33) for f in fig]
+    ax_posture = [fig[i].add_subplot(gs[i][0]) for i in range(len(fig))]
+    ax_force = [fig[i].add_subplot(gs[i][1]) for i in range(len(fig))]
+
+    # plot posture
+    # ------------------------------------------
+    for tt in [0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2, 0.225, 0.25]:
+        idx = np.argmin(np.abs(data.t-tt))
+        pos = Bipedal_hybrid.get_posture(data.q[idx, :])
+        for a in ax_posture:
+            a.axhline(y=0, color='k')
+            a.plot(pos[0], pos[1], color=cmap(tt/data.t[-1]))
+            a.plot(pos[2], pos[3], color=cmap(tt/data.t[-1]), ls=':')
+            a.scatter(pos[0][0], pos[1][0], marker='s',
+                      color=cmap(tt/data.t[-1]), s=30)
+            a.set_xlim([-1.5, 1.5])
+            a.axis('equal')
+            a.set_xticklabels([])
+            pass
+        pass
+
     # plot force
     # -----------------------------------------
-    up = [600, 600, 100, 100, 100, 100]
-    low = [-600, -600, -100, -100, -100, -100]
-    for i in range(6):
+    for i in range(len(textlim)):
         for k in range(data.N):
             dof_id = i
             pos = 0
             neg = 0
             for kk in range(6):
-                ax_force[i].bar(data.t[k], Force[kk][k, dof_id], width=data.dt[k],
-                                bottom=pos if Force[kk][k, dof_id] >= 0 else neg, align='edge', color=ColorCandidate[kk], linewidth=0, ecolor=ColorCandidate[kk])
-                if Force[kk][k, dof_id] >= 0:
-                    pos += Force[kk][k, dof_id]
+                ax_force[i].bar(data.t[k], Force[kk][k][dof_id], width=data.dt[k],
+                                bottom=pos if Force[kk][k][dof_id] >= 0 else neg, align='edge', color=ColorCandidate[kk], linewidth=0, ecolor=ColorCandidate[kk])
+                if Force[kk][k][dof_id] >= 0:
+                    pos += Force[kk][k][dof_id]
                 else:
-                    neg += Force[kk][k, dof_id]
+                    neg += Force[kk][k][dof_id]
                 pass
             pass
         ax_force[i].set_xlim([0, 0.2])
-        ax_force[i].set_ylim([low[i], up[i]])
-        rainbow_text(fig[i], ax_force[i], 0.01, 650 if dof_id < 2 else 108, [r'$M_{ii}\ddot{q}_i$', r'$+$',
+        ax_force[i].set_ylim([-up[i], up[i]])
+        rainbow_text(fig[i], ax_force[i], 0.01, textlim[i], [r'$M_{ii}\ddot{q}_i$', r'$+$',
                                                                              r'$\sum M_{ij}\ddot{q}_j$', r'+',
                                                                              r'$C(q,\dot{q})$', r'+',
                                                                              r'$G({q})$', r'+',
@@ -1694,8 +1886,10 @@ def Power_metrics_analysis():
 
 
 if __name__ == "__main__":
-    main()
-    # ForceVisualization()
+    # main()
+    ForceVisualization()
+    # ForceAnalysis()
+    # VelAndAcc()
     # power_analysis()
     # Impact_inertia()
     # Impact_process()

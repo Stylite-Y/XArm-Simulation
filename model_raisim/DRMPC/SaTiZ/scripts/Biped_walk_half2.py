@@ -4,7 +4,7 @@
 3. 格式化配置参数输入和结果输出
 4. 混合动力学系统，系统在机器人足底和地面接触的时候存在切换
 5. 加入双臂的运动
-6. Biped_walk_half: x0,z0 in hip and hO_hip = O_hip
+6. Biped_walk_half2: x0,z0 in hip and hO_hip = O_b+O_hip
 '''
 
 from ast import walk
@@ -25,12 +25,13 @@ class Bipedal_hybrid():
     def __init__(self, cfg):
         self.opti = ca.Opti()
         # load config parameter
-        self.CollectionNum = cfg['Controller']['CollectionNum']
-        self.N = cfg['Controller']['CollectionNum']
+        # self.CollectionNum = cfg['Controller']['CollectionNum']
+        # self.N = cfg['Controller']['CollectionNum']
 
         # time and collection defination related parameter
         self.T = cfg['Controller']['Period']
-        self.dt = self.T / self.CollectionNum
+        self.dt = cfg['Controller']['dt']
+        self.N = int(self.T / self.dt)
 
         # mass and geometry related parameter
         self.m = cfg['Robot']['Mass']['mass']
@@ -54,8 +55,6 @@ class Bipedal_hybrid():
         self.g = cfg['Environment']['Gravity']
         self.damping = cfg['Robot']['damping']
 
-        # self.vel_aim = cfg['Controller']['Target']
-
         # boundary parameter
         self.bound_fy = cfg['Controller']['Boundary']['Fy']
         self.bound_fx = cfg['Controller']['Boundary']['Fx']
@@ -72,13 +71,13 @@ class Bipedal_hybrid():
         self.q_LB = [cfg['Controller']['Boundary']['x'][0],
                      cfg['Controller']['Boundary']['y'][0],
                      -np.pi,  # body x,y,theta
-                     -np.pi/2, -np.pi,
-                     -np.pi, 0]    # arm 
+                     -np.pi/3, -np.pi,
+                     -np.pi/2, 0]    # arm 
         self.q_UB = [cfg['Controller']['Boundary']['x'][1],
                      cfg['Controller']['Boundary']['y'][1],
                      np.pi/4,   # body x,y,theta
                      np.pi/2, 0,
-                     np.pi/2, np.pi]  # arm 
+                     np.pi, np.pi]  # arm 
 
         self.dq_LB = [cfg['Controller']['Boundary']['dx'][0],
                       cfg['Controller']['Boundary']['dy'][0],
@@ -124,29 +123,31 @@ class Bipedal_hybrid():
 
         m00 = m0+m1+m2+m3+m4
         m01 = 0
-        m02 = -L0*(m3+m4)*c(q[0])-lc0*m0*c(q[0])+L3*m4*c(q[0]+q[3])+\
+        m02 = -L0*(m3+m4)*c(q[0])-lc0*m0*c(q[0])+L1*m2*c(q[0]+q[1])+L3*m4*c(q[0]+q[3])+\
+              lc1*m1*c(q[0]+q[1])+lc2*m2*c(q[0]+q[1]+q[2])+\
               lc3*m3*c(q[0]+q[3])+lc4*m4*c(q[0]+q[3]+q[4])
-        m03 = L1*m2*c(q[1])+lc1*m1*c(q[1])+lc2*m2*c(q[1]+q[2])
-        m04 = lc2*m2*c(q[1]+q[2])
+        m03 = L1*m2*c(q[0]+q[1])+lc1*m1*c(q[0]+q[1])+lc2*m2*c(q[0]+q[1]+q[2])
+        m04 = lc2*m2*c(q[0]+q[1]+q[2])
         m05 = L3*m4*c(q[0]+q[3])+lc3*m3*c(q[0]+q[3])+lc4*m4*c(q[0]+q[3]+q[4])
         m06 = lc4*m4*c(q[0]+q[3]+q[4])
 
         m10 = m01
         m11 = m0+m1+m2+m3+m4
-        m12 = -L0*(m3+m4)*s(q[0])-lc0*m0*s(q[0])+L3*m4*s(q[0]+q[3])+\
+        m12 = -L0*(m3+m4)*s(q[0])-lc0*m0*s(q[0])+L1*m2*s(q[0]+q[1])+L3*m4*s(q[0]+q[3])+\
+              lc1*m1*s(q[0]+q[1])+lc2*m2*s(q[0]+q[1]+q[2])+\
               lc3*m3*s(q[0]+q[3])+lc4*m4*s(q[0]+q[3]+q[4])
-        m13 = L1*m2*s(q[1])+lc1*m1*s(q[1])+lc2*m2*s(q[1]+q[2])
-        m14 = lc2*m2*s(q[1]+q[2])
+        m13 = L1*m2*s(q[0]+q[1])+lc1*m1*s(q[0]+q[1])+lc2*m2*s(q[0]+q[1]+q[2])
+        m14 = lc2*m2*s(q[0]+q[1]+q[2])
         m15 = L3*m4*s(q[0]+q[3])+lc3*m3*s(q[0]+q[3])+lc4*m4*s(q[0]+q[3]+q[4])
         m16 = lc4*m4*s(q[0]+q[3]+q[4])
 
         m20 = m02
         m21 = m12
-        m22 = self.I_[0]+self.I_[3]+self.I_[4]+L0**2*(m3+m4)+L3**2*m4-\
+        m22 = self.I_[0]+self.I_[1]+self.I_[2]+self.I_[3]+self.I_[4]+L0**2*(m3+m4)+L1**2*m2+L3**2*m4-\
               2*L0*L3*m4*c(q[3])-2*L0*lc3*m3*c(q[3])-2*L0*lc4*m4*c(q[3]+q[4])+\
-              2*L3*lc4*m4*(q[4])
-        m23 = 0
-        m24 = 0
+              2*L3*lc4*m4*(q[4])+2*L1*lc2*m2*c(q[2])
+        m23 = self.I_[1] + self.I_[2] + m2*L1**2+2*L1*lc2*m2*c(q[2])
+        m24 = self.I_[2] + L1*lc2*m2*c(q[2])
         m25 = self.I_[3]+self.I_[4]+L3**2*m4+2*L3*lc4*m4*(q[4])-\
               L0*L3*m4*c(q[3])-L0*lc3*m3*c(q[3])-L0*lc4*m4*c(q[3]+q[4])
         m26 = self.I_[4]+L3*lc4*m4*c(q[4])-L0*lc4*m4*c(q[3]+q[4])
@@ -209,10 +210,11 @@ class Bipedal_hybrid():
         L1 = self.L[1]
         L3 = self.L[3]
 
-        mbs = L0*(m3+m4)*s(q[0])-L3*m4*s(q[0]+q[3])+lc0*m0*s(q[0])-\
+        mbs = L0*(m3+m4)*s(q[0])+lc0*m0*s(q[0])-L1*m2*s(q[0]+q[1])-L3*m4*s(q[0]+q[3])-\
+              lc1*m1*s(q[0]+q[1])-lc2*m2*s(q[0]+q[1]+q[2]) -\
               lc3*m3*s(q[0]+q[3])-lc4*m4*s(q[0]+q[3]+q[4])
-        m11 = L1*m2*s(q[1])+lc1*m1*s(q[1])+lc2*m2*s(q[1]+q[2])
-        m12 = lc2*m2*s(q[1]+q[2])
+        m11 = L1*m2*s(q[0]+q[1])+lc1*m1*s(q[0]+q[1])+lc2*m2*s(q[0]+q[1]+q[2])
+        m12 = lc2*m2*s(q[0]+q[1]+q[2])
         m31 = L3*m4*s(q[0]+q[3])+lc3*m3*s(q[0]+q[3])+lc4*m4*s(q[0]+q[3]+q[4])
         m32 = lc4*m4*s(q[0]+q[3]+q[4])
 
@@ -221,27 +223,28 @@ class Bipedal_hybrid():
         m43 = L3*lc4*m4*s(q[4])
         m44 = L1*lc2*m2*s(q[2])
 
-        mbc = L0*(m3+m4)*c(q[0])-L3*m4*c(q[0]+q[3])+lc0*m0*c(q[0])-\
+        mbc = L0*(m3+m4)*c(q[0])+lc0*m0*c(q[0])-L1*m2*c(q[0]+q[1])-L3*m4*c(q[0]+q[3])-\
+              lc1*m1*c(q[0]+q[1])-lc2*m2*c(q[0]+q[1]+q[2]) -\
               lc3*m3*c(q[0]+q[3])-lc4*m4*c(q[0]+q[3]+q[4])
-        m11c = L1*m2*c(q[1])+lc1*m1*c(q[1])+lc2*m2*c(q[1]+q[2])
-        m12c = lc2*m2*c(q[1]+q[2])
+        m11c = L1*m2*c(q[0]+q[1])+lc1*m1*c(q[0]+q[1])+lc2*m2*c(q[0]+q[1]+q[2])
+        m12c = lc2*m2*c(q[0]+q[1]+q[2])
         m31c = L3*m4*c(q[0]+q[3])+lc3*m3*c(q[0]+q[3])+lc4*m4*c(q[0]+q[3]+q[4])
         m32c = lc4*m4*c(q[0]+q[3]+q[4])
 
-        c0 = mbs*dq[0]**2-2*m31*dq[0]*dq[3]-2*m32*dq[0]*dq[4]
+        c0 = mbs*dq[0]**2-2*m11*dq[0]*dq[1]-2*m12*dq[0]*dq[2]-2*m31*dq[0]*dq[3]-2*m32*dq[0]*dq[4]
         c0 += -m11*dq[1]*dq[1]-2*m12*dq[1]*dq[2]-m12*dq[2]*dq[2]
         c0 += -m31*dq[3]*dq[3]-2*m32*dq[3]*dq[4]-m32*dq[4]*dq[4]
 
-        c1 = -mbc*dq[0]*dq[0]+2*m31c*dq[0]*dq[3]+2*m32c*dq[0]*dq[4]
+        c1 = -mbc*dq[0]*dq[0]+2*m11c*dq[0]*dq[1]+2*m12c*dq[0]*dq[2]+2*m31c*dq[0]*dq[3]+2*m32c*dq[0]*dq[4]
         c1 += m11c*dq[1]*dq[1]+2*m12c*dq[1]*dq[2]+m12c*dq[2]*dq[2]
         c1 += m31c*dq[3]**2 + 2*m32c*dq[3]*dq[4]+m32c*dq[4]*dq[4]
 
-        c2 = 2*m41*dq[0]*dq[3]+2*m42*dq[0]*dq[4]
-        c2+= m41*dq[3]*dq[3]+2*m42*dq[3]*dq[4]+m42*dq[4]*dq[4]
+        c2 = -2*m44*dq[0]*dq[2]+2*m41*dq[0]*dq[3]+2*m42*dq[0]*dq[4]
+        c2+= -2*m44*dq[1]*dq[2]-m44*dq[2]*dq[2]+m41*dq[3]*dq[3]+2*m42*dq[3]*dq[4]+m42*dq[4]*dq[4]
 
-        c3 = -2*m44*dq[1]*dq[2]-m44*dq[2]*dq[2]
+        c3 = -2*m44*dq[0]*dq[2]-2*m44*dq[1]*dq[2]-m44*dq[2]*dq[2]
 
-        c4 = m44*dq[1]*dq[1]
+        c4 = m44*dq[0]*dq[0]+2*m44*dq[0]*dq[1]+m44*dq[1]*dq[1]
 
         c5 = -m41*dq[0]*dq[0]-2*m43*dq[0]*dq[4]-2*m43*dq[3]*dq[4]-m43*dq[4]*dq[4]
 
@@ -267,10 +270,11 @@ class Bipedal_hybrid():
 
         g0 = 0
         g1 = m0+m1+m2+m3+m4
-        g2 = -L0*(m3+m4)*s(q[0])-lc0*m0*s(q[0])+L3*m4*s(q[0]+q[3])+\
+        g2 = -L0*(m3+m4)*s(q[0])-lc0*m0*s(q[0])+L1*m2*s(q[0]+q[1])+L3*m4*s(q[0]+q[3])+\
+              lc1*m1*s(q[0]+q[1])+lc2*m2*s(q[0]+q[1]+q[2])+\
               lc3*m3*s(q[0]+q[3])+lc4*m4*s(q[0]+q[3]+q[4])
-        g3 = L1*m2*s(q[1])+lc1*m1*s(q[1])+lc2*m2*s(q[1]+q[2])
-        g4 = lc2*m2*s(q[1]+q[2])
+        g3 = L1*m2*s(q[0]+q[1])+lc1*m1*s(q[0]+q[1])+lc2*m2*s(q[0]+q[1]+q[2])
+        g4 = lc2*m2*s(q[0]+q[1]+q[2])
         g5 = L3*m4*s(q[0]+q[3])+lc3*m3*s(q[0]+q[3])+lc4*m4*s(q[0]+q[3]+q[4])
         g6 = lc4*m4*s(q[0]+q[3]+q[4])
         return [g0*self.g, g1*self.g, g2*self.g, g3*self.g, g4*self.g, g5*self.g, g6*self.g]
@@ -281,10 +285,11 @@ class Bipedal_hybrid():
         # F = [Fxl, Fyl]
         cont0 = F[0]
         cont1 = F[1]
-        cont2 = 0
-        cont3 = (self.L[1]*c(q[1])+self.L[2]*c(q[1]+q[2]))*F[0] + \
-                (self.L[1]*s(q[1])+self.L[2]*s(q[1]+q[2]))*F[1]
-        cont4 = (self.L[2]*c(q[1]+q[2]))*F[0] + (self.L[2]*s(q[1]+q[2]))*F[1]
+        cont2 = (self.L[1]*c(q[0]+q[1])+self.L[2]*c(q[0]+q[1]+q[2]))*F[0] + \
+                (self.L[1]*s(q[0]+q[1])+self.L[2]*s(q[0]+q[1]+q[2]))*F[1]
+        cont3 = (self.L[1]*c(q[0]+q[1])+self.L[2]*c(q[0]+q[1]+q[2]))*F[0] + \
+                (self.L[1]*s(q[0]+q[1])+self.L[2]*s(q[0]+q[1]+q[2]))*F[1]
+        cont4 = (self.L[2]*c(q[0]+q[1]+q[2]))*F[0] + (self.L[2]*s(q[0]+q[1]+q[2]))*F[1]
         cont5 = 0
         cont6 = 0
         return [cont0, cont1, cont2, cont3, cont4, cont5, cont6]
@@ -312,8 +317,8 @@ class Bipedal_hybrid():
     def foot_pos(self, q):
         # region calculate foot coordinate in world frame
         # q = [x, y, q0, q1, q2, q3, q4]
-        foot_lx = q[0]  + self.L[1]*s(q[3]) + self.L[2]*s(q[3]+q[4])
-        foot_ly = q[1]  - self.L[1]*c(q[3]) - self.L[2]*c(q[3]+q[4])
+        foot_lx = q[0]  + self.L[1]*s(q[2]+q[3]) + self.L[2]*s(q[2]+q[3]+q[4])
+        foot_ly = q[1]  - self.L[1]*c(q[2]+q[3]) - self.L[2]*c(q[2]+q[3]+q[4])
         return foot_lx, foot_ly
         # endregion
 
@@ -321,10 +326,10 @@ class Bipedal_hybrid():
         # region calculate foot coordinate in world frame
         # q = [x, y, q0, q1, q2, q3, q4]
         # dq = [dx, dy, dq0, dq1, dq2, dq3, dq4]
-        df_lx = dq[0] + self.L[1]*c(q[3])*(dq[3]) + \
-            self.L[2]*c(q[3]+q[4])*(dq[3]+dq[4])
-        df_ly = dq[1] + self.L[1]*s(q[3])*(dq[3]) + \
-            self.L[2]*s(q[3]+q[4])*(dq[3]+dq[4])
+        df_lx = dq[0] + self.L[1]*c(q[2]+q[3])*(dq[2]+dq[3]) + \
+            self.L[2]*c(q[2]+q[3]+q[4])*(dq[2]+dq[3]+dq[4])
+        df_ly = dq[1] + self.L[1]*s(q[2]+q[3])*(dq[2]+dq[3]) + \
+            self.L[2]*s(q[2]+q[3]+q[4])*(dq[2]+dq[3]+dq[4])
         return df_lx, df_ly
         # endregion
 
@@ -348,11 +353,11 @@ class Bipedal_hybrid():
         lax = np.zeros(3)
         lay = np.zeros(3)
         lx[0] = q[0]
-        lx[1] = lx[0] + L[1]*np.sin(q[3])
-        lx[2] = lx[1] + L[2]*np.sin(q[3]+q[4])
+        lx[1] = lx[0] + L[1]*np.sin(q[2]+q[3])
+        lx[2] = lx[1] + L[2]*np.sin(q[2]+q[3]+q[4])
         ly[0] = q[1]
-        ly[1] = ly[0] - L[1]*np.cos(q[3])
-        ly[2] = ly[1] - L[2]*np.cos(q[3]+q[4])
+        ly[1] = ly[0] - L[1]*np.cos(q[2]+q[3])
+        ly[2] = ly[1] - L[2]*np.cos(q[2]+q[3]+q[4])
 
         lbx[0] = q[0]
         lbx[1] = lbx[0] - L[0]*np.sin(q[2])
@@ -365,7 +370,7 @@ class Bipedal_hybrid():
         lay[0] = q[1]+ L[0]*np.cos(q[2])
         lay[1] = lay[0] - L[3]*np.cos(q[2]+q[5])
         lay[2] = lay[1] - L[4]*np.cos(q[2]+q[5]+q[6])
-        return (lx, ly, lbx, lby, lax, lay)
+        return [lx, ly, lbx, lby, lax, lay]
 
     @staticmethod
     def get_motor_boundary(speed, MaxTorque=36, CriticalSpeed=27, MaxSpeed=53):
@@ -403,9 +408,10 @@ class Bipedal_hybrid():
 
 
 class nlp():
-    def __init__(self, legged_robot, cfg, seed=None, is_ref=False):
+    def __init__(self, legged_robot, cfg, armflag = True, seed=None, is_ref=False):
         # load parameter
         self.cfg = cfg
+        self.armflag = armflag
         self.trackingCoeff = cfg["Optimization"]["CostCoeff"]["trackingCoeff"]
         self.velCoeff = cfg["Optimization"]["CostCoeff"]["VelCoeff"]
         self.powerCoeff = cfg["Optimization"]["CostCoeff"]["powerCoeff"]
@@ -429,9 +435,7 @@ class nlp():
         s_opts = {"max_iter": max_iter}
         legged_robot.opti.solver("ipopt", p_opts, s_opts)
         self.initialGuess(legged_robot, seed=seed, is_ref=is_ref,
-                          lam=cfg['Controller']['Stance'],
                           delta=cfg['Ref']['delta'],
-                          target=cfg['Controller']['Target'],
                           offset=cfg['Ref']['offset'],
                           alpha=cfg['Ref']['alpha'],
                           beta=cfg['Ref']['beta'],
@@ -442,16 +446,14 @@ class nlp():
         np.random.seed(self.random_seed)
         if seed is None:
             init = walker.opti.set_initial
-            q = walker.q
-            dq = walker.dq
             for i in range(walker.N):
-                init(q[i][0], 0)
-                init(q[i][1], walker.L[1]+walker.L[2])
-                init(dq[i][0], 0)
-                init(dq[i][1], 0)
+                init(walker.q[i][0], 0)
+                init(walker.q[i][1], (walker.L[1]+walker.L[2])*0.8)
+                init(walker.dq[i][0], 0)
+                init(walker.dq[i][1], 0)
                 for j in range(5):
-                    init(q[i][j+2], 0)
-                    init(dq[i][j+2], 0)
+                    init(walker.q[i][j+2], 0)
+                    init(walker.dq[i][j+2], 0)
                 pass
             pass
         else:
@@ -489,7 +491,7 @@ class nlp():
         FM = [walker.bound_fx[1], walker.bound_fy[1]]
         power = 0
         force = 0
-        Veltar = 0
+        VelTar = 0
         PosTar = 0
         for i in range(walker.N):
             for k in range(5):
@@ -504,7 +506,7 @@ class nlp():
             pass
 
         for i in range(walker.N):
-            PosTar += (walker.q[i][1]-(walker.L[1]+walker.L[2]))**2 * walker.dt
+            PosTar += (walker.q[i][1]-(walker.L[1]+walker.L[2])*0.8)**2 * walker.dt
             PosTar += (walker.q[i][0])**2 * walker.dt
             VelTar += (walker.dq[i][1])**2 * walker.dt
             VelTar += (walker.dq[i][0])**2 * walker.dt
@@ -513,14 +515,21 @@ class nlp():
                 PosTar += (walker.q[i][k+2])**2 * walker.dt
                 VelTar += (walker.dq[i][k+2])**2 * walker.dt
         
-        for j in range(7):
-            if j == 1:
-                PosTar += (walker.q[-1][j]-(walker.L[1]+walker.L[2]))**2 * walker.dt
-                VelTar += (walker.dq[-1][j])**2 * walker.dt
-            else:
-                PosTar += (walker.q[-1][j])**2 * walker.dt
-                VelTar += (walker.dq[-1][j])**2 * walker.dt
-
+        # for j in range(7):
+        #     if j == 1:
+        #         PosTar += (walker.q[-1][j]-(walker.L[1]+walker.L[2]))**2
+        #         VelTar += (walker.dq[-1][j])**2
+        #     else:
+        #         PosTar += (walker.q[-1][j])**2
+        #         VelTar += (walker.dq[-1][j])**2
+        # PosTar += (walker.q[-1][1]-(walker.L[1]+walker.L[2])*0.8)**2
+        # PosTar += (walker.q[-1][0])**2
+        # PosTar += (walker.q[-1][2])**2
+        # PosTar += (walker.q[-1][3])**2
+        # VelTar += (walker.dq[-1][1])**2
+        # VelTar += (walker.dq[-1][0])**2
+        # VelTar += (walker.dq[-1][2])**2
+        # VelTar += (walker.dq[-1][3])**2
 
         u = walker.u
         F = walker.F
@@ -550,20 +559,26 @@ class nlp():
         # region dynamics constraints
         # continuous dynamics
         #! 约束的数量为 (6+6）*（NN1-1+NN2-1）
-        for j in range(walker.N-1):
-            ceq.extend([walker.q[j+1][k]-walker.q[j][k]-walker.dt/2 *
-                        (walker.dq[j+1][k]+walker.dq[j][k]) == 0 for k in range(7)])
-            inertia = walker.inertia_force(
-                walker.q[j], walker.ddq[j])
-            coriolis = walker.coriolis(
-                walker.q[j][2:], walker.dq[j][2:])
-            gravity = walker.gravity(walker.q[j][2:])
-            contact = walker.contact_force(
-                walker.q[j][2:], walker.F[j])
-            ceq.extend([inertia[k]+gravity[k]+coriolis[k] -
-                        contact[k] == 0 for k in range(2)])
-            ceq.extend([inertia[k+2]+gravity[k+2]+coriolis[k+2] -
-                        contact[k+2] - walker.u[j][k] == 0 for k in range(5)])
+        for j in range(walker.N):
+            if j < (walker.N-1):
+                ceq.extend([walker.q[j+1][k]-walker.q[j][k]-walker.dt/2 *
+                            (walker.dq[j+1][k]+walker.dq[j][k]) == 0 for k in range(7)])
+                inertia = walker.inertia_force(
+                    walker.q[j], walker.ddq[j])
+                coriolis = walker.coriolis(
+                    walker.q[j][2:], walker.dq[j][2:])
+                gravity = walker.gravity(walker.q[j][2:])
+                contact = walker.contact_force(
+                    walker.q[j][2:], walker.F[j])
+                ceq.extend([inertia[k]+gravity[k]+coriolis[k] -
+                            contact[k] == 0 for k in range(2)])
+                ceq.extend([inertia[k+2]+gravity[k+2]+coriolis[k+2] -
+                            contact[k+2] - walker.u[j][k] == 0 for k in range(5)])
+
+            if not self.armflag:
+                ceq.extend([walker.q[j][k+5] == 0 for k in range(2)])
+                ceq.extend([walker.dq[j][k+5] == 0 for k in range(2)])
+            
             pass
 
 
@@ -613,24 +628,24 @@ class nlp():
             pass
         # endregion
 
-        theta = -np.pi/40
+        theta = -np.pi/50
         x_ref = -(walker.L[1]+walker.L[2])*np.sin(theta)
         y_ref = (walker.L[1]+walker.L[2])*np.cos(theta)
         ceq.extend([walker.q[0][0]==x_ref])
         ceq.extend([walker.q[0][1]==y_ref])
         ceq.extend([walker.q[0][2]==theta])
-        ceq.extend([walker.q[0][3]==theta])
+        ceq.extend([walker.q[0][3]==0])
         ceq.extend([walker.q[0][4]==0])
         ceq.extend([walker.q[0][5]==0])
         ceq.extend([walker.q[0][6]==0])
 
-        ceq.extend([walker.dq[0][0]==0])
-        ceq.extend([walker.dq[0][1]==0])
-        ceq.extend([walker.dq[0][2]==0])
-        ceq.extend([walker.dq[0][3]==0])
-        ceq.extend([walker.dq[0][4]==0])
-        ceq.extend([walker.dq[0][5]==0])
-        ceq.extend([walker.dq[0][6]==0])
+        ceq.extend([walker.dq[0][0]==1])
+        # ceq.extend([walker.dq[0][1]==0])
+        # ceq.extend([walker.dq[0][2]==0])
+        # ceq.extend([walker.dq[0][3]==0])
+        # ceq.extend([walker.dq[0][4]==0])
+        # ceq.extend([walker.dq[0][5]==0])
+        # ceq.extend([walker.dq[0][6]==0])
 
         # region smooth constraint
         for j in range(len(walker.u)-1):
@@ -695,7 +710,7 @@ class nlp():
                 # output solution of NLP
                 np.save(StorePath+date+"_sol.npy",
                         np.hstack((q, dq, ddq, u, f, t)))
-                # output the config yaml file
+                # output the config yaml fileconstrained_
                 with open(StorePath+date+"config.yaml", mode='w') as file:
                     YAML().dump(self.cfg, file)
                 pass
@@ -747,6 +762,8 @@ def main():
     # region optimization trajectory for bipedal hybrid robot system
     vis_flag = True
     save_flag = False
+    # armflag = False
+    armflag = True
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
     ani_path = StorePath + "/data/animation/"
@@ -767,7 +784,7 @@ def main():
     robot = Bipedal_hybrid(cfg)
     # nonlinearOptimization = nlp(robot, cfg, seed=seed)
     # nonlinearOptimization = nlp(robot, cfg)
-    nonlinearOptimization = nlp(robot, cfg, is_ref=True)
+    nonlinearOptimization = nlp(robot, cfg, armflag, is_ref=True)
     # endregion
     q, dq, ddq, u, F, t = nonlinearOptimization.solve_and_output(
         robot, flag_save=save_flag, StorePath=StorePath)
@@ -785,14 +802,21 @@ def main():
         # }
         # mpl.rcParams.update(params)
         cmap = mpl.cm.get_cmap('viridis')
-        fig = plt.figure(figsize=(8, 5), dpi=180, constrained_layout=False)
-        gs = fig.add_gridspec(2, 1, height_ratios=[2,1],
-                              wspace=0.3, hspace=0.33)
-        g_data = gs[1].subgridspec(2, 6, wspace=0.3, hspace=0.33)
+        fig = plt.figure(figsize=(10, 6), dpi=180, constrained_layout=False)
+        fig2 = plt.figure(figsize=(10, 6), dpi=180, constrained_layout=False)
+        gs = fig.add_gridspec(1, 1)
+        gm = fig2.add_gridspec(1, 1)
+        g_data = gs[0].subgridspec(3, 6, wspace=0.3, hspace=0.33)
+        ax_m = fig2.add_subplot(gm[0])
 
-        ax_m = fig.add_subplot(gs[0])
-        ax_v = [fig.add_subplot(g_data[0, i]) for i in range(6)]
-        ax_u = [fig.add_subplot(g_data[1, i]) for i in range(6)]
+        # gs = fig.add_gridspec(2, 1, height_ratios=[2,1],
+        #                       wspace=0.3, hspace=0.33)
+        # g_data = gs[1].subgridspec(3, 6, wspace=0.3, hspace=0.33)
+
+        # ax_m = fig.add_subplot(gs[0])
+        ax_p = [fig.add_subplot(g_data[0, i]) for i in range(6)]
+        ax_v = [fig.add_subplot(g_data[1, i]) for i in range(6)]
+        ax_u = [fig.add_subplot(g_data[2, i]) for i in range(6)]
 
         vel = [robot.foot_vel(q[i, :], dq[i, :]) for i in range(len(q[:, 0]))]
 
@@ -821,23 +845,38 @@ def main():
             ax_m.add_patch(vel_con)
             ax_m.axis('equal')
             pass
+        ax_m.set_ylabel('z(m)', fontsize = 15)
+        ax_m.set_xlabel('x(m)', fontsize = 15)
+        ax_m.xaxis.set_tick_params(labelsize = 12)
+        ax_m.yaxis.set_tick_params(labelsize = 12)
         # ax_m.axis('equal')
         # title_v = [r'$\dot{x}$', r'$\dot{y}$',
         #            r'$\dot{\theta}_1$', r'$\dot{\theta}_2$']
         # title_u = [r'$F_x$', r'$F_y$', r'$\tau_1$', r'$\tau_2$']
-
+        labelfont = 12
+        labelfonty = 10
         v_idx1 = [0, 0, 1, 2, 3, 4, 5]
         v_idx2 = [0, 1, 2, 3, 4, 5, 6]
-        [ax_v[v_idx1[i]].plot(t, q[:, v_idx2[i]]) for i in range(7)]
+        [ax_v[v_idx1[i]].plot(t, dq[:, v_idx2[i]]) for i in range(7)]
+        ax_v[0].set_ylabel('Velocity(m/s)', fontsize = labelfonty)
         # [ax_v[i].set_title(title_v[i]) for i in range(4)]
+        [ax_p[v_idx1[i]].plot(t, q[:, v_idx2[i]]) for i in range(7)]
+        ax_p[0].set_ylabel('Position(m)', fontsize = labelfonty)
 
         ax_u[0].plot(t[1:], F[:, 0])
         ax_u[0].plot(t[1:], F[:, 1], color='C' + str(3))
+        ax_u[0].set_ylabel('Force(N)', fontsize = labelfonty)
+        ax_u[0].set_xlabel('x-y', fontsize = labelfont)
         ax_u[1].plot(t[1:], u[:, 0])
+        ax_u[1].set_xlabel('waist', fontsize = labelfont)
         ax_u[2].plot(t[1:], u[:, 1])
+        ax_u[2].set_xlabel('hip', fontsize = labelfont)
         ax_u[3].plot(t[1:], u[:, 2])
+        ax_u[3].set_xlabel('knee', fontsize = labelfont)
         ax_u[4].plot(t[1:], u[:, 3])
+        ax_u[4].set_xlabel('shoulder', fontsize = labelfont)
         ax_u[5].plot(t[1:], u[:, 4])
+        ax_u[5].set_xlabel('elbow', fontsize = labelfont)
         # [ax_u[j].set_title(title_u[j]) for j in range(4)]
         plt.show()
 

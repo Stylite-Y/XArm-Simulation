@@ -1,12 +1,13 @@
 Optimization:
-  MaxLoop: 500
+  MaxLoop: 1000
   RandomSeed: 1
 
   CostCoeff:
     trackingCoeff: 0.6
+    VelCoeff: 0.4
     powerCoeff: 0.0
-    forceCoeff: 0.2
-    smoothCoeff: 0.2
+    forceCoeff: 0.0
+    smoothCoeff: 0.0
     ImpactCoeff: 0.0
 
 Environment:
@@ -18,17 +19,18 @@ Controller:
   # Forward: False
   FrontForward: true
   HindForward: true
-  Target: 10
-  Period: 0.2
-  Stance: 0.26
-  Phase: [0, 0.5]
-  CollectionNum: 100
+  # Target: 5
+  Period: 5
+  dt: 0.02
+  # Stance: 0.26
+  # Phase: [0, 0.5]
+  CollectionNum: 50
   
 
   Boundary:
     x: [-20, 20]
     dx: [-20, 20]
-    y: [0.2, 1.0]
+    y: [0.2, 2.0]
     dy: [-20, 20]
     Fx: [-2000, 2000]
     Fy: [0, 2000]
@@ -56,7 +58,8 @@ Robot:
     L_forearm: 0.37
   damping: 0.0
   Motor:
-    MaxTorque: 100
-    MaxSpeed: 53
-    CriticalSpeed: 27
+    MaxTorque: 1000
+    MaxSpeed: 500
+    CriticalSpeed: 54
+
   

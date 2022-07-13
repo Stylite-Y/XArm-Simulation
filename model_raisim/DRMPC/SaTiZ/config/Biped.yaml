@@ -18,9 +18,9 @@ Controller:
   # Forward: False
   FrontForward: true
   HindForward: true
-  Target: 10
-  Period: 0.2
-  Stance: 0.26
+  Target: 5
+  Period: 0.26
+  Stance: 0.3
   Phase: [0, 0.5]
   CollectionNum: 100
   
@@ -42,9 +42,9 @@ Ref:
 Robot:
   Mass:
     # body, thigh, shank, arm
-    # mass: [7.5, 2, 0.28, 0.5]
-    # inertia: [0, 0.016, 0.01, 0.012]
-    # massCenter: [0, 0.05, 0.05, 0.15]
+    # mass: [7.5, 2, 0.28, 1.0]
+    # inertia: [0, 0.016, 0.01, 0.0075]
+    # massCenter: [0, 0.05, 0.05, 0.1]
     mass: [30, 10, 3.2, 3.3]
     inertia: [0, 0.15, 0.06, 0.12]
     massCenter: [0, 0.17, 0.22, 0.3]
@@ -53,9 +53,13 @@ Robot:
     L_thigh: 0.42
     L_shank: 0.5
     L_arm: 0.67
+    # L_body: 0
+    # L_thigh: 0.2
+    # L_shank: 0.3
+    # L_arm: 0.3
   damping: 0.0
   Motor:
     MaxTorque: 1000
-    MaxSpeed: 53
-    CriticalSpeed: 27
+    MaxSpeed: 200
+    CriticalSpeed: 180
   
