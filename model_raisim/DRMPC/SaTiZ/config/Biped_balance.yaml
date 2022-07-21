@@ -59,7 +59,7 @@ Robot:
   damping: 0.0
   Motor:
     MaxTorque: 1000
-    MaxSpeed: 500
+    MaxSpeed: 106
     CriticalSpeed: 54
 
   

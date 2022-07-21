@@ -8,7 +8,6 @@
 
 from cProfile import label
 import os
-from scipy import False_
 import yaml
 import datetime
 import casadi as ca
@@ -80,8 +79,11 @@ class Bipedal_hybrid():
         self.F_LB = [self.bound_fx[0], self.bound_fy[0]] * 2
         self.F_UB = [self.bound_fx[1], self.bound_fy[1]] * 2
 
-        self.u_LB = [-self.motor_mt] * 6
-        self.u_UB = [self.motor_mt] * 6
+        self.u_LB = [-5.0] * 2
+        self.u_UB = [5.0] * 2
+        self.u_LB.extend([-self.motor_mt] * 6)
+        self.u_UB.extend([self.motor_mt] * 6)
+        # print(self.u_LB)
 
         # FF = cfg["Controller"]["Forward"]
         FF = cfg["Controller"]["FrontForward"]
@@ -123,18 +125,30 @@ class Bipedal_hybrid():
                         self.dt for i in range(self.NN[1]-1)])
         self.ddq[1].extend([self.dq[0][0]-self.dq[1][-1]])
 
-        self.u = []
-        # # ! set the last u to be zero at constraint
-        self.u.append([self.opti.variable(6) for _ in range(self.NN[0])])
-        # ! set the last u to be zero at constraint
-        self.u.append([self.opti.variable(6) for _ in range(self.NN[1])])
-
         self.F = []
         # ! Note, the last force represents the plused force at the contact moment
         self.F.append([self.opti.variable(4) for _ in range(self.NN[0])])
         self.F.append([self.opti.variable(4) for _ in range(self.NN[1])])
 
-        pass
+        self.u = []
+        ## Todorov method
+        # ! set the last u to be zero at constraint
+        for i in range(2):
+            tor = []
+            for j in range(self.NN[i]):
+                inertia = self.inertia_force(
+                    self.q[i][j], self.ddq[i][j])
+                coriolis = self.coriolis(self.q[i][j][2:], self.dq[i][j][2:])
+                gravity = self.gravity(self.q[i][j][2:])
+                contact = self.contact_force(self.q[i][j][2:], self.F[i][j])
+                tor.append([inertia[k]+gravity[k]+coriolis[k] -
+                            contact[k] for k in range(8)])
+            self.u.append(tor)
+        # print(len(self.u[1][5]))
+        # for i in range(4):
+        #     self.u[0][-1][i+2] = 0
+        #     self.u[1][-1][i+2] = 0
+        # pass
 
     def mass_matrix(self, q):
         # region create mass matrix
@@ -366,7 +380,7 @@ class Bipedal_hybrid():
 
     @staticmethod
     def get_posture(q):
-        L = [0, 0.42, 0.5, 0.32]
+        L = [0, 0.42, 0.5, 0.67]
         # L = [0, 0.2, 0.3, 0.3]
         lx = np.zeros(3)
         ly = np.zeros(3)
@@ -446,6 +460,7 @@ class nlp():
         self.trackingCoeff = cfg["Optimization"]["CostCoeff"]["trackingCoeff"]
         self.powerCoeff = cfg["Optimization"]["CostCoeff"]["powerCoeff"]
         self.forceCoeff = cfg["Optimization"]["CostCoeff"]["forceCoeff"]
+        self.TorqueTodoCoef = cfg["Optimization"]["CostCoeff"]["TorqueTodoCoef"]
         self.smoothCoeff = cfg["Optimization"]["CostCoeff"]["smoothCoeff"]
         self.impactCoeff = cfg["Optimization"]["CostCoeff"]["ImpactCoeff"]
         self.forceRatio = cfg["Environment"]["ForceRatio"]
@@ -486,21 +501,14 @@ class nlp():
                         init(dq[i][j][0], walker.vel_aim)
                         init(q[i][j][0], walker.dt *
                              (j+i*(walker.NN[0]-1))*walker.vel_aim)
-                        init(q[i][j][1], 0.45)
+                        init(q[i][j][1], 0.8)
                         init(q[i][j][2], 0.5 if self.FF_flag else -0.5)
                         init(q[i][j][4], 0.5 if self.HF_flag else -0.5)
                         init(q[i][j][3], -1 if self.FF_flag else 1)
                         init(q[i][j][5], -1 if self.HF_flag else 1)
-                        # if self.armflag:
-                        #     init(q[i][j][6], -0.5)
-                        #     init(q[i][j][7], 0.5)
-                        # else:
-                        #     init(q[i][j][6], 0)
-                        #     init(q[i][j][7], 0)
-
                         if self.armflag:
-                            init(q[i][j][6], -0.5*cos(j/walker.NN[i]*np.pi)*(1 if i==0 else -1))
-                            init(q[i][j][7], 0.5*cos(j/walker.NN[i]*np.pi)*(1 if i==0 else -1))
+                            init(q[i][j][6], -0.5)
+                            init(q[i][j][7], 0.5)
                         else:
                             init(q[i][j][6], 0)
                             init(q[i][j][7], 0)
@@ -595,22 +603,25 @@ class nlp():
         FM = [walker.bound_fx[1], walker.bound_fy[1]]*2
         power = 0
         force = 0
+        tor = 0
         VelTrack = 0
 
         for j in range(2):
-            for i in range(walker.NN[j]-1):
+            for i in range(walker.NN[j]):
                 for k in range(6):
                     power += (walker.dq[j][i][k+2]
-                              * walker.u[j][i][k])**2 * walker.dt
-                    force += (walker.u[j][i][k]/walker.motor_mt)**2
+                              * walker.u[j][i][k+2])**2 * walker.dt
+                    force += (walker.u[j][i][k+2]/walker.motor_mt)**2 * walker.dt
                     pass
                 pass
                 for k in range(4):
-                    force += (walker.F[j][i][k]/FM[k])**2
+                    force += (walker.F[j][i][k]/FM[k])**2 * walker.dt
                     pass
+                for k in range(2):
+                    tor += (walker.u[j][i][k]/5.0)**2 * walker.dt
                 pass
             pass
-        # VelTrack = ca.fabs(walker.q[1][-1][0]-walker.q[0]                                                                                                                                                                                                                                                                                                                     
+        # VelTrack = ca.fabs(walker.q[1][-1][0]-walker.q[0]
         #                    [0][0] - walker.vel_aim*walker.T)*walker.N
         VelTrack = (walker.q[1][-1][0]-walker.q[0]
                     [0][0] - walker.vel_aim*walker.T)**2*walker.N
@@ -627,7 +638,7 @@ class nlp():
                     pass
                 pass 
                 for k in range(6):
-                    smooth += ((walker.u[j][i+1][k]-walker.u[j][i][k])/20)**2
+                    smooth += ((walker.u[j][i+1][k+2]-walker.u[j][i][k+2])/20)**2
                     pass
                 pass
             pass
@@ -643,13 +654,17 @@ class nlp():
         res = 0
         res = (res + VelTrack *
                self.trackingCoeff) if (self.trackingCoeff > 1e-6) else res
-        res = (res + power*self.powerCoeff) if (self.powerCoeff > 1e-6) else res
-        res = (res + force*self.forceCoeff) if (self.forceCoeff > 1e-6) else  res
+        # res = (res + power*self.powerCoeff) if (self.powerCoeff > 1e-6) else res
+        res = (res + tor*self.TorqueTodoCoef) if (self.TorqueTodoCoef > 1e-6) else res
+        res = (res + force*self.forceCoeff) if (self.forceCoeff > 1e-6) else res
         res = (res + smooth*self.smoothCoeff) if (self.smoothCoeff > 1e-6) else res
         res = (res + impact*self.impactCoeff) if (self.impactCoeff > 1e-6) else res
 
         return res
 
+    
+    ## Todorov method: add tor' as new optim parmas to minimize tor', Forced to meet the dyanmcis equation
+    ## Thus, joint tor = Mq'' + C + G - yF - tor'
     def getConstraints(self, walker):
         ceq = []
         # region dynamics constraints
@@ -659,17 +674,6 @@ class nlp():
             for j in range(walker.NN[i]-1):
                 ceq.extend([walker.q[i][j+1][k]-walker.q[i][j][k]-walker.dt/2 *
                            (walker.dq[i][j+1][k]+walker.dq[i][j][k]) == 0 for k in range(8)])
-                inertia = walker.inertia_force(
-                    walker.q[i][j], walker.ddq[i][j])
-                coriolis = walker.coriolis(
-                    walker.q[i][j][2:], walker.dq[i][j][2:])
-                gravity = walker.gravity(walker.q[i][j][2:])
-                contact = walker.contact_force(
-                    walker.q[i][j][2:], walker.F[i][j])
-                ceq.extend([inertia[k]+gravity[k]+coriolis[k] -
-                            contact[k] == 0 for k in range(2)])
-                ceq.extend([inertia[k+2]+gravity[k+2]+coriolis[k+2] -
-                            contact[k+2] - walker.u[i][j][k] == 0 for k in range(6)])
                 # arm bound constraints
                 if not self.armflag:
                     ceq.extend([walker.q[i][j][k+6] == 0 for k in range(2)])
@@ -703,8 +707,8 @@ class nlp():
         ceq.extend([walker.F[1][-1][2] == 0])
         ceq.extend([walker.F[1][-1][3] == 0])
 
-        ceq.extend([walker.u[0][-1][i] == 0 for i in range(4)])
-        ceq.extend([walker.u[1][-1][i] == 0 for i in range(4)])
+        ceq.extend([walker.u[0][-1][i+2] == 0 for i in range(4)])
+        ceq.extend([walker.u[1][-1][i+2] == 0 for i in range(4)])
 
         # endregion
 
@@ -779,10 +783,14 @@ class nlp():
                 ceq.extend([walker.opti.bounded(walker.dq_LB[j],
                            temp_dq[j], walker.dq_UB[j]) for j in range(8)])
                 pass
+            # for temp_u in walker.u[i]:
+            #     ceq.extend([temp_u[j] <= walker.u_UB[j] for j in range(8)])
+            #     ceq.extend([temp_u[j] >= walker.u_LB[j] for j in range(8)])
+            #     pass
             for temp_u in walker.u[i]:
                 ceq.extend([walker.opti.bounded(walker.u_LB[j],
-                           temp_u[j], walker.u_UB[j]) for j in range(6)])
-                pass
+                           temp_u[j], walker.u_UB[j]) for j in range(8)])
+
             for temp_f in walker.F[i]:
                 ceq.extend([walker.opti.bounded(walker.F_LB[j],
                            temp_f[j], walker.F_UB[j]) for j in range(4)])
@@ -794,29 +802,30 @@ class nlp():
         cs = walker.motor_cs
         ms = walker.motor_ms
         mt = walker.motor_mt
-        for i in range(2):
-            for j in range(len(walker.u[i])):
-                ceq.extend([walker.u[i][j][k]-ca.fmax(mt - (walker.dq[i][j][k+2] -
-                                                            cs)/(ms-cs)*mt, 0) <= 0 for k in range(6)])
-                ceq.extend([walker.u[i][j][k]-ca.fmin(-mt + (walker.dq[i][j][k+2] +
-                                                             cs)/(-ms+cs)*mt, 0) >= 0 for k in range(6)])
-                pass
-            pass
+        # for i in range(2):
+        #     for j in range(len(walker.u[i])):
+        #         ceq.extend([walker.u[i][j][k+2]-ca.fmax(mt - (walker.dq[i][j][k+2] -
+        #                                                     cs)/(ms-cs)*mt, 0) <= 0 for k in range(6)])
+        #         ceq.extend([walker.u[i][j][k+2]-ca.fmin(-mt + (walker.dq[i][j][k+2] +
+        #                                                      cs)/(-ms+cs)*mt, 0) >= 0 for k in range(6)])
+        #         pass
+        #     pass
         # endregion
 
         # region smooth constraint
         for i in range(2):
             for j in range(len(walker.u[i])-1):
-                ceq.extend([ca.fabs(walker.F[i][j][k]-walker.F[i]
-                           [j+1][k]) <= 100 for k in range(4)])
-                ceq.extend([ca.fabs(walker.u[i][j][k]-walker.u[i]
-                           [j+1][k]) <= 10 for k in range(6)])
+                ceq.extend([(walker.F[i][j][k]-walker.F[i]
+                           [j+1][k])**2 <= 10000 for k in range(4)])
+                ceq.extend([(walker.u[i][j][k+2]-walker.u[i][j+1][k+2])**2 <= 100 for k in range(6)])
                 pass
             
             pass
         # endregion
 
         return ceq
+
+
 
     def solve_and_output(self, robot, flag_save=True, StorePath="./"):
         # solve the nlp and stroge the solution
@@ -837,7 +846,7 @@ class nlp():
                     ddq.append([sol1.value(robot.ddq[i][j][k])
                                for k in range(8)] if j < (robot.NN[i]-1) else [0]*8)
                     u.append([sol1.value(robot.u[i][j][k])
-                             for k in range(6)] if j < (robot.NN[i]-1) else [0]*6)
+                             for k in range(8)] if j < (robot.NN[i]-1) else [0]*8)
                     f.append([sol1.value(robot.F[i][j][k]) for k in range(4)])
                     pass
                 pass
@@ -854,7 +863,7 @@ class nlp():
                     ddq.append([value(robot.ddq[i][j][k])
                                for k in range(8)])
                     u.append([value(robot.u[i][j][k])
-                             for k in range(6)])
+                             for k in range(8)])
                     f.append([value(robot.F[i][j][k])
                              for k in range(4)])
                     pass
@@ -1019,7 +1028,7 @@ def main():
         import matplotlib as mpl
         from matplotlib.patches import ConnectionPatch
         plt.style.use("science")
-        # cmap = mpl.cm.get_cmap('Paired')
+        cmap = mpl.cm.get_cmap('Paired')
         params = {
             'text.usetex': True,
             'font.size': 8,
@@ -1030,7 +1039,7 @@ def main():
         labelfont = 12
         labelfonty = 10
 
-        cmap = mpl.cm.get_cmap('viridis')
+        # cmap = mpl.cm.get_cmap('viridis')
         fig = plt.figure(figsize=(10, 7), dpi=180, constrained_layout=False)
         fig2 = plt.figure(figsize=(10, 7), dpi=180, constrained_layout=False)
         gs = fig.add_gridspec(2, 1, height_ratios=[1, 1.8],
@@ -1048,7 +1057,7 @@ def main():
 
         # plot robot trajectory here
         ax_m.axhline(y=0, color='k')
-        num_frame = 10
+        num_frame = 6
         for tt in np.linspace(0, robot.T, num_frame):
             idx = np.argmin(np.abs(t-tt))
             pos = Bipedal_hybrid.get_posture(q[idx, :])
@@ -1105,15 +1114,15 @@ def main():
         ax_u[1].plot(t, F[:, 1])
         ax_u[1].plot(t, F[:, 3])
         ax_u[1].set_xlabel('y', fontsize = labelfont)
-        ax_u[2].plot(t, u[:, 0])
         ax_u[2].plot(t, u[:, 2])
+        ax_u[2].plot(t, u[:, 4])
         ax_u[2].set_xlabel('hip', fontsize = labelfont)
-        ax_u[3].plot(t, u[:, 1])
         ax_u[3].plot(t, u[:, 3])
+        ax_u[3].plot(t, u[:, 5])
         ax_u[3].set_xlabel('knee', fontsize = labelfont)
-        ax_u[4].plot(t, u[:, 4])
-        ax_u[4].plot(t, u[:, 5])
-        ax_u[4].set_xlabel('shoulder', fontsize = labelfont)
+        ax_u[4].plot(t, u[:, 0])
+        ax_u[4].plot(t, u[:, 1])
+        ax_u[4].set_xlabel('tor-x, tor-y', fontsize = labelfont)
 
         # [ax_u[j].set_title(title_u[j]) for j in range(4)]
         
@@ -1291,7 +1300,7 @@ def ForceVisualization():
     # ------------------------------------------------
     # load data and preprocess
     armflag = False
-    saveflag = False
+    saveflag = True
     store_path = "/home/stylite-y/Documents/Master/Manipulator/Simulation/model_raisim/DRMPC/SaTiZ/data/"
     today = "2022-07-13/"
     if armflag:

@@ -5,6 +5,7 @@ Optimization:
   CostCoeff:
     trackingCoeff: 0.0
     powerCoeff: 0.0
+    TorqueTodoCoef: 0
     forceCoeff: 0.6
     smoothCoeff: 0.2
     ImpactCoeff: 0.2
@@ -18,11 +19,15 @@ Controller:
   # Forward: False
   FrontForward: true
   HindForward: true
-  Target: 5
-  Period: 0.26
-  Stance: 0.3
+  Target: 8 
+  ## 8m/s
+  Period: 0.52
+  Stance: 0.26
+  ## 5m/s
+  # Period: 0.61
+  # Stance: 0.265
   Phase: [0, 0.5]
-  CollectionNum: 100
+  CollectionNum: 200
   
 
   Boundary:
@@ -30,8 +35,8 @@ Controller:
     dx: [-20, 20]
     y: [0.2, 1.0]
     dy: [-20, 20]
-    Fx: [-2000, 2000]
-    Fy: [0, 2000]
+    Fx: [-4000, 4000]
+    Fy: [0, 4000]
 
 Ref:
   delta: 0.05
@@ -46,13 +51,13 @@ Robot:
     # inertia: [0, 0.016, 0.01, 0.0075]
     # massCenter: [0, 0.05, 0.05, 0.1]
     mass: [30, 10, 3.2, 3.3]
-    inertia: [0, 0.15, 0.06, 0.12]
-    massCenter: [0, 0.17, 0.22, 0.3]
+    inertia: [0, 0.15, 0.06, 0.028]
+    massCenter: [0, 0.17, 0.22, 0.15]
   Geometry:
     L_body: 0
     L_thigh: 0.42
     L_shank: 0.5
-    L_arm: 0.67
+    L_arm: 0.32
     # L_body: 0
     # L_thigh: 0.2
     # L_shank: 0.3
@@ -60,6 +65,6 @@ Robot:
   damping: 0.0
   Motor:
     MaxTorque: 1000
-    MaxSpeed: 200
-    CriticalSpeed: 180
+    MaxSpeed: 600
+    CriticalSpeed: 500
   
