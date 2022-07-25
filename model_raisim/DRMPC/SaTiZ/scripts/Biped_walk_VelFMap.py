@@ -23,25 +23,27 @@ from DataProcess import DataProcess
 
 
 class Bipedal_hybrid():
-    def __init__(self, cfg):
+    def __init__(self, Period, Stance, Vt, cfg):
         self.opti = ca.Opti()
         # load config parameter
         self.CollectionNum = cfg['Controller']['CollectionNum']
         self.N = cfg['Controller']['CollectionNum']+1
 
         # time and collection defination related parameter
-        self.T = cfg['Controller']['Period']
-        # self.T = Period
-        # self.Ts = Stance
+        # self.T = cfg['Controller']['Period']
+        self.T = Period
+        self.Ts = Stance
         self.dt = self.T / self.CollectionNum
         self.tc1 = cfg['Controller']['Phase'][0] * \
             self.T           # left leg touch down
-        self.to1 = cfg['Controller']['Stance'] * \
-            self.T + self.tc1  # left leg lift off
+        # self.to1 = cfg['Controller']['Stance'] * \
+        #     self.T + self.tc1  # left leg lift off
+        self.to1 = self.Ts * self.T + self.tc1  # left leg lift off
         self.tc2 = cfg['Controller']['Phase'][1] * \
             self.T           # right leg touch down
-        self.to2 = cfg['Controller']['Stance'] * \
-            self.T + self.tc2  # right leg lift off
+        # self.to2 = cfg['Controller']['Stance'] * \
+        #     self.T + self.tc2  # right leg lift off
+        self.to2 = self.Ts * self.T + self.tc2  # right leg lift off
         self.phase = cfg['Controller']['Phase']
         
         # print((self.tc2-self.tc1) % self.dt)
@@ -51,7 +53,8 @@ class Bipedal_hybrid():
 
         self.NN = [int((self.tc2-self.tc1)/self.dt + 1),
                    int((self.tc1+self.T-self.tc2)/self.dt + 1)]
-        self.N_stance = int((cfg['Controller']['Stance'] * self.T) // self.dt)
+        # self.N_stance = int((cfg['Controller']['Stance'] * self.T) // self.dt)
+        self.N_stance = int((Stance * self.T) // self.dt)
 
         # mass and geometry related parameter
         self.m = cfg['Robot']['Mass']['mass']
@@ -76,13 +79,13 @@ class Bipedal_hybrid():
         self.g = cfg['Environment']['Gravity']
         self.damping = cfg['Robot']['damping']
 
-        self.vel_aim = cfg['Controller']['Target']
+        # self.vel_aim = cfg['Controller']['Target']
+        self.vel_aim = Vt
 
         print("="*50)
         print("target vel: ", self.vel_aim)
         print("m:, ", self.m)
         print("I:, ", self.I)
-        print("period: ", self.T)
 
         # boundary parameter
         self.bound_fy = cfg['Controller']['Boundary']['Fy']
@@ -449,7 +452,7 @@ class Bipedal_hybrid():
 
 
 class nlp():
-    def __init__(self, legged_robot, cfg, armflag = True, seed=None, is_ref=False):
+    def __init__(self, Period, Stance, Vt, legged_robot, cfg, armflag = True, seed=None, is_ref=False):
         # load parameter
         self.cfg = cfg
         self.armflag = armflag
@@ -475,9 +478,9 @@ class nlp():
         s_opts = {"max_iter": max_iter}
         legged_robot.opti.solver("ipopt", p_opts, s_opts)
         self.initialGuess(legged_robot, seed=seed, is_ref=is_ref,
-                          lam=cfg['Controller']['Stance'],
+                          lam=Stance,
                           delta=cfg['Ref']['delta'],
-                          target=cfg['Controller']['Target'],
+                          target=Vt,
                           offset=cfg['Ref']['offset'],
                           alpha=cfg['Ref']['alpha'],
                           beta=cfg['Ref']['beta'],
@@ -996,9 +999,9 @@ class SolutionData():
     pass
 
 
-def main(armflag):
+def main(Period, Stance, Vt, armflag):
     # region optimization trajectory for bipedal hybrid robot system
-    vis_flag = True
+    vis_flag = False
     save_flag = False
     # armflag = True
 
@@ -1019,10 +1022,10 @@ def main(armflag):
     # endregion
 
     # region create robot and NLP problem
-    robot = Bipedal_hybrid(cfg)
+    robot = Bipedal_hybrid(Period, Stance, Vt, cfg)
     # nonlinearOptimization = nlp(robot, cfg, seed=seed)
     # nonlinearOptimization = nlp(robot, cfg)
-    nonlinearOptimization = nlp(robot, cfg, armflag, is_ref=True)
+    nonlinearOptimization = nlp(Period, Stance, Vt, robot, cfg, armflag, is_ref=True)
     # endregion
     q, dq, ddq, u, F, t = nonlinearOptimization.solve_and_output(
         robot, flag_save=save_flag, StorePath=StorePath)
@@ -1393,6 +1396,7 @@ def VelForceMap():
     # u_h = u_h[1:]
     # u_k = u_k[1:]
     # u_s = u_s[1:]
+    # print(Fx)
     Data = {'Fx': Fx, 'Fy': Fy, 'u_h': u_h, "u_k": u_k, "u_s": u_s}
 
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1410,6 +1414,7 @@ def VelForceMap():
     f = open(save_dir+name,'rb')
     data = pickle.load(f)
 
+    Fx = data['Fx']
     Fy = data['Fy']
     u_h = data['u_h']
     u_k = data['u_k']
@@ -1430,8 +1435,8 @@ def VelForceMap():
     }
     mpl.rcParams.update(params)
     # plt.style.use('fivethirtyeight')
-
-    # ax1.plot(Vt, Fx, label="Fx")
+    title = [["Fy", "Torque_Hip"], ["Torque_Knee", "Torque_shoulder"]]
+    ax1.plot(Vt, Fx, label="Fx")
     ax1.plot(Vt, Fy, label="Fy")
 
     ax1.set_ylabel('Force(N)', fontsize = 15)
@@ -1452,6 +1457,9 @@ def VelForceMap():
     # ax2.legend(loc='upper right', fontsize = 12)
     ax2.grid()
     ax2.legend()
+    ax = [ax1, ax2]
+    for i in range(2):
+        ax[i].set_title(title[i][1])
 
     plt.show()
 
@@ -1615,14 +1623,14 @@ def ForceVisualization():
 
     # ------------------------------------------------
     # load data and preprocess
-    armflag = True
+    armflag = False
     saveflag = False
     store_path = "/home/stylite-y/Documents/Master/Manipulator/Simulation/model_raisim/DRMPC/SaTiZ/data/"
-    today = "2022-07-25/"
+    today = "2022-07-13/"
     if armflag:
-        date = "2022-07-24-19-30-37-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_8-Tp_0.35-Tst_0.25"
+        date = "2022-07-13-11-21-51-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_5-Tp_0.26-Tst_0.3"
     else:
-        date = "2022-07-24-19-31-20-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_8-Tp_0.35-Tst_0.25"
+        date = "2022-07-13-11-57-05-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_5-Tp_0.26-Tst_0.3"
 
     pic_store_path = store_path + today + date + "/" 
     solution_file = store_path + today + date + "/" + date + "-sol.npy"
@@ -1671,11 +1679,11 @@ def ForceVisualization():
     labelfont = 8
     labelfonty = 10
     ## arm
-    up = [2000, 5000, 1000, 500, 1000, 500, 150, 150]
-    textlim = [2200, 2700, 900, 340, 900, 340, 340, 340]
+    up = [1000, 2400, 800, 300, 800, 300, 300, 300]
+    textlim = [1100, 2700, 900, 340, 900, 340, 340, 340]
     ## noarm
-    # up = [2000, 4000, 1500, 600, 800, 600, 30, 30]
-    # textlim = [2200, 2700, 900, 340, 900, 340, 35, 35]
+    up = [2000, 2400, 800, 300, 800, 300, 30, 30]
+    textlim = [2200, 2700, 900, 340, 900, 340, 35, 35]
     labels = ['X', 'Y', 'Hip-L', 'Knee-L', 'Hip-R', 'Knee-R', 'Shoulder-L', 'Shoulder-R']
 
 
@@ -1739,64 +1747,64 @@ def ForceVisualization():
             ax_zero_holder[i, j].set_xlabel(labels[dof_id], fontsize = labelfont)
             pass
         pass
-    [a.set_xlim([0, 0.35]) for a in ax_zero_holder.reshape(-1)]
+    [a.set_xlim([0, 0.2]) for a in ax_zero_holder.reshape(-1)]
     
     if saveflag:
         savename = pic_store_path + 'dynamics-eq'
         fig_zero_holder.savefig(savename)
 
-    # # -------------------------------------------------
-    # # plot the force of each dof separately
-    # fig = [plt.figure(figsize=(4, 7), dpi=300, constrained_layout=False)
-    #        for _ in range(len(textlim))]
-    # gs = [f.add_gridspec(2, 1, height_ratios=[1, 2.2],
-    #                      wspace=0.3, hspace=0.33) for f in fig]
-    # ax_posture = [fig[i].add_subplot(gs[i][0]) for i in range(len(fig))]
-    # ax_force = [fig[i].add_subplot(gs[i][1]) for i in range(len(fig))]
+    # -------------------------------------------------
+    # plot the force of each dof separately
+    fig = [plt.figure(figsize=(4, 7), dpi=300, constrained_layout=False)
+           for _ in range(len(textlim))]
+    gs = [f.add_gridspec(2, 1, height_ratios=[1, 2.2],
+                         wspace=0.3, hspace=0.33) for f in fig]
+    ax_posture = [fig[i].add_subplot(gs[i][0]) for i in range(len(fig))]
+    ax_force = [fig[i].add_subplot(gs[i][1]) for i in range(len(fig))]
 
-    # # plot posture
-    # # ------------------------------------------
-    # for tt in [0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2, 0.225, 0.25]:
-    #     idx = np.argmin(np.abs(data.t-tt))
-    #     pos = Bipedal_hybrid.get_posture(data.q[idx, :])
-    #     for a in ax_posture:
-    #         a.axhline(y=0, color='k')
-    #         a.plot(pos[0], pos[1], color=cmap(tt/data.t[-1]))
-    #         a.plot(pos[2], pos[3], color=cmap(tt/data.t[-1]), ls=':')
-    #         a.scatter(pos[0][0], pos[1][0], marker='s',
-    #                   color=cmap(tt/data.t[-1]), s=30)
-    #         a.set_xlim([-1.5, 1.5])
-    #         a.axis('equal')
-    #         a.set_xticklabels([])
-    #         pass
-    #     pass
+    # plot posture
+    # ------------------------------------------
+    for tt in [0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2, 0.225, 0.25]:
+        idx = np.argmin(np.abs(data.t-tt))
+        pos = Bipedal_hybrid.get_posture(data.q[idx, :])
+        for a in ax_posture:
+            a.axhline(y=0, color='k')
+            a.plot(pos[0], pos[1], color=cmap(tt/data.t[-1]))
+            a.plot(pos[2], pos[3], color=cmap(tt/data.t[-1]), ls=':')
+            a.scatter(pos[0][0], pos[1][0], marker='s',
+                      color=cmap(tt/data.t[-1]), s=30)
+            a.set_xlim([-1.5, 1.5])
+            a.axis('equal')
+            a.set_xticklabels([])
+            pass
+        pass
 
     # plot force
     # -----------------------------------------
-    # for i in range(len(textlim)):
-    #     for k in range(data.N):
-    #         dof_id = i
-    #         pos = 0
-    #         neg = 0
-    #         for kk in range(6):
-    #             ax_force[i].bar(data.t[k], Force[kk][k][dof_id], width=data.dt[k],
-    #                             bottom=pos if Force[kk][k][dof_id] >= 0 else neg, align='edge', color=ColorCandidate[kk], linewidth=0, ecolor=ColorCandidate[kk])
-    #             if Force[kk][k][dof_id] >= 0:
-    #                 pos += Force[kk][k][dof_id]
-    #             else:
-    #                 neg += Force[kk][k][dof_id]
-    #             pass
-    #         pass
-    #     ax_force[i].set_xlim([0, 0.2])
-    #     ax_force[i].set_ylim([-up[i], up[i]])
-    #     rainbow_text(fig[i], ax_force[i], 0.01, textlim[i], [r'$M_{ii}\ddot{q}_i$', r'$+$',
-    #                                                                          r'$\sum M_{ij}\ddot{q}_j$', r'+',
-    #                                                                          r'$C(q,\dot{q})$', r'+',
-    #                                                                          r'$G({q})$', r'+',
-    #                                                                          r'$-J^T\lambda$', r'+',
-    #                                                                          r'$-u$', r'$=0$'],
-    #                  ['C0', 'k', 'C1', 'k', 'C2', 'k', 'C3', 'k', 'C4', 'k', 'C5', 'k'], size=10)
-        
+    for i in range(len(textlim)):
+        for k in range(data.N):
+            dof_id = i
+            pos = 0
+            neg = 0
+            for kk in range(6):
+                ax_force[i].bar(data.t[k], Force[kk][k][dof_id], width=data.dt[k],
+                                bottom=pos if Force[kk][k][dof_id] >= 0 else neg, align='edge', color=ColorCandidate[kk], linewidth=0, ecolor=ColorCandidate[kk])
+                if Force[kk][k][dof_id] >= 0:
+                    pos += Force[kk][k][dof_id]
+                else:
+                    neg += Force[kk][k][dof_id]
+                pass
+            pass
+        ax_force[i].set_xlim([0, 0.2])
+        ax_force[i].set_ylim([-up[i], up[i]])
+        rainbow_text(fig[i], ax_force[i], 0.01, textlim[i], [r'$M_{ii}\ddot{q}_i$', r'$+$',
+                                                                             r'$\sum M_{ij}\ddot{q}_j$', r'+',
+                                                                             r'$C(q,\dot{q})$', r'+',
+                                                                             r'$G({q})$', r'+',
+                                                                             r'$-J^T\lambda$', r'+',
+                                                                             r'$-u$', r'$=0$'],
+                     ['C0', 'k', 'C1', 'k', 'C2', 'k', 'C3', 'k', 'C4', 'k', 'C5', 'k'], size=10)
+        pass
 
     plt.show()
 
@@ -2220,12 +2228,12 @@ def Power_metrics_analysis():
 
 
 if __name__ == "__main__":
-    main(True)
+    # main(True)
     # main(False)
     # ForceMap()
-    # VelForceMap()
+    VelForceMap()
     # ForceVisualization()
-    # # ForceAnalysis()
+    # ForceAnalysis()
     # VelAndAcc()
     # power_analysis()
     # Impact_inertia()

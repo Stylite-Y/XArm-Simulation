@@ -23,7 +23,7 @@ from DataProcess import DataProcess
 
 
 class Bipedal_hybrid():
-    def __init__(self, cfg):
+    def __init__(self, Mas, inert, cfg):
         self.opti = ca.Opti()
         # load config parameter
         self.CollectionNum = cfg['Controller']['CollectionNum']
@@ -31,8 +31,6 @@ class Bipedal_hybrid():
 
         # time and collection defination related parameter
         self.T = cfg['Controller']['Period']
-        # self.T = Period
-        # self.Ts = Stance
         self.dt = self.T / self.CollectionNum
         self.tc1 = cfg['Controller']['Phase'][0] * \
             self.T           # left leg touch down
@@ -54,10 +52,10 @@ class Bipedal_hybrid():
         self.N_stance = int((cfg['Controller']['Stance'] * self.T) // self.dt)
 
         # mass and geometry related parameter
-        self.m = cfg['Robot']['Mass']['mass']
-        self.I = cfg['Robot']['Mass']['inertia']
-        # self.m = Mas
-        # self.I = inert
+        # self.m = cfg['Robot']['Mass']['mass']
+        # self.I = cfg['Robot']['Mass']['inertia']
+        self.m = Mas
+        self.I = inert
         self.l = cfg['Robot']['Mass']['massCenter']
         self.I_ = [self.m[i]*self.l[i]**2+self.I[i] for i in range(4)]
 
@@ -82,7 +80,6 @@ class Bipedal_hybrid():
         print("target vel: ", self.vel_aim)
         print("m:, ", self.m)
         print("I:, ", self.I)
-        print("period: ", self.T)
 
         # boundary parameter
         self.bound_fy = cfg['Controller']['Boundary']['Fy']
@@ -996,9 +993,9 @@ class SolutionData():
     pass
 
 
-def main(armflag):
+def main(Mass, inertia, armflag):
     # region optimization trajectory for bipedal hybrid robot system
-    vis_flag = True
+    vis_flag = False
     save_flag = False
     # armflag = True
 
@@ -1012,14 +1009,14 @@ def main(armflag):
     # seed = StorePath + str(todaytime) + "_sol.npy"
     # region load config file
     FilePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ParamFilePath = FilePath + "/config/Biped_walk.yaml"
+    ParamFilePath = FilePath + "/config/Biped.yaml"
     ParamFile = open(ParamFilePath, "r", encoding="utf-8")
     cfg = yaml.load(ParamFile, Loader=yaml.FullLoader)
 
     # endregion
 
     # region create robot and NLP problem
-    robot = Bipedal_hybrid(cfg)
+    robot = Bipedal_hybrid(Mass, inertia, cfg)
     # nonlinearOptimization = nlp(robot, cfg, seed=seed)
     # nonlinearOptimization = nlp(robot, cfg)
     nonlinearOptimization = nlp(robot, cfg, armflag, is_ref=True)
@@ -1153,20 +1150,25 @@ def ForceMap():
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     import pickle
+    from matplotlib.pyplot import MultipleLocator
 
-    saveflag = True
+    saveflag = False
 
-    M_arm = [1.4, 2.2, 3.3, 4.2, 5.2, 6.2, 7.2, 8.0, 9.0, 10.0, 11.0]
+    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    todaytime=datetime.date.today()
+    save_dir = StorePath + "/data/" + str(todaytime) + "/"
+    name = "ForceMap.pkl"
+    
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    # M_arm = [1.4, 2.1, 3.3, 4.2, 5.2, 6.2, 7.2, 8.0, 9.0, 10.0, 11.0]
+    M_arm = [1.8, 3.3, 4.5, 6.5, 8.0, 10.0]
     # M_arm = [3.3, 4.2]
     M_label = list(map(str, M_arm))
-    I_arm = [0.015, 0.032, 0.045, 0.062, 0.082, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20]
-    # I_arm = [0.032, 0.045, ]
+    I_arm = [0.026, 0.045, 0.08, 0.12, 0.16, 0.20]
+    # I_arm = [0.032, 0.045]
     I_label = list(map(str, I_arm))
-
-    Tp = [0.53, 0.46, 0.46, 0.4, 0.4, 0.4, 0.35, 0.35, 0.35]
-    # Tp = [0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2]
-    Ts = [0.45, 0.41, 0.37, 0.34, 0.35, 0.32, 0.25, 0.24, 0.23]
-    Vt = [2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
 
     Mass = [30, 10, 3.2]
     inertia = [0, 0.15, 0.06]
@@ -1175,153 +1177,128 @@ def ForceMap():
     u_h = np.array([[0.0]*len(M_arm)])
     u_k = np.array([[0.0]*len(M_arm)])
     u_s = np.array([[0.0]*len(M_arm)])
+    if saveflag:
+        for i in range(len(I_arm)):
+            temp_i = []
+            temp_i.extend(inertia)
+            temp_i.append(I_arm[i])
+            Fy_max = []
+            u_h_max = []
+            u_k_max = []
+            u_s_max = []
+            for j in range(len(M_arm)):
+                temp_m = []
+                temp_m.extend(Mass)
+                temp_m.append(M_arm[j])
 
-    for i in range(len(I_arm)):
-        temp_i = []
-        temp_i.extend(inertia)
-        temp_i.append(I_arm[i])
-        Fy_max = []
-        u_h_max = []
-        u_k_max = []
-        u_s_max = []
-        for j in range(len(M_arm)):
-            temp_m = []
-            temp_m.extend(Mass)
-            temp_m.append(M_arm[j])
+                print("="*50)
+                print("Mass: ", temp_m)
+                print("="*50)
+                print("Inertia: ", temp_i)
 
-            print("="*50)
-            print("Mass: ", temp_m)
-            print("="*50)
-            print("Inertia: ", temp_i)
+                u, F, t = main(temp_m, temp_i, True)
 
-            u, F, t = main(temp_m, temp_i, True)
+                temp_fy1_max = max(F[:, 1])
+                temp_fy2_max = max(F[:, 3])
+                temp_fy_max = max(temp_fy1_max, temp_fy2_max)
 
-            temp_fy1_max = max(F[:, 1])
-            temp_fy2_max = max(F[:, 3])
-            temp_fy_max = max(temp_fy1_max, temp_fy2_max)
+                temp_uh1_max = max(u[:, 0])
+                temp_uh2_max = max(u[:, 2])
+                temp_uh_max = max(temp_uh1_max, temp_uh2_max)
 
-            temp_uh1_max = max(u[:, 0])
-            temp_uh2_max = max(u[:, 2])
-            temp_uh_max = max(temp_uh1_max, temp_uh2_max)
+                temp_uk1_max = max(u[:, 1])
+                temp_uk2_max = max(u[:, 3])
+                temp_uk_max = max(temp_uk1_max, temp_uk2_max)
 
-            temp_uk1_max = max(u[:, 1])
-            temp_uk2_max = max(u[:, 3])
-            temp_uk_max = max(temp_uk1_max, temp_uk2_max)
+                temp_us1_max = max(u[:, 4])
+                temp_us2_max = max(u[:, 5])
+                temp_us_max = max(temp_us1_max, temp_us2_max)
 
-            temp_us1_max = max(u[:, 4])
-            temp_us2_max = max(u[:, 5])
-            temp_us_max = max(temp_us1_max, temp_us2_max)
+                Fy_max.append(temp_fy_max)
+                u_h_max.append(temp_uh_max)
+                u_k_max.append(temp_uk_max)
+                u_s_max.append(temp_us_max)
 
-            Fy_max.append(temp_fy_max)
-            u_h_max.append(temp_uh_max)
-            u_k_max.append(temp_uk_max)
-            u_s_max.append(temp_us_max)
+                pass
+            
+            Fy = np.concatenate((Fy, [Fy_max]), axis = 0)
+            u_h = np.concatenate((u_h, [u_h_max]), axis = 0)
+            u_k = np.concatenate((u_k, [u_k_max]), axis = 0)
+            u_s = np.concatenate((u_s, [u_s_max]), axis = 0)
 
             pass
-        
-        Fy = np.concatenate((Fy, [Fy_max]), axis = 0)
-        u_h = np.concatenate((u_h, [u_h_max]), axis = 0)
-        u_k = np.concatenate((u_k, [u_k_max]), axis = 0)
-        u_s = np.concatenate((u_s, [u_s_max]), axis = 0)
+        Fy = Fy[1:]
+        u_h = u_h[1:]
+        u_k = u_k[1:]
+        u_s = u_s[1:]
 
-        pass
-    Fy = Fy[1:]
-    u_h = u_h[1:]
-    u_k = u_k[1:]
-    u_s = u_s[1:]
-
-    Data = {'Fy': Fy, 'u_h': u_h, "u_k": u_k, "u_s": u_s}
-    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    todaytime=datetime.date.today()
-    save_dir = StorePath + "/data/" + str(todaytime) + "/"
-
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-    
-    if saveflag:
-        name = "ForceMap.pkl"
+        Data = {'Fy': Fy, 'u_h': u_h, "u_k": u_k, "u_s": u_s}
         with open(os.path.join(save_dir, name), 'wb') as f:
             pickle.dump(Data, f)
+    else:
+        f = open(save_dir+name,'rb')
+        data = pickle.load(f)
 
-    fig, axs = plt.subplots(2, 2, figsize=(10, 7))
+        Fy = data['Fy']
+        u_h = data['u_h']
+        u_k = data['u_k']
+        u_s = data['u_s']
+
+    
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'font.size': 20,
+        'axes.labelsize': 20,
+        'axes.titlesize': 22,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.3,
+    }
+
+    plt.rcParams.update(params)
+
+    fig, axs = plt.subplots(2, 2, figsize=(12, 12))
     ax1 = axs[0][0]
     ax2 = axs[0][1]
     ax3 = axs[1][0]
     ax4 = axs[1][1]
-    print(Fy, u_h, u_k, u_s)
-    print(M_label, I_label)
 
-    plt.style.use("science")
-    # cmap = mpl.cm.get_cmap('Paired')
-    params = {
-        'text.usetex': True,
-        'font.size': 8,
-        'axes.labelsize': 12,
-        'xtick.labelsize': 10,
-        'ytick.labelsize': 10,
-    }
-
-    mpl.rcParams.update(params)
-    # pcm1 = ax1.pcolormesh(Fy, cmap='inferno', vmin = 800, vmax = 2000)
     pcm1 = ax1.imshow(Fy, cmap='inferno', vmin = 600, vmax = 2000)
     cb1 = fig.colorbar(pcm1, ax=ax1)
-    # ax1.set_xticks(np.arange(len(M_label)))
-    # ax1.set_xticklabels(M_label)
-    # ax1.set_yticks(np.arange(len(I_label)))
-    # ax1.set_yticklabels(I_label)
-    # ax1.xaxis.set_tick_params(top=True, bottom=False,
-    #                labeltop=True, labelbottom=False)
 
-    # pcm2 = ax2.pcolormesh(u_h, cmap='inferno', vmin = 300, vmax = 800)
     pcm2 = ax2.imshow(u_h, cmap='inferno', vmin = 300, vmax = 800)
     cb2 = fig.colorbar(pcm2, ax=ax2)
-    # ax2.set_xticks(np.arange(len(M_label)))
-    # ax2.set_xticklabels(M_label)
-    # ax2.set_yticks(np.arange(len(I_label)))
-    # ax2.set_yticklabels(I_label)
-    # ax2.xaxis.set_tick_params(top=True, bottom=False,
-    #                labeltop=True, labelbottom=False)
 
-    # pcm3 = ax3.pcolormesh(u_k, cmap='inferno', vmin = 200, vmax = 500)
     pcm3 = ax3.imshow(u_k, cmap='inferno', vmin = 100, vmax = 500)
     cb3 = fig.colorbar(pcm3, ax=ax3)
-    # ax3.set_xticks(np.arange(len(M_label)))
-    # ax3.set_xticklabels(M_label)
-    # ax3.set_yticks(np.arange(len(I_label)))
-    # ax3.set_yticklabels(I_label)
-    # ax3.xaxis.set_tick_params(top=True, bottom=False,
-    #                labeltop=True, labelbottom=False)
 
-    # pcm4 = ax4.pcolormesh(u_s, cmap='inferno', vmin = 50, vmax = 200)
     pcm4 = ax4.imshow(u_s, cmap='inferno', vmin = 50, vmax = 300)
     cb4 = fig.colorbar(pcm4, ax=ax4)
-    # ax4.set_xticks(np.arange(len(M_label)))
-    # ax4.set_xticklabels(M_label)
-    # ax4.set_yticks(np.arange(len(I_label)))
-    # ax4.set_yticklabels(I_label)
-    # ax4.xaxis.set_tick_params(top=True, bottom=False,
-    #                labeltop=True, labelbottom=False)
     
     ax = [[ax1, ax2], [ax3, ax4]]
     cb = [[cb1, cb2], [cb3, cb4]]
-    title = [["Fy", "Torque_Hip"], ["Torque_Knee", "Torque_shoulder"]]
+    title = [["Fy", "Torque-Hip"], ["Torque-Knee", "Torque-shoulder"]]
     for i in range(2):
         for j in range(2):
             ax[i][j].set_xticks(np.arange(len(M_label)))
             ax[i][j].set_xticklabels(M_label)
-            ax[i][j].set_xticks(np.arange(len(I_label)))
-            ax[i][j].set_xticklabels(I_label)
-            ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
-                   labeltop=True, labelbottom=False)
+            ax[i][j].set_yticks(np.arange(len(I_label)))
+            ax[i][j].set_ylim(-0.5, len(I_label)-0.5)
+            ax[i][j].set_yticklabels(I_label)
+            # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+            #        labeltop=True, labelbottom=False)
 
             ax[i][j].set_ylabel("Inertia")
             ax[i][j].set_xlabel("Mass")
-            ax[i][j].set_tilte(title[i][j])
+            ax[i][j].set_title(title[i][j])
 
             if i==0 and j==0:
                 cb[i][j].set_label("Force(N)")
             else:
                 cb[i][j].set_label("Torque(N/m)")
+    # fig.tight_layout()
     plt.show()
     pass
 
@@ -1615,14 +1592,14 @@ def ForceVisualization():
 
     # ------------------------------------------------
     # load data and preprocess
-    armflag = True
+    armflag = False
     saveflag = False
     store_path = "/home/stylite-y/Documents/Master/Manipulator/Simulation/model_raisim/DRMPC/SaTiZ/data/"
-    today = "2022-07-25/"
+    today = "2022-07-13/"
     if armflag:
-        date = "2022-07-24-19-30-37-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_8-Tp_0.35-Tst_0.25"
+        date = "2022-07-13-11-21-51-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_5-Tp_0.26-Tst_0.3"
     else:
-        date = "2022-07-24-19-31-20-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_8-Tp_0.35-Tst_0.25"
+        date = "2022-07-13-11-57-05-Traj-Tcf_0.0-Pcf_0.0-Fcf_0.6-Scf_0.2-Icf_0.2-Vt_5-Tp_0.26-Tst_0.3"
 
     pic_store_path = store_path + today + date + "/" 
     solution_file = store_path + today + date + "/" + date + "-sol.npy"
@@ -1671,11 +1648,11 @@ def ForceVisualization():
     labelfont = 8
     labelfonty = 10
     ## arm
-    up = [2000, 5000, 1000, 500, 1000, 500, 150, 150]
-    textlim = [2200, 2700, 900, 340, 900, 340, 340, 340]
+    up = [1000, 2400, 800, 300, 800, 300, 300, 300]
+    textlim = [1100, 2700, 900, 340, 900, 340, 340, 340]
     ## noarm
-    # up = [2000, 4000, 1500, 600, 800, 600, 30, 30]
-    # textlim = [2200, 2700, 900, 340, 900, 340, 35, 35]
+    up = [2000, 2400, 800, 300, 800, 300, 30, 30]
+    textlim = [2200, 2700, 900, 340, 900, 340, 35, 35]
     labels = ['X', 'Y', 'Hip-L', 'Knee-L', 'Hip-R', 'Knee-R', 'Shoulder-L', 'Shoulder-R']
 
 
@@ -1739,64 +1716,64 @@ def ForceVisualization():
             ax_zero_holder[i, j].set_xlabel(labels[dof_id], fontsize = labelfont)
             pass
         pass
-    [a.set_xlim([0, 0.35]) for a in ax_zero_holder.reshape(-1)]
+    [a.set_xlim([0, 0.2]) for a in ax_zero_holder.reshape(-1)]
     
     if saveflag:
         savename = pic_store_path + 'dynamics-eq'
         fig_zero_holder.savefig(savename)
 
-    # # -------------------------------------------------
-    # # plot the force of each dof separately
-    # fig = [plt.figure(figsize=(4, 7), dpi=300, constrained_layout=False)
-    #        for _ in range(len(textlim))]
-    # gs = [f.add_gridspec(2, 1, height_ratios=[1, 2.2],
-    #                      wspace=0.3, hspace=0.33) for f in fig]
-    # ax_posture = [fig[i].add_subplot(gs[i][0]) for i in range(len(fig))]
-    # ax_force = [fig[i].add_subplot(gs[i][1]) for i in range(len(fig))]
+    # -------------------------------------------------
+    # plot the force of each dof separately
+    fig = [plt.figure(figsize=(4, 7), dpi=300, constrained_layout=False)
+           for _ in range(len(textlim))]
+    gs = [f.add_gridspec(2, 1, height_ratios=[1, 2.2],
+                         wspace=0.3, hspace=0.33) for f in fig]
+    ax_posture = [fig[i].add_subplot(gs[i][0]) for i in range(len(fig))]
+    ax_force = [fig[i].add_subplot(gs[i][1]) for i in range(len(fig))]
 
-    # # plot posture
-    # # ------------------------------------------
-    # for tt in [0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2, 0.225, 0.25]:
-    #     idx = np.argmin(np.abs(data.t-tt))
-    #     pos = Bipedal_hybrid.get_posture(data.q[idx, :])
-    #     for a in ax_posture:
-    #         a.axhline(y=0, color='k')
-    #         a.plot(pos[0], pos[1], color=cmap(tt/data.t[-1]))
-    #         a.plot(pos[2], pos[3], color=cmap(tt/data.t[-1]), ls=':')
-    #         a.scatter(pos[0][0], pos[1][0], marker='s',
-    #                   color=cmap(tt/data.t[-1]), s=30)
-    #         a.set_xlim([-1.5, 1.5])
-    #         a.axis('equal')
-    #         a.set_xticklabels([])
-    #         pass
-    #     pass
+    # plot posture
+    # ------------------------------------------
+    for tt in [0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2, 0.225, 0.25]:
+        idx = np.argmin(np.abs(data.t-tt))
+        pos = Bipedal_hybrid.get_posture(data.q[idx, :])
+        for a in ax_posture:
+            a.axhline(y=0, color='k')
+            a.plot(pos[0], pos[1], color=cmap(tt/data.t[-1]))
+            a.plot(pos[2], pos[3], color=cmap(tt/data.t[-1]), ls=':')
+            a.scatter(pos[0][0], pos[1][0], marker='s',
+                      color=cmap(tt/data.t[-1]), s=30)
+            a.set_xlim([-1.5, 1.5])
+            a.axis('equal')
+            a.set_xticklabels([])
+            pass
+        pass
 
     # plot force
     # -----------------------------------------
-    # for i in range(len(textlim)):
-    #     for k in range(data.N):
-    #         dof_id = i
-    #         pos = 0
-    #         neg = 0
-    #         for kk in range(6):
-    #             ax_force[i].bar(data.t[k], Force[kk][k][dof_id], width=data.dt[k],
-    #                             bottom=pos if Force[kk][k][dof_id] >= 0 else neg, align='edge', color=ColorCandidate[kk], linewidth=0, ecolor=ColorCandidate[kk])
-    #             if Force[kk][k][dof_id] >= 0:
-    #                 pos += Force[kk][k][dof_id]
-    #             else:
-    #                 neg += Force[kk][k][dof_id]
-    #             pass
-    #         pass
-    #     ax_force[i].set_xlim([0, 0.2])
-    #     ax_force[i].set_ylim([-up[i], up[i]])
-    #     rainbow_text(fig[i], ax_force[i], 0.01, textlim[i], [r'$M_{ii}\ddot{q}_i$', r'$+$',
-    #                                                                          r'$\sum M_{ij}\ddot{q}_j$', r'+',
-    #                                                                          r'$C(q,\dot{q})$', r'+',
-    #                                                                          r'$G({q})$', r'+',
-    #                                                                          r'$-J^T\lambda$', r'+',
-    #                                                                          r'$-u$', r'$=0$'],
-    #                  ['C0', 'k', 'C1', 'k', 'C2', 'k', 'C3', 'k', 'C4', 'k', 'C5', 'k'], size=10)
-        
+    for i in range(len(textlim)):
+        for k in range(data.N):
+            dof_id = i
+            pos = 0
+            neg = 0
+            for kk in range(6):
+                ax_force[i].bar(data.t[k], Force[kk][k][dof_id], width=data.dt[k],
+                                bottom=pos if Force[kk][k][dof_id] >= 0 else neg, align='edge', color=ColorCandidate[kk], linewidth=0, ecolor=ColorCandidate[kk])
+                if Force[kk][k][dof_id] >= 0:
+                    pos += Force[kk][k][dof_id]
+                else:
+                    neg += Force[kk][k][dof_id]
+                pass
+            pass
+        ax_force[i].set_xlim([0, 0.2])
+        ax_force[i].set_ylim([-up[i], up[i]])
+        rainbow_text(fig[i], ax_force[i], 0.01, textlim[i], [r'$M_{ii}\ddot{q}_i$', r'$+$',
+                                                                             r'$\sum M_{ij}\ddot{q}_j$', r'+',
+                                                                             r'$C(q,\dot{q})$', r'+',
+                                                                             r'$G({q})$', r'+',
+                                                                             r'$-J^T\lambda$', r'+',
+                                                                             r'$-u$', r'$=0$'],
+                     ['C0', 'k', 'C1', 'k', 'C2', 'k', 'C3', 'k', 'C4', 'k', 'C5', 'k'], size=10)
+        pass
 
     plt.show()
 
@@ -2220,12 +2197,12 @@ def Power_metrics_analysis():
 
 
 if __name__ == "__main__":
-    main(True)
+    # main(True)
     # main(False)
-    # ForceMap()
+    ForceMap()
     # VelForceMap()
     # ForceVisualization()
-    # # ForceAnalysis()
+    # ForceAnalysis()
     # VelAndAcc()
     # power_analysis()
     # Impact_inertia()

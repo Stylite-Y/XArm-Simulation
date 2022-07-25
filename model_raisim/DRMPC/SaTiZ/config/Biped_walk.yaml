@@ -20,8 +20,8 @@ Controller:
   FrontForward: true
   HindForward: true
   Target: 8
-  Period: 0.35
-  Stance: 0.25
+  Period: 0.49
+  Stance: 0.28
   ## 2m/s
   # Period: 0.53
   # Stance: 0.45
