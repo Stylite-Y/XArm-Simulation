@@ -1153,7 +1153,7 @@ def ForceMap():
     import pickle
     from matplotlib.pyplot import MultipleLocator
 
-    saveflag = False
+    saveflag = True
 
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
@@ -1163,11 +1163,12 @@ def ForceMap():
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
-    # M_arm = [1.4, 2.1, 3.3, 4.2, 5.2, 6.2, 7.2, 8.0, 9.0, 10.0, 11.0]
-    M_arm = [1.8, 3.3, 4.5, 6.5, 8.0, 10.0]
+    M_arm = [1.4, 2.1, 3.3, 4.2, 5.2, 6.2, 7.2, 8.0, 9.0, 10.0, 11.0]
+    # M_arm = [1.8, 3.3, 4.5, 6.5, 8.0, 10.0]
     # M_arm = [3.3, 4.2]
     M_label = list(map(str, M_arm))
-    I_arm = [0.026, 0.045, 0.082, 0.13, 0.16, 0.20]
+    # I_arm = [0.026, 0.045, 0.082, 0.13, 0.16, 0.20]
+    I_arm = [0.015, 0.03, 0.045, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20]
     # I_arm = [0.032, 0.045]
     I_label = list(map(str, I_arm))
 
@@ -1302,6 +1303,192 @@ def ForceMap():
     # fig.tight_layout()
     plt.show()
     pass
+
+## use mean value instead of peak value to analysis force map
+def ForceMapMV():
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    import pickle
+    import random
+    from matplotlib.pyplot import MultipleLocator
+
+    saveflag = True
+
+    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    todaytime=datetime.date.today()
+    save_dir = StorePath + "/data/" + str(todaytime) + "/"
+    name = "ForceMap.pkl"
+    
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    M_arm = [1.4, 2.1, 3.3, 4.2, 5.2, 6.2, 7.2, 8.0, 9.0, 10.0, 11.0]
+    # M_arm = [1.8, 3.3, 4.5, 6.5, 8.0, 10.0]
+    # M_arm = [3.3, 4.2]
+    M_label = list(map(str, M_arm))
+    # I_arm = [0.026, 0.045, 0.082, 0.13, 0.16, 0.20]
+    I_arm = [0.015, 0.03, 0.045, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20]
+    # I_arm = [0.045, 0.06]
+    I_label = list(map(str, I_arm))
+
+    Mass = [30, 10, 3.2]
+    inertia = [0, 0.15, 0.06]
+
+    Fy = np.array([[0.0]*len(M_arm)])
+    u_h = np.array([[0.0]*len(M_arm)])
+    u_k = np.array([[0.0]*len(M_arm)])
+    u_s = np.array([[0.0]*len(M_arm)])
+    CollectNum = 200
+    if saveflag:
+        for i in range(len(I_arm)):
+            temp_i = []
+            temp_i.extend(inertia)
+            temp_i.append(I_arm[i])
+            Fy_max = []
+            u_h_max = []
+            u_k_max = []
+            u_s_max = []
+            for j in range(len(M_arm)):
+                temp_m = []
+                temp_m.extend(Mass)
+                temp_m.append(M_arm[j])
+
+                print("="*50)
+                print("Mass: ", temp_m)
+                print("="*50)
+                print("Inertia: ", temp_i)
+
+                u, F, t = main(temp_m, temp_i, True)
+
+                F_1 = 0
+                F_3 = 0
+                num1 = 0
+                num2 = 0
+                for k in range(len(t)):
+                    if F[k][1] > 1:
+                        F_1 += F[k][1]
+                        num1 += 1
+                    if F[k][3] > 1:
+                        F_3 += F[k][3]
+                        num2 += 1
+
+                F_1 = F_1 / num1
+                F_3 = F_3 / num2
+                # print(F_1)
+
+                temp_fy_max = max(F_1, F_3)
+
+                u0 = u[:, 0]
+                temp_uh0_max = np.sum(np.sqrt(u0**2)) / CollectNum
+                # print(temp_uh0_max)
+                u2 = u[:, 2]
+                temp_uh2_max = np.sum(np.sqrt(u2**2)) / CollectNum
+                temp_uh_max = max(temp_uh0_max, temp_uh2_max)
+
+                u1 = u[:, 1]
+                temp_uk1_max = np.sum(np.sqrt(u1**2)) / CollectNum
+                u3 = u[:, 3]
+                temp_uk3_max = np.sum(np.sqrt(u3**2)) / CollectNum
+                temp_uk_max = max(temp_uk1_max, temp_uk3_max)
+
+                u4 = u[:, 4]
+                u5 = u[:, 5]
+                temp_us1_max = np.sum(np.sqrt(u4**2)) / CollectNum
+                temp_us2_max = np.sum(np.sqrt(u5**2)) / CollectNum
+                temp_us_max = max(temp_us1_max, temp_us2_max)
+
+                Fy_max.append(temp_fy_max)
+                u_h_max.append(temp_uh_max)
+                u_k_max.append(temp_uk_max)
+                u_s_max.append(temp_us_max)
+
+                pass
+            
+            Fy = np.concatenate((Fy, [Fy_max]), axis = 0)
+            u_h = np.concatenate((u_h, [u_h_max]), axis = 0)
+            u_k = np.concatenate((u_k, [u_k_max]), axis = 0)
+            u_s = np.concatenate((u_s, [u_s_max]), axis = 0)
+
+            pass
+        Fy = Fy[1:]
+        u_h = u_h[1:]
+        u_k = u_k[1:]
+        u_s = u_s[1:]
+
+        Data = {'Fy': Fy, 'u_h': u_h, "u_k": u_k, "u_s": u_s}
+        if os.path.exists(os.path.join(save_dir, name)):
+            RandNum = random.randint(0,100)
+            name = "ForceMap" + str(RandNum)+ ".pkl"
+        with open(os.path.join(save_dir, name), 'wb') as f:
+            pickle.dump(Data, f)
+    else:
+        f = open(save_dir+name,'rb')
+        data = pickle.load(f)
+
+        Fy = data['Fy']
+        u_h = data['u_h']
+        u_k = data['u_k']
+        u_s = data['u_s']
+
+    
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'image.cmap': 'inferno',
+        'font.size': 20,
+        'axes.labelsize': 20,
+        'axes.titlesize': 22,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.3,
+    }
+
+    plt.rcParams.update(params)
+
+    fig, axs = plt.subplots(2, 2, figsize=(12, 12))
+    ax1 = axs[0][0]
+    ax2 = axs[0][1]
+    ax3 = axs[1][0]
+    ax4 = axs[1][1]
+
+    pcm1 = ax1.imshow(Fy, vmin = 300, vmax = 1500)
+    cb1 = fig.colorbar(pcm1, ax=ax1)
+
+    pcm2 = ax2.imshow(u_h, vmin = 20, vmax = 400)
+    cb2 = fig.colorbar(pcm2, ax=ax2)
+
+    pcm3 = ax3.imshow(u_k, vmin = 20, vmax = 200)
+    cb3 = fig.colorbar(pcm3, ax=ax3)
+
+    pcm4 = ax4.imshow(u_s, vmin = 10, vmax = 200)
+    cb4 = fig.colorbar(pcm4, ax=ax4)
+    
+    ax = [[ax1, ax2], [ax3, ax4]]
+    cb = [[cb1, cb2], [cb3, cb4]]
+    title = [["Fy", "Torque-Hip"], ["Torque-Knee", "Torque-shoulder"]]
+    for i in range(2):
+        for j in range(2):
+            ax[i][j].set_xticks(np.arange(len(M_label)))
+            ax[i][j].set_xticklabels(M_label)
+            ax[i][j].set_yticks(np.arange(len(I_label)))
+            ax[i][j].set_ylim(-0.5, len(I_label)-0.5)
+            ax[i][j].set_yticklabels(I_label)
+            # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+            #        labeltop=True, labelbottom=False)
+
+            ax[i][j].set_ylabel("Inertia")
+            ax[i][j].set_xlabel("Mass")
+            ax[i][j].set_title(title[i][j])
+
+            if i==0 and j==0:
+                cb[i][j].set_label("Force(N)")
+            else:
+                cb[i][j].set_label("Torque(N/m)")
+    # fig.tight_layout()
+    plt.show()
+    pass
+
 
 def VelForceMap():
     import matplotlib.pyplot as plt
@@ -2200,7 +2387,8 @@ def Power_metrics_analysis():
 if __name__ == "__main__":
     # main(True)
     # main(False)
-    ForceMap()
+    # ForceMap()
+    ForceMapMV()
     # VelForceMap()
     # ForceVisualization()
     # ForceAnalysis()
