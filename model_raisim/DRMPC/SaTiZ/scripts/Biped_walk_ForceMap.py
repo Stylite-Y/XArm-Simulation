@@ -4,7 +4,8 @@
 3. 格式化配置参数输入和结果输出
 4. 混合动力学系统，系统在机器人足底和地面接触的时候存在切换
 5. 加入双臂的运动
-6. 2022.07.25: 本程序用于计算双足力和力矩对于惯性参数的分布图
+6. 2022.07.25: 本程序用于计算双足力和力矩峰值对于惯性参数的分布图
+6. 2022.07.27: 本程序通过计算双足力和力矩的均值对于惯性参数的分布图
 '''
 
 from cProfile import label
@@ -32,6 +33,8 @@ class Bipedal_hybrid():
 
         # time and collection defination related parameter
         self.T = cfg['Controller']['Period']
+        print("T: ", self.T)
+        print("Ts: ", cfg['Controller']['Stance'])
         self.dt = self.T / self.CollectionNum
         self.tc1 = cfg['Controller']['Phase'][0] * \
             self.T           # left leg touch down
@@ -1317,17 +1320,17 @@ def ForceMapMV():
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
     save_dir = StorePath + "/data/" + str(todaytime) + "/"
-    name = "ForceMap.pkl"
+    name = "ForceMap81.pkl"
     
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
-    M_arm = [1.4, 2.1, 3.3, 4.2, 5.2, 6.2, 7.2, 8.0, 9.0, 10.0, 11.0]
+    M_arm = [1.8, 2.4, 3.2, 4.5, 5.4, 6.2, 7.2, 8.0, 9.0, 10.0, 11.0]
     # M_arm = [1.8, 3.3, 4.5, 6.5, 8.0, 10.0]
     # M_arm = [3.3, 4.2]
     M_label = list(map(str, M_arm))
     # I_arm = [0.026, 0.045, 0.082, 0.13, 0.16, 0.20]
-    I_arm = [0.015, 0.03, 0.045, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20]
+    I_arm = [0.015, 0.032, 0.045, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20]
     # I_arm = [0.045, 0.06]
     I_label = list(map(str, I_arm))
 

@@ -20,35 +20,8 @@ Controller:
   FrontForward: true
   HindForward: true
   Target: 8
-  Period: 0.49
-  Stance: 0.28
-  ## 2m/s
-  # Period: 0.53
-  # Stance: 0.45
-  ## 3m/s
-  # Period: 0.46
-  # Stance: 0.41
-  ## 4m/s
-  # Period: 0.46
-  # Stance: 0.37
-  ## 5m/s
-  # Period: 0.4
-  # Stance: 0.34
-  ## 6m/s
-  # Period: 0.4
-  # Stance: 0.35
-  ## 7m/s
-  # Period: 0.4
-  # Stance: 0.32
-  # ## 8m/s
-  # Period: 0.35
-  # Stance: 0.25
-  ## 9m/s
-  # Period: 0.35
-  # Stance: 0.24
-  ## 10m/s
-  # Period: 0.35
-  # Stance: 0.23
+  Period: 0.35
+  Stance: 0.25
   Phase: [0, 0.5]
   CollectionNum: 200
   
