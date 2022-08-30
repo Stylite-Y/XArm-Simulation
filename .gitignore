@@ -132,4 +132,11 @@ dmypy.json
 .pyre/
 
 # data file
+data/
+.npy
 .pkl
+.calc
+.xml
+.raw
+.bvh
+.mp4

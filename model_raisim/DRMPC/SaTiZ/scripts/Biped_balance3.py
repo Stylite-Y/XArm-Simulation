@@ -734,7 +734,7 @@ class SolutionData():
 def main():
     # region optimization trajectory for bipedal hybrid robot system
     vis_flag = True
-    save_flag = True
+    save_flag = False
     # armflag = False
     armflag = True
     theta = np.pi/36
@@ -1359,9 +1359,9 @@ def ForceVisualization():
 
 
 if __name__ == "__main__":
-    # main()
+    main()
     # ForceMV()
-    ForceVisualization()
+    # ForceVisualization()
     # power_analysis()
     # Impact_inertia()
     # Impact_process()

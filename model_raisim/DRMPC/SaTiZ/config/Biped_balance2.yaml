@@ -21,7 +21,7 @@ Controller:
   HindForward: true
   Target: 5
   Period: 2.0
-  dt: 0.002
+  dt: 0.001
   Stance: 0.26
   # Phase: [0, 0.5]
   CollectionNum: 500
