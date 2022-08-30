@@ -31,6 +31,7 @@ class Bipedal_hybrid():
         # time and collection defination related parameter
         self.T = cfg['Controller']['Period']
         self.dt = cfg['Controller']['dt']
+        # self.dt = self.T / self.N
         self.N = int(self.T / self.dt)
 
         # mass and geometry related parameter
@@ -61,8 +62,8 @@ class Bipedal_hybrid():
         self.F_LB = [self.bound_fx[0], self.bound_fy[0]]
         self.F_UB = [self.bound_fx[1], self.bound_fy[1]]
 
-        self.u_LB = [-self.motor_mt] * 5
-        self.u_UB = [self.motor_mt] * 5
+        self.u_LB = [-20] + [-self.motor_mt] * 4
+        self.u_UB = [20] + [self.motor_mt] * 4
 
         # FF = cfg["Controller"]["Forward"]
         FF = cfg["Controller"]["FrontForward"]
@@ -448,7 +449,7 @@ class nlp():
             init = walker.opti.set_initial
             for i in range(walker.N):
                 init(walker.q[i][0], 0)
-                init(walker.q[i][1], (walker.L[1]+walker.L[2])*0.8)
+                init(walker.q[i][1], (walker.L[1]+walker.L[2]))
                 init(walker.dq[i][0], 0)
                 init(walker.dq[i][1], 0)
                 for j in range(5):
@@ -493,43 +494,30 @@ class nlp():
         force = 0
         VelTar = 0
         PosTar = 0
+        Pf = [20, 20, 20, 10, 10, 5, 5]
+        Vf = [10, 10, 10, 5, 5, 2, 2]
+        Ptar = [0, (walker.L[1]+walker.L[2]), 0, 0, 0, 0, 0]
+        Ff = [10, 5, 5, 2, 2]
         for i in range(walker.N):
             for k in range(5):
                 power += (walker.dq[i][k+2]
                             * walker.u[i][k])**2 * walker.dt
-                force += (walker.u[i][k]/walker.motor_mt)**2
+                force += (walker.u[i][k]/walker.motor_mt)**2 * walker.dt * Ff[k]
                 
                 pass
             for k in range(2):
-                force += (walker.F[i][k]/FM[k])**2
+                force += (walker.F[i][k]/FM[k])**2 * walker.dt * Ff[k]
+                pass
+
+            for k in range(7):
+                VelTar += (walker.dq[i][k])**2 * walker.dt * Vf[k]
+                PosTar += (walker.q[i][k] - Ptar[k])**2 * walker.dt * Pf[k]              
                 pass
             pass
-
-        for i in range(walker.N):
-            PosTar += (walker.q[i][1]-(walker.L[1]+walker.L[2])*0.8)**2 * walker.dt
-            PosTar += (walker.q[i][0])**2 * walker.dt
-            VelTar += (walker.dq[i][1])**2 * walker.dt
-            VelTar += (walker.dq[i][0])**2 * walker.dt
-
-            for k in range(5):
-                PosTar += (walker.q[i][k+2])**2 * walker.dt
-                VelTar += (walker.dq[i][k+2])**2 * walker.dt
         
-        # for j in range(7):
-        #     if j == 1:
-        #         PosTar += (walker.q[-1][j]-(walker.L[1]+walker.L[2]))**2
-        #         VelTar += (walker.dq[-1][j])**2
-        #     else:
-        #         PosTar += (walker.q[-1][j])**2
-        #         VelTar += (walker.dq[-1][j])**2
-        # PosTar += (walker.q[-1][1]-(walker.L[1]+walker.L[2])*0.8)**2
-        # PosTar += (walker.q[-1][0])**2
-        # PosTar += (walker.q[-1][2])**2
-        # PosTar += (walker.q[-1][3])**2
-        # VelTar += (walker.dq[-1][1])**2
-        # VelTar += (walker.dq[-1][0])**2
-        # VelTar += (walker.dq[-1][2])**2
-        # VelTar += (walker.dq[-1][3])**2
+        for j in range(7):
+            VelTar += (walker.dq[-1][j])**2 * Vf[j] * 2
+            PosTar += (walker.q[-1][j] - Ptar[j])**2 * Pf[j] * 10
 
         u = walker.u
         F = walker.F
@@ -541,7 +529,7 @@ class nlp():
                 pass
             pass 
             for k in range(5):
-                smooth += ((u[i+1][k]-u[i][k])/20)**2
+                smooth += ((u[i+1][k]-u[i][k])/10)**2
                 pass
             pass
 
@@ -595,6 +583,9 @@ class nlp():
             ceq.extend([pos_l_y==0])
             ceq.extend([vel_l_x==0])
             ceq.extend([vel_l_y==0])
+
+            ceq.extend([walker.F[i][1]*walker.mu -
+                    ca.fabs(walker.F[i][0]) >= 0])  # 摩擦域条件
         # endregion
 
         # region boundary constraint
@@ -628,31 +619,31 @@ class nlp():
             pass
         # endregion
 
-        theta = -np.pi/50
+        theta = -np.pi/30
         x_ref = -(walker.L[1]+walker.L[2])*np.sin(theta)
         y_ref = (walker.L[1]+walker.L[2])*np.cos(theta)
         ceq.extend([walker.q[0][0]==x_ref])
         ceq.extend([walker.q[0][1]==y_ref])
         ceq.extend([walker.q[0][2]==theta])
-        ceq.extend([walker.q[0][3]==0])
-        ceq.extend([walker.q[0][4]==0])
-        ceq.extend([walker.q[0][5]==0])
-        ceq.extend([walker.q[0][6]==0])
+        ceq.extend([walker.q[0][3]==0.001])
+        ceq.extend([walker.q[0][4]==0.001])
+        ceq.extend([walker.q[0][5]==0.001])
+        ceq.extend([walker.q[0][6]==0.001])
 
-        ceq.extend([walker.dq[0][0]==1])
-        # ceq.extend([walker.dq[0][1]==0])
-        # ceq.extend([walker.dq[0][2]==0])
-        # ceq.extend([walker.dq[0][3]==0])
-        # ceq.extend([walker.dq[0][4]==0])
-        # ceq.extend([walker.dq[0][5]==0])
-        # ceq.extend([walker.dq[0][6]==0])
+        ceq.extend([walker.dq[0][0]==0])
+        ceq.extend([walker.dq[0][1]==0])
+        ceq.extend([walker.dq[0][2]==0])
+        ceq.extend([walker.dq[0][3]==0])
+        ceq.extend([walker.dq[0][4]==0])
+        ceq.extend([walker.dq[0][5]==0])
+        ceq.extend([walker.dq[0][6]==0])
 
         # region smooth constraint
         for j in range(len(walker.u)-1):
-            ceq.extend([ca.fabs(walker.F[j][k]-walker.F
-                        [j+1][k]) <= 100 for k in range(2)])
-            ceq.extend([ca.fabs(walker.u[j][k]-walker.u
-                        [j+1][k]) <= 10 for k in range(5)])
+            ceq.extend([(walker.F[j][k]-walker.F
+                        [j+1][k])**2 <= 10000 for k in range(2)])
+            ceq.extend([(walker.u[j][k]-walker.u
+                        [j+1][k])**2 <= 100 for k in range(5)])
             pass
         # endregion
 

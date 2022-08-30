@@ -11,12 +11,14 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import MultipleLocator
 import time
 from ruamel.yaml import YAML
+import pickle
 
 
 class DataProcess():
-    def __init__(self, cfg, robot, q, dq, ddq, u, F, t, savepath):
+    def __init__(self, cfg, robot, theta, q, dq, ddq, u, F, t, savepath):
         self.cfg = cfg
         self.robot = robot
+        self.theta = theta
         self.q = q
         self.dq = dq
         self.ddq = ddq
@@ -41,7 +43,7 @@ class DataProcess():
         # self.Inertia_main, self.Inertia_coupling, self.Corialis, self.Gravity = self.ForceCal()
         pass
 
-    def DirCreate(self, method_choice=True):
+    def DirCreate(self, method_choice=2):
         trackingCoeff = self.cfg["Optimization"]["CostCoeff"]["trackingCoeff"]
         powerCoeff = self.cfg["Optimization"]["CostCoeff"]["powerCoeff"]
         forceCoeff = self.cfg["Optimization"]["CostCoeff"]["forceCoeff"]
@@ -50,12 +52,16 @@ class DataProcess():
         Vt = self.cfg["Controller"]["Target"]
         Tp = self.cfg["Controller"]["Period"]
         Tst = self.cfg["Controller"]["Stance"]
+        theta = round(self.theta, 3)
         
         date = time.strftime("%Y-%m-%d-%H-%M-%S")
-        if method_choice:
+        if method_choice==1:
             dirname = "-Traj-Tcf_"+str(trackingCoeff)+"-Pcf_"+str(powerCoeff)+"-Fcf_"+str(forceCoeff)+\
                         "-Scf_"+str(smoothCoeff)+"-Icf_"+str(impactCoeff)+"-Vt_"+str(Vt)+"-Tp_"+str(Tp)+"-Tst_"+str(Tst)
-        else:
+        if method_choice==2:
+            dirname = "-Traj-Tcf_"+str(trackingCoeff)+"-Pcf_"+str(powerCoeff)+"-Fcf_"+str(forceCoeff)+\
+                        "-Scf_"+str(smoothCoeff)+"-Icf_"+str(impactCoeff)+"-Vt_"+str(Vt)+"-Tp_"+str(Tp)+"-Ang_"+str(theta)
+        elif method_choice==3:
             dirname = "-MPC-Pos_"+str(self.PostarCoef[1])+"-Tor_"+str(self.TorqueCoef[1])+"-DTor_"+str(self.DTorqueCoef[1]) +"-Vel_"+str(self.VeltarCoef[1])\
                     +"-dt_"+str(self.dt)+"-T_"+str(self.T)+"-Tp_"+str(self.Tp)+"-Tc_"+str(self.Nc)+"-ML_"+str(self.ML)+ "k" 
 
@@ -521,16 +527,19 @@ class DataProcess():
 
     def DataSave(self, saveflag):
         date = self.date
-        name = self.name 
+        name = self.name
 
         if saveflag:
-            np.save(self.save_dir+date+name+"-sol.npy",
-                    np.hstack((self.q, self.dq, self.ddq, self.u, self.F, self.t)))
-            # output the config yaml file
-            # with open(os.path.join(StorePath, date + name+"-config.yaml"), 'wb') as file:
-            #     yaml.dump(self.cfg, file)
+            # np.save(self.save_dir+date+name+"-sol.npy",
+            #         np.hstack((self.q, self.dq, self.ddq, self.u, self.F, self.t)))
+            # # output the config yaml file
+            # # with open(os.path.join(StorePath, date + name+"-config.yaml"), 'wb') as file:
+            # #     yaml.dump(self.cfg, file)
             with open(self.save_dir+date+name+"-config.yaml", mode='w') as file:
                 YAML().dump(self.cfg, file)
+            Data = {'F': self.F, 'u': self.u, "q": self.q, "dq": self.dq, "ddq": self.ddq, "t": self.t}
+            with open(os.path.join(self.save_dir, date+name+"-sol.pkl"), 'wb') as f:
+                pickle.dump(Data, f)
             pass
         
         return self.save_dir

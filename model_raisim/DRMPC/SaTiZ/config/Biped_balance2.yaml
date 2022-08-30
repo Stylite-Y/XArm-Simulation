@@ -3,10 +3,10 @@ Optimization:
   RandomSeed: 1
 
   CostCoeff:
-    trackingCoeff: 0.6
+    trackingCoeff: 0.5
     VelCoeff: 0.2
     powerCoeff: 0.0
-    forceCoeff: 0.2
+    forceCoeff: 0.3
     smoothCoeff: 0.0
     ImpactCoeff: 0.0
 
@@ -20,11 +20,11 @@ Controller:
   FrontForward: true
   HindForward: true
   Target: 5
-  Period: 3
-  dt: 0.005
+  Period: 2.0
+  dt: 0.002
   Stance: 0.26
   # Phase: [0, 0.5]
-  CollectionNum: 300
+  CollectionNum: 500
   
 
   Boundary:
@@ -44,15 +44,9 @@ Ref:
 Robot:
   Mass:
     # body, thigh, shank, arm
-    # mass: [7.5, 2, 0.28, 0.5]
-    # inertia: [0, 0.016, 0.01, 0.012]
-    # massCenter: [0, 0.05, 0.05, 0.15]
-    # mass: [30, 20, 6.8, 4, 2.6]
-    # inertia: [0.625, 0.3, 0.14, 0.03, 0.03]
-    # massCenter: [0.25, 0.17, 0.22, 0.12, 0.15]
-    mass: [30, 20, 6.8, 4, 2.6]
-    inertia: [0.625, 0.3, 0.14, 0.03, 0.03]
-    massCenter: [0.25, 0.17, 0.22, 0.12, 0.15]
+    mass: [6.8, 20, 30, 4, 2.6]
+    inertia: [0.14, 0.3, 0.625, 0.03, 0.03]
+    massCenter: [0.22, 0.17, 0.25, 0.12, 0.15]
   Geometry:
     L_body: 0.5
     L_thigh: 0.42
