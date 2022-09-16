@@ -5,6 +5,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import casadi as ca
 from scipy.integrate import odeint
+import sympy as sy
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+from scipy.optimize import fsolve, root
 
 class A():
     def __init__(self, x):
@@ -297,13 +302,221 @@ def visual2():
 def stepresponse():
     pass    
 
+def tf_test():
+    m1 = sy.symbols('m1')
+    l1 = sy.symbols('l1')
+    g = sy.symbols('g')
+    I1 = sy.symbols('I1')
+    I2 = sy.symbols('I2')
+    It = sy.symbols('It')
+    P = sy.symbols('P')
+    T0 = sy.symbols('T0')
+    w0 = sy.symbols('w0')
+    w1 = sy.symbols('w1')
+    w2 = sy.symbols('w2')
+    K = sy.symbols('K')
+    gamma = sy.symbols('gamma')
+    wt = sy.symbols('wt')
+
+    K1 = sy.asin(T0/(m1*g*l1**2))
+    tf = I1*w0/T0 + T0/(4*P)*K1 - (It*gamma**2 + I2)*wt/(T0*gamma)
+    dtf_T0 = sy.diff(tf, T0)
+
+    # Tm = sy.solve(dtf_T0, T0)
+    # Tf = Tm[1]
+    # tff = I1*w0/Tf + Tf/(4*P)*K - I2*w2/Tf
+    print(dtf_T0)
+    # print(Tm)
+    # print(tff)
+
+    pass
+
+def tf_test_num():
+    m1 = 1.0
+    l1 = 1.0
+    l2 = 0.5
+    g = 9.8
+    I1 = m1*l1**2
+    m2 = np.array([0.1, 0.2, 0.4, 0.8, 1.2, 1.5])
+    I2 = l2**2*m2
+    P = 5.0
+    # T0 = sy.symbols('T0')
+    w0 = 2.0
+    # w1 = sy.symbols('w1')
+    theta1 = np.pi / 10
+    w2 = np.array([0.2, 0.5, 0.8, 1.5, 2.0, 4.0])
+
+    I2, w2 = np.meshgrid(I2, w2)
+
+    def Tm(T0):
+        Tm = -I1*w0/T0**2 + I2*w2/T0**2 + np.arcsin(T0/(m1*g*l1**2))/(4*P) + \
+            T0/(4*P*g*l1**2*m1*np.sqrt(-T0**2/(g**2*l1**4*m1**2)+1))
+        return Tm
+    K = 2*np.sqrt(P*(I1*w0-I2*w2)/theta1)
+    tf = I1*w0/K - I2*w2/K + theta1 * K /(4*P)
+
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    surf = ax.plot_surface(I2, w2, tf)
+    ax.set_xlabel("I2")
+    ax.set_ylabel("w2")
+    ax.set_zlabel("tf")
+
+    plt.show()
+
+def tf_test_num2():
+    m1 = 1.0
+    l1 = 1.0
+    l2 = 0.5
+    g = 9.8
+    I1 = m1*l1**2
+    m2 = np.array([0.1, 0.2, 0.4, 0.8, 1.2, 1.5])
+    I2 = l2**2*m2
+    P = 5.0
+    # T0 = sy.symbols('T0')
+    w0 = 2.0
+    # w1 = sy.symbols('w1')
+    theta1 = np.pi / 10
+    w2 = np.array([0.2, 0.5, 0.8, 1.5, 2.0, 4.0])
+    # I2, w2 = np.meshgrid(I2, w2)
+
+    t = np.array([[0.0]*len(I2)])
+    for i in range(len(I2)):
+        tmp = []
+        for j in range(len(w2)):
+
+            def Tm(T0):
+                Ttmp = -I1*w0/T0**2 + I2[i]*w2[j]/T0**2 + np.arcsin(T0/(m1*g*l1**2))/(4*P) + \
+                    T0/(4*P*g*l1**2*m1*np.sqrt(-T0**2/(g**2*l1**4*m1**2)+1))
+                return Ttmp
+            
+            res1 = fsolve(Tm, [1])
+            res2 = root(Tm, [1])
+            print(res1)
+            K = np.arcsin(res1/(m1*g*l1**2))
+            tf = I1*w0/K - I2[i]*w2[j]/K + res1 * K /(4*P)
+
+            tmp.append(float(tf))
+        print(tmp)
+
+        t = np.concatenate((t, [tmp]), axis = 0)
+
+    t = t[1:]
+    print(t)
+    I2, w2 = np.meshgrid(I2, w2)
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    surf = ax.plot_surface(I2, w2, t)
+    ax.set_xlabel("I2")
+    ax.set_ylabel("w2")
+    ax.set_zlabel("tf")
+
+    plt.show()
+
+    pass
+
+def tf_test_num3():
+    m1 = 50
+    l1 = 1.5
+    l2 = 0.5
+    g = 9.8
+    I1 = m1*l1**2/12
+    m2 = np.array([0.5, 1.0, 2.6, 4.0, 6.0, 8.0, 10.0])
+    # m2 = np.array([2.6])
+    I2 = l2**2*m2/12
+
+    P = 400
+    w0 = 3.0
+    wt = 10.0
+    It = 0.01
+    gamma = np.array([0.5, 1, 2, 4, 6, 8, 12])
+    # gamma = np.array([6])
+    print(np.sin(np.pi/20)*m1*g*l1**2)
+    t = np.array([[0.0]*len(I2)])
+    for i in range(len(I2)):
+        tmp = []
+        for j in range(len(gamma)):
+
+            def Tm(T0):
+                Ttmp = -I1*w0/T0**2 + (It*gamma[j]**2 + I2[i])*wt/(gamma[j]*T0**2)+ np.arcsin(T0/(m1*g*l1**2))/(4*P) + \
+                    T0/(4*P*g*l1**2*m1*np.sqrt(-T0**2/(g**2*l1**4*m1**2)+1))
+                return Ttmp
+            
+            res1 = fsolve(Tm, [100])
+            res2 = root(Tm, [1])
+            print(res1)
+            K = np.arcsin(res1/(m1*g*l1**2))
+            tf = I1*w0/K - (It*gamma[j]**2 + I2[i])*wt/(gamma[j]*K) + res1 * K /(4*P)
+
+            tmp.append(float(tf))
+        # print(tmp)
+
+        t = np.concatenate((t, [tmp]), axis = 0)
+
+    t = t[1:]
+    print(t)
+    I2, gamma = np.meshgrid(I2, gamma)
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    surf = ax.plot_surface(I2, gamma, t)
+    ax.set_xlabel("I2")
+    ax.set_ylabel("gamma")
+    ax.set_zlabel("tf")
+
+    plt.show()
+
+def tf_test_num4():
+    m1 = 50
+    l1 = 1.5
+    l2 = 0.3
+    g = 9.8
+    I1 = m1*l1**2/12
+    # m2 = np.array([0.5, 1.0, 2.6, 4.0, 6.0, 8.0, 10.0])
+    m2 = np.linspace(0,10,50)
+    # m2 = np.array([2.6])
+    I2 = l2**2*m2/12
+
+    P = 300
+    w0 = 3.0
+    wt = 20.0*6
+    It = 0.0001
+    # gamma = np.array([0.5, 1, 2, 4, 6, 8, 12])
+    gamma = np.linspace(1, 20, 50)
+    # gamma = np.array([6])
+    theta = np.pi/20
+    print(np.sin(np.pi/20)*m1*g*l1**2)
+    t = np.array([[0.0]*len(I2)])
+    for i in range(len(I2)):
+        tmp = []
+        for j in range(len(gamma)):
+            T0 = np.sin(theta)*m1*g*l1**2
+            tf = I1*w0/T0 - (It*gamma[j]**2 + I2[i])*wt/(gamma[j]*T0) + T0 * theta /(4*P)
+
+            tmp.append(float(tf))
+        # print(tmp)
+
+        t = np.concatenate((t, [tmp]), axis = 0)
+
+    t = t[1:]
+    print(t)
+    I2, gamma = np.meshgrid(I2, gamma)
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    surf = ax.plot_surface(I2, gamma, t)
+    ax.set_xlabel("I2")
+    ax.set_ylabel("gamma")
+    ax.set_zlabel("tf")
+
+    plt.show()
+
 if __name__ == "__main__":
-    q0 = [1.0, 0.0]
-    dq0 = [0.0, 0.0]
-    u1 = [0.0, 0.0]
-    q1 = np.array([[1, 21,5], [1, 5, 7]])
-    b = q1.tolist()
-    print(list(q1), b[0][1], q0[1])
+    # tf_test_num()
+    # tf_test_num2()
+    # tf_test_num3()
+    tf_test_num4()
+    # tf_test()
+    # q0 = [1.0, 0.0]
+    # dq0 = [0.0, 0.0]
+    # u1 = [0.0, 0.0]
+    # q1 = np.array([[1, 21,5], [1, 5, 7]])
+    # b = q1.tolist()
+    # print(list(q1), b[0][1], q0[1])
     
     # sol = updatestate(q0, dq0, u1)
     # print("===================")
@@ -313,17 +526,17 @@ if __name__ == "__main__":
     # temp = A()
     # # temp.b()
     # print(np.linspace(0, 4, 4))
-    print(sin(1.57))
+    # print(sin(1.57))
 
     # visual2()
 
-    m1 = 3.3
-    m0 = 58
-    l0 = 1.8
-    l1 = 0.6
-    O = np.linspace(0, 3.14, 100)
-    a = - (m1*l1**2/3 + m1*l0*l1*cos(O)/2) / (m0*l0**2 + m1*l0**2 + m1*l0*l1*cos(O)/2)
-    plt.figure()
-    plt.plot(O, a)
-    plt.show()
+    # m1 = 3.3
+    # m0 = 58
+    # l0 = 1.8
+    # l1 = 0.6
+    # O = np.linspace(0, 3.14, 100)
+    # a = - (m1*l1**2/3 + m1*l0*l1*cos(O)/2) / (m0*l0**2 + m1*l0**2 + m1*l0*l1*cos(O)/2)
+    # plt.figure()
+    # plt.plot(O, a)
+    # plt.show()
 

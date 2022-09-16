@@ -15,7 +15,7 @@ import pickle
 
 
 class DataProcess():
-    def __init__(self, cfg, robot, theta, q, dq, ddq, u, F, t, savepath):
+    def __init__(self, cfg, robot, theta, q, dq, ddq, u, F, t, savepath,save_flag):
         self.cfg = cfg
         self.robot = robot
         self.theta = theta
@@ -26,12 +26,13 @@ class DataProcess():
         self.F = F
         self.t = t
         self.savepath = savepath
+        self.save_flag = save_flag
 
         # self.ML = self.cfg["Optimization"]["MaxLoop"] / 1000
         # self.Tp = self.cfg['Controller']['Tp']
         # self.Nc = self.cfg['Controller']['Nc']
         # self.T = self.cfg['Controller']['T']
-        # self.dt = self.cfg['Controller']['dt']
+        self.dt = self.cfg['Controller']['dt']
         # self.PostarCoef = self.cfg["Optimization"]["CostCoef"]["postarCoef"]
         # self.TorqueCoef = self.cfg["Optimization"]["CostCoef"]["torqueCoef"]
         # self.DTorqueCoef = self.cfg["Optimization"]["CostCoef"]["DtorqueCoef"]
@@ -69,8 +70,9 @@ class DataProcess():
         # dirname = "-Ir_"+str(I_r)
         save_dir = self.savepath + date + dirname+ "/"
 
-        if not os.path.isdir(save_dir):
-            os.makedirs(save_dir)
+        if self.save_flag:
+            if not os.path.isdir(save_dir):
+                os.makedirs(save_dir)
         return save_dir, dirname, date
 
     def DataPlot(self, saveflag=0):
@@ -148,12 +150,12 @@ class DataProcess():
         history_len = 100
         
         fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(autoscale_on=False, xlim=(-L0, L0), ylim=(-L2, L0+L1))
+        ax = fig.add_subplot(autoscale_on=False, xlim=(-L0, L0), ylim=(-0.05, (L0+L1)*1.2))
         ax.set_aspect('equal')
-        ax.set_xlabel('X axis ', fontsize = 15)
-        ax.set_ylabel('Y axis ', fontsize = 15)
-        ax.xaxis.set_tick_params(labelsize = 12)
-        ax.yaxis.set_tick_params(labelsize = 12)
+        ax.set_xlabel('X axis ', fontsize = 20)
+        ax.set_ylabel('Y axis ', fontsize = 20)
+        ax.xaxis.set_tick_params(labelsize = 18)
+        ax.yaxis.set_tick_params(labelsize = 18)
         ax.grid()
 
         line, = ax.plot([], [], 'o-', lw=3,markersize=8)
@@ -181,16 +183,16 @@ class DataProcess():
             return line, trace, time_text
         
         ani = animation.FuncAnimation(
-            fig, animate, len(self.t), interval=self.dt*1000, blit=True)
+            fig, animate, len(self.t), interval=0.1, save_count = 30, blit=True)
 
         ## animation save to gif
         date = self.date
-        name = self.name + ".gif"
+        name = "traj_ani" + ".gif"
 
-        savename = self.save_dir + date + name
+        savename = self.save_dir +date+ name
 
         if saveflag:
-            ani.save(savename, writer='pillow', fps=72)
+            ani.save(savename, writer='pillow', fps=30)
 
         # plt.show()
         

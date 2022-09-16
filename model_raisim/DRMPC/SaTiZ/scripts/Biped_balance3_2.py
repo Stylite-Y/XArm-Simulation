@@ -7,6 +7,8 @@
 6. Biped_walk_half2: x0,z0 in hip and hO_hip = O_b+O_hip
 7. 2022.08.15: 
        Biped_walk_half3: 从上到下的多杆倒立摆动力学方程建模方法 
+   2022.09.06:
+       Biped_walk_half3_2: 扰动用初始速度代替初始身体偏转
 '''
 
 from ast import walk
@@ -68,8 +70,8 @@ class Bipedal_hybrid():
         # self.F_LB = [self.bound_fx[0], self.bound_fy[0]]
         # self.F_UB = [self.bound_fx[1], self.bound_fy[1]]
 
-        self.u_LB = [-20] + [-self.motor_mt] * 4
-        self.u_UB = [20] + [self.motor_mt] * 4
+        self.u_LB = [-15] + [-self.motor_mt] * 4
+        self.u_UB = [15] + [self.motor_mt] * 4
 
         # shank, thigh, body, arm, forearm
         self.q_LB = [-np.pi/10, -np.pi, -np.pi/30, 0, -np.pi*0.9] 
@@ -463,7 +465,7 @@ class Bipedal_hybrid():
         lower = np.clip(lower, -MaxTorque, 0)
         return upper, lower
 
-    pass                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+    pass
 
 
 class nlp():
@@ -511,14 +513,14 @@ class nlp():
         force = 0
         VelTar = 0
         PosTar = 0
-        Pf = [80, 10, 15, 5, 0.2]
-        Vf = [40, 5, 20, 5, 5]
+        Pf = [50, 30, 15, 5, 1]
+        Vf = [40, 20, 20, 5, 5]
         # Vf = [40, 20, 40, 5, 5]
         # Pf = [20, 20, 10, 5, 5]
         # Vf = [5, 5, 2, 2, 1]
         Ptar = [0, 0, 0, 3.14, 0]
         # Ff = [2, 1, 0.5, 0.5]
-        Ff = [30, 10, 10, 5, 1]
+        Ff = [30, 20, 10, 5, 5]
         for i in range(walker.N):
             for k in range(5):
                 power += (walker.dq[i][k] * walker.u[i][k])**2 * walker.dt
@@ -530,8 +532,8 @@ class nlp():
             pass
         
         for j in range(5):
-            VelTar += (walker.dq[-1][j])**2 * Vf[j] * 50
-            PosTar += (walker.q[-1][j] - Ptar[j])**2 * Pf[j] * 200
+            VelTar += (walker.dq[-1][j])**2 * Vf[j] * 10
+            PosTar += (walker.q[-1][j] - Ptar[j])**2 * Pf[j] * 50
         u = walker.u
         smooth = 0
         AM = [100, 100, 400, 100, 400]
@@ -616,22 +618,28 @@ class nlp():
         # endregion
 
         theta = self.theta
-        ceq.extend([walker.q[0][0]==theta])
-        ceq.extend([walker.q[0][1]==-theta*0.2])
-        ceq.extend([walker.q[0][2]==theta*0.2])
+        # ceq.extend([walker.q[0][0]==theta])
+        # ceq.extend([walker.q[0][1]==-theta*0.2])
+        # ceq.extend([walker.q[0][2]==theta*0.2])
+        # ceq.extend([walker.q[0][3]==np.pi])
+        # ceq.extend([walker.q[0][4]==0])
+        ceq.extend([walker.q[0][0]==0])
+        ceq.extend([walker.q[0][1]==0])
+        ceq.extend([walker.q[0][2]==0])
         ceq.extend([walker.q[0][3]==np.pi])
         ceq.extend([walker.q[0][4]==0])
 
-        ceq.extend([walker.dq[0][0]==0])
-        ceq.extend([walker.dq[0][1]==0])
-        ceq.extend([walker.dq[0][2]==0])
+        v = 0.5
+        ceq.extend([walker.dq[0][0]==v])
+        ceq.extend([walker.dq[0][1]==v])
+        ceq.extend([walker.dq[0][2]==v])
         ceq.extend([walker.dq[0][3]==0])
         ceq.extend([walker.dq[0][4]==0])
 
         # region smooth constraint
         for j in range(len(walker.u)-1):
             ceq.extend([(walker.u[j][k]-walker.u
-                        [j+1][k])**2 <= 50 for k in range(5)])
+                        [j+1][k])**2 <= 100 for k in range(5)])
             pass
         # endregion
 
@@ -737,7 +745,7 @@ def main():
     save_flag = False
     # armflag = False
     armflag = True
-    theta = np.pi/40
+    theta = np.pi/36
 
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
