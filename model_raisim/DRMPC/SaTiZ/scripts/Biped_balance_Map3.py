@@ -9,7 +9,7 @@
        Biped_walk_half3: 从上到下的三连杆倒立摆动力学方程建模方法(有脚踝关节力矩)
 '''
 
-from ast import walk
+from ast import In, walk
 import os
 import yaml
 import datetime
@@ -578,9 +578,26 @@ def main(Mass, inertia, armflag, vis_flag):
     b,a = signal.butter(3, 0.12, 'lowpass')
     Fy2 = signal.filtfilt(b, a, Fy)
 
+    #region: costfun cal
+    Pf = [80, 20, 5]
+    Vf = [40, 20, 5]
+    Ptar = [0, 0, np.pi]
+    Ff = [30, 10, 5]
+    Pcostfun = 0.0
+    Vcostfun = 0.0
+    Fcostfun = 0.0
+    for i in range(robot.N):
+        for k in range(3):
+            if i < robot.N-1:
+                Pcostfun += (q[i][k] - Ptar[k])**2 * robot.dt * Pf[k]
+                Fcostfun += (u[i][k] / robot.motor_mt)**2 * robot.dt * Ff[k]  
+                Vcostfun += (dq[i][k])**2 * robot.dt * Vf[k]
+            else:
+                Pcostfun += (q[i][k] - Ptar[k])**2 * robot.dt * Pf[k] * 99
+                Vcostfun += (dq[i][k])**2 * robot.dt * Vf[k] * 500
     # endregion
     theta = np.pi/40
-    visual = DataProcess(cfg, robot, theta, q, dq, ddq, u, F, t, save_dir, save_flag)
+    visual = DataProcess(cfg, robot, Mass[2], inertia[2], theta, q, dq, ddq, u, F, t, save_dir, save_flag)
     if save_flag:
         SaveDir = visual.DataSave(save_flag)
 
@@ -687,7 +704,7 @@ def main(Mass, inertia, armflag, vis_flag):
 
         pass
     F = [Fx, Fy]
-    return u, Fy2, t
+    return u, Fy2, t, Pcostfun, Vcostfun, Fcostfun
 
 ## use mean value instead of peak value to analysis force map
 def ForceMapMV():
@@ -700,18 +717,18 @@ def ForceMapMV():
 
     saveflag = False
     armflag = True
-    vis_flag = True
+    vis_flag = False
 
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
     save_dir = StorePath + "/data/" + str(todaytime) + "/"
-    name = "ForceMap3-7-c-arm.pkl"
+    name = "ForceMap3-7-arm-cfun.pkl"
     
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
     M_arm = [3.0, 4.0, 5.0, 6.0, 6.5, 7.0, 7.5]
-    # M_arm = [1.6, 4.8, 7.0]
+    # M_arm = [4.0, 6.0, 7.0]
     # M_arm = [7.5]
     M_label = list(map(str, M_arm))
     I_arm = [0.012, 0.015, 0.03, 0.04, 0.06, 0.07, 0.09]
@@ -732,6 +749,10 @@ def ForceMapMV():
     u_e = np.array([[0.0]*len(M_arm)])
     t_b = np.array([[0.0]*len(M_arm)])
 
+    Pcostfun = np.array([[0.0]*len(M_arm)])
+    Vcostfun = np.array([[0.0]*len(M_arm)])
+    Fcostfun = np.array([[0.0]*len(M_arm)])
+
     CollectNum = 1000
     dt = 0.002
     index = int(1.3 / dt)
@@ -743,10 +764,12 @@ def ForceMapMV():
             Fy_max = []
             u_h_max = []
             u_a_max = []
-            u_k_max = []
             u_s_max = []
-            u_e_max = []
             t_p = []
+
+            P_J = []
+            V_J = []
+            F_J = []
             for j in range(len(M_arm)):
                 temp_m = []
                 temp_m.extend(Mass)
@@ -756,8 +779,10 @@ def ForceMapMV():
                 print("Mass: ", temp_m)
                 print("="*50)
                 print("Inertia: ", temp_i)
+                print("="*50)
+                print("armflag: ", armflag)
 
-                u, F, t = main(temp_m, temp_i, armflag, vis_flag)
+                u, F, t, Ptmp, Vtmp, Ftmp = main(temp_m, temp_i, armflag, vis_flag)
 
                 F_1 = 0
                 num1 = 0
@@ -791,6 +816,9 @@ def ForceMapMV():
                 u_s_max.append(temp_us_max)
                 u_a_max.append(temp_ua_max)
                 t_p.append(tk)
+                P_J.append(Ptmp)
+                V_J.append(Vtmp)
+                F_J.append(Ftmp)
 
                 pass
             # print(u0.shape,u_k_max)
@@ -800,6 +828,9 @@ def ForceMapMV():
             u_s = np.concatenate((u_s, [u_s_max]), axis = 0)
             u_a = np.concatenate((u_a, [u_a_max]), axis = 0)
             t_b = np.concatenate((t_b, [t_p]), axis = 0)
+            Pcostfun = np.concatenate((Pcostfun, [P_J]), axis = 0)
+            Vcostfun = np.concatenate((Vcostfun, [V_J]), axis = 0)
+            Fcostfun = np.concatenate((Fcostfun, [F_J]), axis = 0)
 
             pass
         Fy = Fy[1:]
@@ -807,8 +838,12 @@ def ForceMapMV():
         u_s = u_s[1:]
         u_a = u_a[1:]
         t_b = t_b[1:]
+        Pcostfun = Pcostfun[1:]
+        Vcostfun = Vcostfun[1:]
+        Fcostfun = Fcostfun[1:]
 
-        Data = {'Fy': Fy, 'u_h': u_h, "u_s": u_s,"u_a": u_a, "t_b": t_b}
+        Data = {'Fy': Fy, 'u_h': u_h, "u_s": u_s,"u_a": u_a, "t_b": t_b,
+                'P_J': Pcostfun, 'V_J': Vcostfun, 'F_J': Fcostfun}
         if os.path.exists(os.path.join(save_dir, name)):
             RandNum = random.randint(0,100)
             name = "ForceMap" + str(RandNum)+ ".pkl"
@@ -823,8 +858,13 @@ def ForceMapMV():
         u_s = data['u_s']
         u_a = data['u_a']
         t_b = data['t_b']
+        Pcostfun = data['P_J']
+        Vcostfun = data['V_J']
+        Fcostfun = data['F_J']
 
-    
+    Sumcostfun = Pcostfun + Vcostfun + Fcostfun
+    print(Sumcostfun)
+
     plt.style.use("science")
     params = {
         'text.usetex': True,
@@ -892,47 +932,269 @@ def ForceMapMV():
                     data = Dataset[title[i][j]]
                     data = np.round(data, ids)
                     ax[i][j].text(m,k,data[k][m], ha="center", va="center",color="w",fontsize=10)
-    # fig.tight_layout()
+    fig.tight_layout()
 
-    # fig2, axs2 = plt.subplots(2, 2, figsize=(12, 12), subplot_kw={"projection": "3d"})
-    # axes1 = axs2[0][0]
-    # axes2 = axs2[0][1]
-    # axes3 = axs2[1][0]
-    # axes4 = axs2[1][1]
-    # M_arm, I_arm = np.meshgrid(M_arm, I_arm)
+    fig2, axs2 = plt.subplots(2, 2, figsize=(12, 12), subplot_kw={"projection": "3d"})
+    axes1 = axs2[0][0]
+    axes2 = axs2[0][1]
+    axes3 = axs2[1][0]
+    axes4 = axs2[1][1]
+    M_arm, I_arm = np.meshgrid(M_arm, I_arm)
 
 
-    # surf1 = axes1.plot_surface(M_arm, I_arm, Fy)
-    # surf2 = axes2.plot_surface(M_arm, I_arm, u_h)
-    # surf3 = axes3.plot_surface(M_arm, I_arm, u_s)
-    # surf4 = axes4.plot_surface(M_arm, I_arm, t_b, cmap="inferno")
-    # for i in range(2):
-    #     for j in range(2):
-    #         # axs2[i][j].set_xticks(np.arange(len(M_label)))
-    #         # axs2[i][j].set_xticklabels(M_label)
-    #         # axs2[i][j].set_yticks(np.arange(len(I_label)))
-    #         # axs2[i][j].set_ylim(-0.5, len(I_label)-0.5)
-    #         # axs2[i][j].set_yticklabels(I_label)
-    #         # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
-    #         #        labeltop=True, labelbottom=False)
-
-    #         axs2[i][j].set_ylabel("Inertia")
-    #         axs2[i][j].set_xlabel("Mass")
-    #         axs2[i][j].set_zlabel(title[i][j])
-    #         axs2[i][j].set_title(title[i][j])
-
-    #         # if i==0 and j==0:
-    #         #     cb[i][j].set_label("Force(N)")
-    #         # else:
-    #         #     cb[i][j].set_label("Torque(N/m)")
+    surf1 = axes1.plot_surface(M_arm, I_arm, Pcostfun)
+    surf2 = axes2.plot_surface(M_arm, I_arm, Vcostfun)
+    surf3 = axes3.plot_surface(M_arm, I_arm, Fcostfun)
+    surf4 = axes4.plot_surface(M_arm, I_arm, Sumcostfun)
+    for i in range(2):
+        for j in range(2):
+            axs2[i][j].set_ylabel("Inertia")
+            axs2[i][j].set_xlabel("Mass")
+            axs2[i][j].set_zlabel(title[i][j])
+            axs2[i][j].set_title(title[i][j])
 
     plt.show()
     pass
 
+def ResCmp():
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    import pickle
+    import random
+    from matplotlib.pyplot import MultipleLocator
+    from mpl_toolkits.mplot3d import Axes3D
+    from scipy import interpolate
+
+    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    todaytime=datetime.date.today()
+    save_dir = StorePath + "/data/" + str(todaytime) + "/"
+    name1 = "ForceMap3-7-c-arm.pkl"
+    name2 = "ForceMap3-7-c-noarm.pkl"
+    
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    M_arm = [3.0, 4.0, 5.0, 6.0, 6.5, 7.0, 7.5]
+    I_arm = [0.012, 0.015, 0.03, 0.04, 0.06, 0.07, 0.09]
+    M_label = list(map(str, M_arm))
+    I_label = list(map(str, I_arm))
+
+    f1 = open(save_dir+name1,'rb')
+    data1 = pickle.load(f1)
+    f2 = open(save_dir+name2,'rb')
+    data2 = pickle.load(f2)
+
+    Fy = data1['Fy']
+    u_h = data1['u_h']
+    u_s = data1['u_s']
+    u_a = data1['u_a']
+    t_b = data1['t_b']
+
+    Fy2 = data2['Fy']
+    u_h2 = data2['u_h']
+    u_s2 = data2['u_s']
+    u_a2 = data2['u_a']
+    t_b2 = data2['t_b']
+    t_b2[0][6] = 0.9
+
+    # 数据插值光滑
+    Mnew = np.linspace(3, 7.5, 30)
+    Inew = np.linspace(0.012, 0.09, 30)
+    ffy = interpolate.interp2d(M_arm, I_arm, Fy, kind='cubic')
+    fuh = interpolate.interp2d(M_arm, I_arm, u_h, kind='cubic')
+    fus = interpolate.interp2d(M_arm, I_arm, u_s, kind='cubic')
+    ftb = interpolate.interp2d(M_arm, I_arm, t_b, kind='linear')
+    Fynew = ffy(Mnew, Inew)
+    uhnew = fuh(Mnew, Inew)
+    usnew = fus(Mnew, Inew)
+    tbnew = ftb(Mnew, Inew)
+
+    ffy2 = interpolate.interp2d(M_arm, I_arm, Fy2, kind='cubic')
+    fuh2 = interpolate.interp2d(M_arm, I_arm, u_h2, kind='cubic')
+    fus2 = interpolate.interp2d(M_arm, I_arm, u_s2, kind='cubic')
+    ftb2 = interpolate.interp2d(M_arm, I_arm, t_b2, kind='linear')
+    Fynew2 = ffy2(Mnew, Inew)
+    uhnew2 = fuh2(Mnew, Inew)
+    usnew2 = fus2(Mnew, Inew)
+    tbnew2 = ftb2(Mnew, Inew)
+
+    
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'image.cmap': 'inferno',
+        'font.size': 18,
+        'axes.labelsize': 15,
+        'axes.titlesize': 20,
+        'xtick.labelsize': 15,
+        'ytick.labelsize': 15,
+        'legend.fontsize': 12,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.3,
+    }
+
+    plt.rcParams.update(params)
+    title = [["Fy", "Torque-Hip"], ["Torque-shoulder", "balance time"]]
+    Dataset = {"Fy":Fy, "Torque-shoulder":u_s, "Torque-Hip":u_h, "balance time":t_b}
+
+    fig2, axs2 = plt.subplots(2, 2, figsize=(12, 12), subplot_kw={"projection": "3d"})
+    axes1 = axs2[0][0]
+    axes2 = axs2[0][1]
+    axes3 = axs2[1][0]
+    axes4 = axs2[1][1]
+    M_arm, I_arm = np.meshgrid(M_arm, I_arm)
+    Mnew, Inew = np.meshgrid(Mnew, Inew)
+
+
+    # surf1 = axes1.plot_surface(M_arm, I_arm, Fy)
+    # surf12 = axes1.plot_surface(M_arm, I_arm, Fy2)
+    # surf2 = axes2.plot_surface(M_arm, I_arm, u_h)
+    # surf22 = axes2.plot_surface(M_arm, I_arm, u_h2)
+    # surf3 = axes3.plot_surface(M_arm, I_arm, u_s)
+    # surf32 = axes3.plot_surface(M_arm, I_arm, u_s2)
+    # surf4 = axes4.plot_surface(M_arm, I_arm, t_b, cmap="inferno")
+    # surf42 = axes4.plot_surface(M_arm, I_arm, t_b2, cmap="inferno")
+    surf1 = axes1.plot_surface(Mnew, Inew, Fynew, label="Fy arm free")
+    surf12 = axes1.plot_surface(Mnew, Inew, Fynew2, label="Fy arm bound")
+    surf2 = axes2.plot_surface(Mnew, Inew, uhnew, label="Torque arm free")
+    surf22 = axes2.plot_surface(Mnew, Inew, uhnew2, label="Torque arm bound")
+    surf3 = axes3.plot_surface(Mnew, Inew, usnew, label="Torque arm free")
+    surf32 = axes3.plot_surface(Mnew, Inew, usnew2, label="Torque arm bound")
+    surf4 = axes4.plot_surface(Mnew, Inew, tbnew, label="Balance time arm free")
+    surf42 = axes4.plot_surface(Mnew, Inew, tbnew2, label="Balance time arm bound")
+    surf = [surf1,surf12,surf2,surf22,surf3,surf32,surf4,surf42]
+   
+    for k in range(8):
+        surf[k]._facecolors2d=surf[k]._facecolors3d
+        surf[k]._edgecolors2d=surf[k]._edgecolors3d
+    for i in range(2):
+        for j in range(2):
+
+            axs2[i][j].set_ylabel("Inertia")
+            axs2[i][j].set_xlabel("Mass")
+            axs2[i][j].set_zlabel(title[i][j])
+            axs2[i][j].set_title(title[i][j])
+            axs2[i][j].legend(loc="upper right")
+
+    plt.show()
+    pass
+
+def CostFunAnalysis():
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    import pickle
+    import random
+    from matplotlib.pyplot import MultipleLocator
+    from mpl_toolkits.mplot3d import Axes3D
+    from scipy import interpolate
+
+    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    todaytime=datetime.date.today()
+    save_dir = StorePath + "/data/" + str(todaytime) + "/"
+    name1 = "ForceMap3-7-arm-cfun.pkl"
+    name2 = "ForceMap3-7-noarm-cfun.pkl"
+    
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    M_arm = [3.0, 4.0, 5.0, 6.0, 6.5, 7.0, 7.5]
+    I_arm = [0.012, 0.015, 0.03, 0.04, 0.06, 0.07, 0.09]
+    M_label = list(map(str, M_arm))
+    I_label = list(map(str, I_arm))
+
+    f1 = open(save_dir+name1,'rb')
+    data1 = pickle.load(f1)
+    f2 = open(save_dir+name2,'rb')
+    data2 = pickle.load(f2)
+
+    Pcostfun1 = data1['P_J']
+    Vcostfun1 = data1['V_J']
+    Fcostfun1 = data1['F_J']
+    Pcostfun2 = data2['P_J']
+    Vcostfun2 = data2['V_J']
+    Fcostfun2 = data2['F_J']
+
+    Sumcostfun1 = Pcostfun1 + Vcostfun1 + Fcostfun1
+    Sumcostfun2 = Pcostfun2 + Vcostfun2 + Fcostfun2
+
+    # 数据插值光滑
+    Mnew = np.linspace(3, 7.5, 30)
+    Inew = np.linspace(0.012, 0.09, 30)
+    fp1 = interpolate.interp2d(M_arm, I_arm, Pcostfun1, kind='cubic')
+    fv1 = interpolate.interp2d(M_arm, I_arm, Vcostfun1, kind='cubic')
+    ff1 = interpolate.interp2d(M_arm, I_arm, Fcostfun1, kind='cubic')
+    fs1 = interpolate.interp2d(M_arm, I_arm, Sumcostfun1, kind='cubic')
+    Pnew = fp1(Mnew, Inew)
+    Vnew = fv1(Mnew, Inew)
+    Fnew = ff1(Mnew, Inew)
+    Snew = fs1(Mnew, Inew)
+
+    fp2 = interpolate.interp2d(M_arm, I_arm, Pcostfun2, kind='cubic')
+    fv2 = interpolate.interp2d(M_arm, I_arm, Vcostfun2, kind='cubic')
+    ff2 = interpolate.interp2d(M_arm, I_arm, Fcostfun2, kind='cubic')
+    fs2 = interpolate.interp2d(M_arm, I_arm, Sumcostfun2, kind='cubic')
+    Pnew2 = fp2(Mnew, Inew)
+    Vnew2 = fv2(Mnew, Inew)
+    Fnew2 = ff2(Mnew, Inew)
+    Snew2 = fs2(Mnew, Inew)
+
+    
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'image.cmap': 'inferno',
+        'font.size': 18,
+        'axes.labelsize': 15,
+        'axes.titlesize': 20,
+        'xtick.labelsize': 15,
+        'ytick.labelsize': 15,
+        'legend.fontsize': 12,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.3,
+    }
+
+    plt.rcParams.update(params)
+    title = [["Pos CostFun", "Vel CostFun"], ["Force CostFun", "Sum CostFun"]]
+
+    fig2, axs2 = plt.subplots(2, 2, figsize=(12, 12), subplot_kw={"projection": "3d"})
+    axes1 = axs2[0][0]
+    axes2 = axs2[0][1]
+    axes3 = axs2[1][0]
+    axes4 = axs2[1][1]
+    M_arm, I_arm = np.meshgrid(M_arm, I_arm)
+    Mnew, Inew = np.meshgrid(Mnew, Inew)
+
+    surf1 = axes1.plot_surface(Mnew, Inew, Pnew, label="arm free")
+    surf12 = axes1.plot_surface(Mnew, Inew, Pnew2, label="arm bound")
+    surf2 = axes2.plot_surface(Mnew, Inew, Vnew, label="arm free")
+    surf22 = axes2.plot_surface(Mnew, Inew, Vnew2, label="arm bound")
+    surf3 = axes3.plot_surface(Mnew, Inew, Fnew, label="arm free")
+    surf32 = axes3.plot_surface(Mnew, Inew, Fnew2, label="arm bound")
+    surf4 = axes4.plot_surface(Mnew, Inew, Snew, label="arm free")
+    surf42 = axes4.plot_surface(Mnew, Inew, Snew2, label="arm bound")
+    surf = [surf1,surf12,surf2,surf22,surf3,surf32,surf4,surf42]
+   
+    for k in range(8):
+        surf[k]._facecolors2d=surf[k]._facecolors3d
+        surf[k]._edgecolors2d=surf[k]._edgecolors3d
+    for i in range(2):
+        for j in range(2):
+
+            axs2[i][j].set_ylabel("Inertia")
+            axs2[i][j].set_xlabel("Mass")
+            axs2[i][j].set_zlabel(title[i][j])
+            axs2[i][j].set_title(title[i][j])
+            axs2[i][j].legend(loc="upper right")
+
+    plt.show()
+    pass
+    pass
 
 if __name__ == "__main__":
     # main()
     ForceMapMV()
+    # ResCmp()
+    # CostFunAnalysis()
     # ForceVisualization()
     # power_analysis()
     # Impact_inertia()

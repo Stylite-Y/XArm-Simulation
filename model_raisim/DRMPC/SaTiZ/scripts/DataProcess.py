@@ -15,9 +15,11 @@ import pickle
 
 
 class DataProcess():
-    def __init__(self, cfg, robot, theta, q, dq, ddq, u, F, t, savepath,save_flag):
+    def __init__(self, cfg, robot, arm_M, arm_I,theta, q, dq, ddq, u, F, t, savepath,save_flag):
         self.cfg = cfg
         self.robot = robot
+        self.arm_M = arm_M
+        self.arm_I = arm_I
         self.theta = theta
         self.q = q
         self.dq = dq
@@ -46,6 +48,7 @@ class DataProcess():
 
     def DirCreate(self, method_choice=2):
         trackingCoeff = self.cfg["Optimization"]["CostCoeff"]["trackingCoeff"]
+        VelCoeff = self.cfg["Optimization"]["CostCoeff"]["VelCoeff"]
         powerCoeff = self.cfg["Optimization"]["CostCoeff"]["powerCoeff"]
         forceCoeff = self.cfg["Optimization"]["CostCoeff"]["forceCoeff"]
         smoothCoeff = self.cfg["Optimization"]["CostCoeff"]["smoothCoeff"]
@@ -53,6 +56,7 @@ class DataProcess():
         Vt = self.cfg["Controller"]["Target"]
         Tp = self.cfg["Controller"]["Period"]
         Tst = self.cfg["Controller"]["Stance"]
+        dt = self.cfg["Controller"]["dt"]
         theta = round(self.theta, 3)
         
         date = time.strftime("%Y-%m-%d-%H-%M-%S")
@@ -60,15 +64,16 @@ class DataProcess():
             dirname = "-Traj-Tcf_"+str(trackingCoeff)+"-Pcf_"+str(powerCoeff)+"-Fcf_"+str(forceCoeff)+\
                         "-Scf_"+str(smoothCoeff)+"-Icf_"+str(impactCoeff)+"-Vt_"+str(Vt)+"-Tp_"+str(Tp)+"-Tst_"+str(Tst)
         if method_choice==2:
-            dirname = "-Traj-Tcf_"+str(trackingCoeff)+"-Pcf_"+str(powerCoeff)+"-Fcf_"+str(forceCoeff)+\
-                        "-Scf_"+str(smoothCoeff)+"-Icf_"+str(impactCoeff)+"-Vt_"+str(Vt)+"-Tp_"+str(Tp)+"-Ang_"+str(theta)
+            # dirname = "-Traj-Tcf_"+str(trackingCoeff)+"-Pcf_"+str(powerCoeff)+"-Fcf_"+str(forceCoeff)+\
+            #             "-Scf_"+str(smoothCoeff)+"-Icf_"+str(impactCoeff)+"-Vt_"+str(Vt)+"-Tp_"+str(Tp)+"-Ang_"+str(theta)
+            dirname = "Iarm_"+str(self.arm_I)+"-Marm_"+str(self.arm_M)
         elif method_choice==3:
             dirname = "-MPC-Pos_"+str(self.PostarCoef[1])+"-Tor_"+str(self.TorqueCoef[1])+"-DTor_"+str(self.DTorqueCoef[1]) +"-Vel_"+str(self.VeltarCoef[1])\
                     +"-dt_"+str(self.dt)+"-T_"+str(self.T)+"-Tp_"+str(self.Tp)+"-Tc_"+str(self.Nc)+"-ML_"+str(self.ML)+ "k" 
 
         # dirname = "-mM_"+str(m_M)
         # dirname = "-Ir_"+str(I_r)
-        save_dir = self.savepath + date + dirname+ "/"
+        save_dir = self.savepath + dirname+ "/"
 
         if self.save_flag:
             if not os.path.isdir(save_dir):
