@@ -5,6 +5,10 @@
 4. 混合动力学系统，系统在机器人足底和地面接触的时候存在切换
 5. 加入双臂的运动
 6. 2022.07.25: 本程序用于计算双足力和力矩对于奔跑速度的的曲线图
+7. 2022.09.23:
+        - 重新修改了各速度下的运动频率等参数
+        - 峰值力矩计算修改为平均力矩的计算方式
+        - 对比了有臂和无臂力矩与速度的关节（没有明显影响）
 '''
 
 from cProfile import label
@@ -1031,6 +1035,12 @@ def main(Period, Stance, Vt, armflag):
     q, dq, ddq, u, F, t = nonlinearOptimization.solve_and_output(
         robot, flag_save=save_flag, StorePath=StorePath)
     # endregion
+
+    Power = 0.0
+    for i in range(robot.N):
+        for k in range(6):
+            Power += np.abs(dq[i][k+2] * u[i][k])
+
     if save_flag:
         visual = DataProcess(cfg, robot, q, dq, ddq, u, F, t, save_dir)
         SaveDir = visual.DataSave(save_flag)
@@ -1149,7 +1159,7 @@ def main(Period, Stance, Vt, armflag):
 
         pass
     
-    return u, F, t
+    return u, F, t, Power
 
     pass
 
@@ -1333,117 +1343,149 @@ def VelForceMap():
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     import pickle
+    from matplotlib.pyplot import MultipleLocator
 
-    saveflag = False
-
-    Period = [0.53, 0.46, 0.46, 0.4, 0.4, 0.4, 0.35, 0.35, 0.35]
-    # Period = [0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2]
-    Stance = [0.45, 0.41, 0.37, 0.34, 0.35, 0.32, 0.25, 0.24, 0.23]
-
-    Vt = [2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
-    Vt_label = list(map(str, Vt))
-
-    Fy = np.array([0.0])
-    Fx = np.array([0.0])
-    u_h = np.array([0.0])
-    u_k = np.array([0.0])
-    u_s = np.array([0.0])
-
-    # for i in range(len(Period)):
-    #     temp_p = Period[i]
-    #     temp_s = Stance[i]
-    #     temp_v = Vt[i]
-
-    #     print("="*50)
-    #     print("Period: ", temp_p)
-    #     print("="*50)
-    #     print("Stance: ", temp_s)
-    #     print("="*50)
-    #     print("Vt: ", temp_v)
-
-    #     u, F, t = main(temp_p, temp_s, temp_v, True)
-    #     # u, F, t = main(temp_p, temp_s, 10.0, True)
-
-    #     temp_fx1_max = max(F[:, 0])
-    #     temp_fx2_max = max(F[:, 2])
-    #     temp_fx_max = max(temp_fx1_max, temp_fx2_max)
-
-    #     temp_fy1_max = max(F[:, 1])
-    #     temp_fy2_max = max(F[:, 3])
-    #     temp_fy_max = max(temp_fy1_max, temp_fy2_max)
-
-    #     temp_uh1_max = max(u[:, 0])
-    #     temp_uh2_max = max(u[:, 2])
-    #     temp_uh_max = max(temp_uh1_max, temp_uh2_max)
-
-    #     temp_uk1_max = max(u[:, 1])
-    #     temp_uk2_max = max(u[:, 3])
-    #     temp_uk_max = max(temp_uk1_max, temp_uk2_max)
-
-    #     temp_us1_max = max(u[:, 4])
-    #     temp_us2_max = max(u[:, 5])
-    #     temp_us_max = max(temp_us1_max, temp_us2_max)
-        
-    #     Fx = np.concatenate((Fx, [temp_fx_max]))
-    #     Fy = np.concatenate((Fy, [temp_fy_max]))
-    #     u_h = np.concatenate((u_h, [temp_uh_max]))
-    #     u_k = np.concatenate((u_k, [temp_uk_max]))
-    #     u_s = np.concatenate((u_s, [temp_us_max]))
-
-    #     pass
-
-    # Fx = Fx[1:]
-    # Fy = Fy[1:]
-    # u_h = u_h[1:]
-    # u_k = u_k[1:]
-    # u_s = u_s[1:]
-    # print(Fx)
-    Data = {'Fx': Fx, 'Fy': Fy, 'u_h': u_h, "u_k": u_k, "u_s": u_s}
-
+    saveflag = True
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
     save_dir = StorePath + "/data/" + str(todaytime) + "/"
-    name = "Vel-Force.pkl"
+    name = "Vel-Force-arm.pkl"
+    name2 = "Vel-Force-noarm.pkl"
 
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
-    
+
+    Period = [0.53, 0.46, 0.445, 0.38, 0.38, 0.35, 0.35, 0.33]
+    # Period = [0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2]
+    Stance = [0.45, 0.41, 0.32, 0.30, 0.30, 0.25, 0.24, 0.26]
+
+    Vt = [2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0]
+    Vt_label = list(map(str, Vt))
+    CollectNum=200
     if saveflag:
+        Fy = np.array([0.0])
+        Fx = np.array([0.0])
+        u_h = np.array([0.0])
+        u_k = np.array([0.0])
+        u_s = np.array([0.0])
+        Power = np.array([0.0])
+
+        for i in range(len(Period)):
+            temp_p = Period[i]
+            temp_s = Stance[i]
+            temp_v = Vt[i]
+
+            print("="*50)
+            print("Period: ", temp_p)
+            print("="*50)
+            print("Stance: ", temp_s)
+            print("="*50)
+            print("Vt: ", temp_v)
+
+            u, F, t, P = main(temp_p, temp_s, temp_v, True)
+            # u, F, t = main(temp_p, temp_s, 10.0, True)
+
+            temp_fx1_max = max(F[:, 0])
+            temp_fx2_max = max(F[:, 2])
+            temp_fx_max = max(temp_fx1_max, temp_fx2_max)
+
+            # temp_fy1_max = max(F[:, 1])
+            # temp_fy2_max = max(F[:, 3])
+            # temp_fy_max = max(temp_fy1_max, temp_fy2_max)
+
+            F_1 = 0
+            F_3 = 0
+            num1 = 0
+            num2 = 0
+            for k in range(len(t)):
+                if F[k, 1] > 0:
+                    F_1 += F[k,1]
+                    num1 += 1
+
+                if F[k, 3] > 1:
+                    F_3 += F[k,3]
+                    num2 += 1                
+
+            F_1 = F_1 / num1
+            F_3 = F_3 / num2
+            # print(F_1)
+
+            temp_fy_max = max(F_1, F_3)
+            
+            u0 = u[:, 0]
+            u2 = u[:, 2]
+            temp_uh1_max= np.sum(np.sqrt(u0**2)) / CollectNum
+            temp_uh2_max= np.sum(np.sqrt(u2**2)) / CollectNum
+            temp_uh_max = max(temp_uh1_max, temp_uh2_max)
+
+            u1 = u[:, 1]
+            u3 = u[:, 3]
+            temp_uk1_max = np.sum(np.sqrt(u1**2)) / CollectNum
+            temp_uk2_max = np.sum(np.sqrt(u3**2)) / CollectNum
+            temp_uk_max = max(temp_uk1_max, temp_uk2_max)
+
+            u4 = u[:, 4]
+            u5 = u[:, 5]
+            temp_us1_max = np.sum(np.sqrt(u4**2)) / CollectNum
+            temp_us2_max = np.sum(np.sqrt(u5**2)) / CollectNum
+            temp_us_max = max(temp_us1_max, temp_us2_max)
+            
+            Fx = np.concatenate((Fx, [temp_fx_max]))
+            Fy = np.concatenate((Fy, [temp_fy_max]))
+            u_h = np.concatenate((u_h, [temp_uh_max]))
+            u_k = np.concatenate((u_k, [temp_uk_max]))
+            u_s = np.concatenate((u_s, [temp_us_max]))
+            Power = np.concatenate((Power, [P]))
+
+            pass
+
+        Fx = Fx[1:]
+        Fy = Fy[1:]
+        u_h = u_h[1:]
+        u_k = u_k[1:]
+        u_s = u_s[1:]
+        Power = Power[1:]
+        print(Fx)
+        Data = {'Fx': Fx, 'Fy': Fy, 'u_h': u_h, "u_k": u_k, "u_s": u_s, "P": Power}
+
         with open(os.path.join(save_dir, name), 'wb') as f:
             pickle.dump(Data, f)
 
-    f = open(save_dir+name,'rb')
-    data = pickle.load(f)
+    else:
+        f = open(save_dir+name,'rb')
+        data = pickle.load(f)
 
-    Fx = data['Fx']
-    Fy = data['Fy']
-    u_h = data['u_h']
-    u_k = data['u_k']
-    u_s = data['u_s']
+        Fx = data['Fx']
+        Fy = data['Fy']
+        u_h = data['u_h']
+        u_k = data['u_k']
+        u_s = data['u_s']
 
     fig, axs = plt.subplots(1, 2, figsize=(10, 7))
     ax1 = axs[0]
     ax2 = axs[1]
-    # print(Fy, u_h, u_k, u_s)
 
     plt.style.use("science")
-    # cmap = mpl.cm.get_cmap('Paired')
     params = {
         'text.usetex': True,
-        'axes.labelsize': 12,
-        'lines.linewidth': 3,
-        'legend.fontsize': 15,
+        'image.cmap': 'inferno',
+        'font.size': 20,
+        "lines.linewidth": 3,
+        'axes.labelsize': 25,
+        'axes.titlesize': 22,
+        'xtick.labelsize': 25,
+        'ytick.labelsize': 25,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.3,
     }
-    mpl.rcParams.update(params)
-    # plt.style.use('fivethirtyeight')
+    plt.rcParams.update(params)
+
     title = [["Fy", "Torque_Hip"], ["Torque_Knee", "Torque_shoulder"]]
     ax1.plot(Vt, Fx, label="Fx")
     ax1.plot(Vt, Fy, label="Fy")
 
-    ax1.set_ylabel('Force(N)', fontsize = 15)
-    ax1.set_xlabel('Velocity(m/s)', fontsize = 15)
-    ax1.xaxis.set_tick_params(labelsize = 15)
-    ax1.yaxis.set_tick_params(labelsize = 15)
+    ax1.set_ylabel('Force(N)')
+    ax1.set_xlabel('Velocity(m/s)')
     # ax1.legend(loc='upper right', fontsize = 12)
     ax1.grid()
     ax1.legend()
@@ -1451,10 +1493,8 @@ def VelForceMap():
     ax2.plot(Vt, u_h, label="Hip Torque")
     ax2.plot(Vt, u_k, label="Knee Torque")
     ax2.plot(Vt, u_s, label="Shoulder Torque")
-    ax2.set_ylabel('Torque(N/m) ', fontsize = 15)
-    ax2.set_xlabel('Velocity(m/s)', fontsize = 15)
-    ax2.xaxis.set_tick_params(labelsize = 15)
-    ax2.yaxis.set_tick_params(labelsize = 15)
+    ax2.set_ylabel('Torque(N/m) ')
+    ax2.set_xlabel('Velocity(m/s)')
     # ax2.legend(loc='upper right', fontsize = 12)
     ax2.grid()
     ax2.legend()
@@ -1463,6 +1503,94 @@ def VelForceMap():
         ax[i].set_title(title[i][1])
 
     plt.show()
+
+def VelForceCmp():
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    import pickle
+    from matplotlib.pyplot import MultipleLocator
+
+    saveflag = True
+    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    todaytime=datetime.date.today()
+    save_dir = StorePath + "/data/" + str(todaytime) + "/"
+    name = "Vel-Force-arm.pkl"
+    name2 = "Vel-Force-noarm2.pkl"
+
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    Period = [0.53, 0.46, 0.445, 0.38, 0.38, 0.35, 0.35, 0.33]
+    # Period = [0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2]
+    Stance = [0.45, 0.41, 0.32, 0.30, 0.30, 0.25, 0.24, 0.26]
+
+    Vt = [2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0]
+    Vt_label = list(map(str, Vt))
+    CollectNum=200
+
+    f = open(save_dir+name,'rb')
+    data = pickle.load(f)
+    f2 = open(save_dir+name2,'rb')
+    data2 = pickle.load(f2)
+
+    Fx1 = data['Fx']
+    Fy1 = data['Fy']
+    u_h1 = data['u_h']
+    u_k1 = data['u_k']
+    u_s1 = data['u_s']
+    P1 = data['P']
+
+    Fx2 = data2['Fx']
+    Fy2 = data2['Fy']
+    u_h2 = data2['u_h']
+    u_k2 = data2['u_k']
+    u_s2 = data2['u_s']
+    P2 = data2['P']
+
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'image.cmap': 'inferno',
+        'font.size': 20,
+        "lines.linewidth": 3,
+        'axes.labelsize': 15,
+        'axes.titlesize': 20,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.4,
+    }
+    plt.rcParams.update(params)
+
+    title = [["Fx", "Fy"], ["Torque Hip", "Torque Knee"]]
+    ylabel = ["Force (N)", "Torque (N.m)"]
+    fig, axs = plt.subplots(2, 2, figsize=(12, 12))
+    ax1 = axs[0][0]
+    ax2 = axs[0][1]
+    ax3 = axs[1][0]
+    ax4 = axs[1][1]
+
+    ax1.plot(Vt, Fx1, label="arm free")
+    # ax1.plot(Vt, Fx2, label="arm bound")
+    # ax1.plot(Vt, P1, label="arm free")
+    # ax1.plot(Vt, P2, label="arm bound")
+    ax2.plot(Vt, Fy1, label="arm free")
+    # ax2.plot(Vt, Fy2, label="arm bound")
+    ax3.plot(Vt, u_h1, label="arm free")
+    # ax3.plot(Vt, u_h2, label="arm bound")
+    ax4.plot(Vt, u_k1, label="arm free")
+    # ax4.plot(Vt, u_k2, label="arm bound")
+
+    for i in range(2):
+        for j in range(2):
+            axs[i][j].set_ylabel(ylabel[i])
+            axs[i][j].set_xlabel("Velocity(m/s)")
+            axs[i][j].set_title(title[i][j])
+            axs[i][j].legend()
+            axs[i][j].grid()
+    
+    plt.show()
+    pass
 
 def VelAndAcc():
     # 这部分的脚本是用于对每个时刻的受力状态可视化
@@ -2232,7 +2360,8 @@ if __name__ == "__main__":
     # main(True)
     # main(False)
     # ForceMap()
-    VelForceMap()
+    # VelForceMap()
+    VelForceCmp()
     # ForceVisualization()
     # ForceAnalysis()
     # VelAndAcc()

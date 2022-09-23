@@ -7,23 +7,31 @@
 6. Biped_walk_half2: x0,z0 in hip and hO_hip = O_b+O_hip
 7. 2022.09.12: 
        Biped_walk_half3: 从上到下的三连杆倒立摆动力学方程建模方法(有脚踝关节力矩)
+8. 2022.09.23：
+        - 对质量和惯量参数遍历，计算力矩、功率、支撑力、平衡时间相对于惯性参数的计算结果
+        - 对比参数遍历后有臂和无臂对四个指标的影响
+        - 观察有臂和无臂目标函数变化情况
+        - 计算有臂和无臂各部分的角动量变化情况
+        - 将目标函数归一化（暂时失败）
 '''
 
 from ast import In, walk
 import os
 import yaml
 import datetime
+import pickle
 import casadi as ca
 from casadi import sin as s
 from casadi import cos as c
 import numpy as np
 from numpy.random import normal
+import matplotlib.pyplot as plt
 import time
 from ruamel.yaml import YAML
 from math import acos, atan2, sqrt, sin, cos
 from DataProcess import DataProcess
 from scipy import signal
-
+import matplotlib.animation as animation
 
 
 class Bipedal_hybrid():
@@ -314,21 +322,46 @@ class nlp():
         PosTar = 0
         Pf = [80, 20, 5]
         Vf = [40, 20, 5]
-        Ptar = [0, 0, np.pi]
         Ff = [30, 10, 5]
+
+        # Pf = [0.1, 0.1, 0.1]
+        # Vf = [0.8, 0.8, 0.8]
+        # Ff = [0.0, 0.2, 0.2]
+        # Pwf = [0.05, 0.2, 0.2]
+        Ptar = [0, 0, np.pi]
+
+        qmax = 1.5*np.pi
+        dqmax = 20
+        umax = 600
+        
+        # for i in range(walker.N):
+        #     for k in range(3):
+        #         power += ((walker.dq[i][k]*walker.u[i][k]) / (dqmax*umax))**2 * walker.dt*Pwf[k]
+        #         force += (walker.u[i][k] / umax)**2 * walker.dt * Ff[k]  
+
+        #         VelTar += (walker.dq[i][k]/dqmax)**2 * walker.dt * Vf[k]
+        #         PosTar += ((walker.q[i][k] - Ptar[k])/qmax)**2 * walker.dt * Pf[k]              
+        #         pass
+        #     pass
+        
+        # for j in range(3):
+        #     VelTar += (walker.dq[-1][j]/dqmax)**2 * Vf[j] * 100
+        #     PosTar += ((walker.q[-1][j] - Ptar[j])/qmax)**2 * Pf[j] * 500
+
         for i in range(walker.N):
             for k in range(3):
-                power += (walker.dq[i][k] * walker.u[i][k])**2 * walker.dt
+                power += ((walker.dq[i][k]*walker.u[i][k]))**2 * walker.dt
                 force += (walker.u[i][k] / walker.motor_mt)**2 * walker.dt * Ff[k]  
 
                 VelTar += (walker.dq[i][k])**2 * walker.dt * Vf[k]
-                PosTar += (walker.q[i][k] - Ptar[k])**2 * walker.dt * Pf[k]              
+                PosTar += ((walker.q[i][k] - Ptar[k]))**2 * walker.dt * Pf[k]
                 pass
             pass
         
         for j in range(3):
-            VelTar += (walker.dq[-1][j])**2 * Vf[j] * 99
-            PosTar += (walker.q[-1][j] - Ptar[j])**2 * Pf[j] * 500
+            VelTar += (walker.dq[-1][j])**2 * Vf[j]*99
+            PosTar += ((walker.q[-1][j] - Ptar[j]))**2 * Pf[j]*500
+       
         u = walker.u
 
         smooth = 0
@@ -345,6 +378,10 @@ class nlp():
         res = (res + PosTar*self.trackingCoeff) if (self.trackingCoeff > 1e-6) else res
         res = (res + force*self.forceCoeff) if (self.forceCoeff > 1e-6) else res
         res = (res + smooth*self.smoothCoeff) if (self.smoothCoeff > 1e-6) else res
+        # res = (res + self.powerCoeff)
+        # res = (res + self.velCoeff)
+        # res = (res + self.trackingCoeff)
+        # res = (res + self.forceCoeff)
 
         return res
 
@@ -579,22 +616,45 @@ def main(Mass, inertia, armflag, vis_flag):
     Fy2 = signal.filtfilt(b, a, Fy)
 
     #region: costfun cal
+    # Pf = [0.1, 0.1, 0.1]
+    # Vf = [0.8, 0.8, 0.8]
+    # Ff = [0.0, 0.2, 0.2]
+    # Pwf = [0.05, 0.2, 0.2]
+    Ptar = [0, 0, np.pi]
+
+    # qmax = 1.5*np.pi
+    # dqmax = 20
+    # umax = 600
+
     Pf = [80, 20, 5]
     Vf = [40, 20, 5]
-    Ptar = [0, 0, np.pi]
     Ff = [30, 10, 5]
+
     Pcostfun = 0.0
     Vcostfun = 0.0
     Fcostfun = 0.0
+    Power = 0.0
+    # for i in range(robot.N):
+    #     for k in range(3):
+    #         if i < robot.N-1:
+    #             Pcostfun += ((q[i][k] - Ptar[k])/qmax)**2 * robot.dt * Pf[k]
+    #             Fcostfun += (u[i][k] / umax)**2 * robot.dt * Ff[k]  
+    #             Vcostfun += ((dq[i][k])/dqmax)**2 * robot.dt * Vf[k]
+    #             Power += ((dq[i][k] * u[i][k])/(qmax*umax))
+    #         else:
+    #             Pcostfun += ((q[i][k] - Ptar[k])/qmax)**2 * robot.dt * Pf[k]
+    #             Vcostfun += ((dq[i][k])/dqmax)**2 * robot.dt * Vf[k]
     for i in range(robot.N):
         for k in range(3):
             if i < robot.N-1:
-                Pcostfun += (q[i][k] - Ptar[k])**2 * robot.dt * Pf[k]
+                Pcostfun += ((q[i][k] - Ptar[k]))**2 * robot.dt * Pf[k]
                 Fcostfun += (u[i][k] / robot.motor_mt)**2 * robot.dt * Ff[k]  
-                Vcostfun += (dq[i][k])**2 * robot.dt * Vf[k]
+                Vcostfun += ((dq[i][k]))**2 * robot.dt * Vf[k]
+                Power += np.abs(dq[i][k] * u[i][k])
             else:
-                Pcostfun += (q[i][k] - Ptar[k])**2 * robot.dt * Pf[k] * 99
-                Vcostfun += (dq[i][k])**2 * robot.dt * Vf[k] * 500
+                Pcostfun += ((q[i][k] - Ptar[k]))**2 * robot.dt * Pf[k]
+                Vcostfun += ((dq[i][k]))**2 * robot.dt * Vf[k]
+    print(Pcostfun, Vcostfun, Fcostfun)
     # endregion
     theta = np.pi/40
     visual = DataProcess(cfg, robot, Mass[2], inertia[2], theta, q, dq, ddq, u, F, t, save_dir, save_flag)
@@ -684,11 +744,10 @@ def main(Mass, inertia, armflag, vis_flag):
         fig3 = plt.figure(figsize=(10, 6), dpi=180, constrained_layout=False)
         plt.plot(t, Fx, label = 'Fx')
         plt.plot(t, Fy, label = 'Fy')
-        plt.plot(t, Fy2, label = 'Fy')
+        # plt.plot(t, Fy2, label = 'Fy')
         plt.xlabel("time (s)")
         plt.ylabel("Force (N)")
         plt.legend()
-
 
         if save_flag:
             savename1 =  SaveDir + "Traj.jpg"
@@ -704,7 +763,7 @@ def main(Mass, inertia, armflag, vis_flag):
 
         pass
     F = [Fx, Fy]
-    return u, Fy2, t, Pcostfun, Vcostfun, Fcostfun
+    return u, Fy2, t, Pcostfun, Vcostfun, Fcostfun, Power
 
 ## use mean value instead of peak value to analysis force map
 def ForceMapMV():
@@ -715,25 +774,26 @@ def ForceMapMV():
     from matplotlib.pyplot import MultipleLocator
     from mpl_toolkits.mplot3d import Axes3D
 
-    saveflag = False
-    armflag = True
+    saveflag = True
+    armflag = False
     vis_flag = False
+    ani_flag = False
 
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
     save_dir = StorePath + "/data/" + str(todaytime) + "/"
-    name = "ForceMap3-7-arm-cfun.pkl"
+    name = "ForceMap3-7-noarm-cfun.pkl"
     
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
     M_arm = [3.0, 4.0, 5.0, 6.0, 6.5, 7.0, 7.5]
     # M_arm = [4.0, 6.0, 7.0]
-    # M_arm = [7.5]
+    # M_arm = [4.0]
     M_label = list(map(str, M_arm))
     I_arm = [0.012, 0.015, 0.03, 0.04, 0.06, 0.07, 0.09]
     # I_arm = [0.012, 0.04, 0.09]
-    # I_arm = [0.012]
+    # I_arm = [0.03]
     I_label = list(map(str, I_arm))
 
     Mass = [15, 20]
@@ -752,6 +812,7 @@ def ForceMapMV():
     Pcostfun = np.array([[0.0]*len(M_arm)])
     Vcostfun = np.array([[0.0]*len(M_arm)])
     Fcostfun = np.array([[0.0]*len(M_arm)])
+    Power = np.array([[0.0]*len(M_arm)])
 
     CollectNum = 1000
     dt = 0.002
@@ -770,6 +831,7 @@ def ForceMapMV():
             P_J = []
             V_J = []
             F_J = []
+            Pw_J=[]
             for j in range(len(M_arm)):
                 temp_m = []
                 temp_m.extend(Mass)
@@ -782,7 +844,7 @@ def ForceMapMV():
                 print("="*50)
                 print("armflag: ", armflag)
 
-                u, F, t, Ptmp, Vtmp, Ftmp = main(temp_m, temp_i, armflag, vis_flag)
+                u, F, t, Ptmp, Vtmp, Ftmp, Pwtmp = main(temp_m, temp_i, armflag, vis_flag)
 
                 F_1 = 0
                 num1 = 0
@@ -819,6 +881,7 @@ def ForceMapMV():
                 P_J.append(Ptmp)
                 V_J.append(Vtmp)
                 F_J.append(Ftmp)
+                Pw_J.append(Pwtmp)
 
                 pass
             # print(u0.shape,u_k_max)
@@ -831,6 +894,7 @@ def ForceMapMV():
             Pcostfun = np.concatenate((Pcostfun, [P_J]), axis = 0)
             Vcostfun = np.concatenate((Vcostfun, [V_J]), axis = 0)
             Fcostfun = np.concatenate((Fcostfun, [F_J]), axis = 0)
+            Power = np.concatenate((Power, [Pw_J]), axis = 0)
 
             pass
         Fy = Fy[1:]
@@ -841,9 +905,10 @@ def ForceMapMV():
         Pcostfun = Pcostfun[1:]
         Vcostfun = Vcostfun[1:]
         Fcostfun = Fcostfun[1:]
+        Power = Power[1:]
 
         Data = {'Fy': Fy, 'u_h': u_h, "u_s": u_s,"u_a": u_a, "t_b": t_b,
-                'P_J': Pcostfun, 'V_J': Vcostfun, 'F_J': Fcostfun}
+                'P_J': Pcostfun, 'V_J': Vcostfun, 'F_J': Fcostfun, 'Pw_J': Power}
         if os.path.exists(os.path.join(save_dir, name)):
             RandNum = random.randint(0,100)
             name = "ForceMap" + str(RandNum)+ ".pkl"
@@ -880,6 +945,7 @@ def ForceMapMV():
 
     plt.rcParams.update(params)
 
+    # region: imshow
     fig, axs = plt.subplots(2, 2, figsize=(12, 12))
     ax1 = axs[0][0]
     ax2 = axs[0][1]
@@ -923,6 +989,9 @@ def ForceMapMV():
 
             if i==0 and j==0:
                 cb[i][j].set_label("Force(N)")
+            elif i==1 and j==1:
+                cb[i][j].set_label("Time(s)")
+
             else:
                 cb[i][j].set_label("Torque(N/m)")
             
@@ -933,7 +1002,8 @@ def ForceMapMV():
                     data = np.round(data, ids)
                     ax[i][j].text(m,k,data[k][m], ha="center", va="center",color="w",fontsize=10)
     fig.tight_layout()
-
+    # endregion
+    
     fig2, axs2 = plt.subplots(2, 2, figsize=(12, 12), subplot_kw={"projection": "3d"})
     axes1 = axs2[0][0]
     axes2 = axs2[0][1]
@@ -953,133 +1023,21 @@ def ForceMapMV():
             axs2[i][j].set_zlabel(title[i][j])
             axs2[i][j].set_title(title[i][j])
 
+    # def rotate(angle):
+    #     axes1.view_init(30, angle)
+    #     axes2.view_init(30, angle)
+    #     axes3.view_init(30, angle)
+    #     axes4.view_init(30, angle)
+    # rot_animation = animation.FuncAnimation(fig2, rotate, frames=np.arange(0,362,2), interval=0.1, blit=False)
+    
+    # if ani_flag:
+    #     ani_name = save_dir + "rotation.gif"
+    #     rot_animation.save(ani_name, fps=30, writer='pillow')
     plt.show()
+    
     pass
 
 def ResCmp():
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl
-    import pickle
-    import random
-    from matplotlib.pyplot import MultipleLocator
-    from mpl_toolkits.mplot3d import Axes3D
-    from scipy import interpolate
-
-    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    todaytime=datetime.date.today()
-    save_dir = StorePath + "/data/" + str(todaytime) + "/"
-    name1 = "ForceMap3-7-c-arm.pkl"
-    name2 = "ForceMap3-7-c-noarm.pkl"
-    
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-
-    M_arm = [3.0, 4.0, 5.0, 6.0, 6.5, 7.0, 7.5]
-    I_arm = [0.012, 0.015, 0.03, 0.04, 0.06, 0.07, 0.09]
-    M_label = list(map(str, M_arm))
-    I_label = list(map(str, I_arm))
-
-    f1 = open(save_dir+name1,'rb')
-    data1 = pickle.load(f1)
-    f2 = open(save_dir+name2,'rb')
-    data2 = pickle.load(f2)
-
-    Fy = data1['Fy']
-    u_h = data1['u_h']
-    u_s = data1['u_s']
-    u_a = data1['u_a']
-    t_b = data1['t_b']
-
-    Fy2 = data2['Fy']
-    u_h2 = data2['u_h']
-    u_s2 = data2['u_s']
-    u_a2 = data2['u_a']
-    t_b2 = data2['t_b']
-    t_b2[0][6] = 0.9
-
-    # 数据插值光滑
-    Mnew = np.linspace(3, 7.5, 30)
-    Inew = np.linspace(0.012, 0.09, 30)
-    ffy = interpolate.interp2d(M_arm, I_arm, Fy, kind='cubic')
-    fuh = interpolate.interp2d(M_arm, I_arm, u_h, kind='cubic')
-    fus = interpolate.interp2d(M_arm, I_arm, u_s, kind='cubic')
-    ftb = interpolate.interp2d(M_arm, I_arm, t_b, kind='linear')
-    Fynew = ffy(Mnew, Inew)
-    uhnew = fuh(Mnew, Inew)
-    usnew = fus(Mnew, Inew)
-    tbnew = ftb(Mnew, Inew)
-
-    ffy2 = interpolate.interp2d(M_arm, I_arm, Fy2, kind='cubic')
-    fuh2 = interpolate.interp2d(M_arm, I_arm, u_h2, kind='cubic')
-    fus2 = interpolate.interp2d(M_arm, I_arm, u_s2, kind='cubic')
-    ftb2 = interpolate.interp2d(M_arm, I_arm, t_b2, kind='linear')
-    Fynew2 = ffy2(Mnew, Inew)
-    uhnew2 = fuh2(Mnew, Inew)
-    usnew2 = fus2(Mnew, Inew)
-    tbnew2 = ftb2(Mnew, Inew)
-
-    
-    plt.style.use("science")
-    params = {
-        'text.usetex': True,
-        'image.cmap': 'inferno',
-        'font.size': 18,
-        'axes.labelsize': 15,
-        'axes.titlesize': 20,
-        'xtick.labelsize': 15,
-        'ytick.labelsize': 15,
-        'legend.fontsize': 12,
-        'figure.subplot.wspace': 0.4,
-        'figure.subplot.hspace': 0.3,
-    }
-
-    plt.rcParams.update(params)
-    title = [["Fy", "Torque-Hip"], ["Torque-shoulder", "balance time"]]
-    Dataset = {"Fy":Fy, "Torque-shoulder":u_s, "Torque-Hip":u_h, "balance time":t_b}
-
-    fig2, axs2 = plt.subplots(2, 2, figsize=(12, 12), subplot_kw={"projection": "3d"})
-    axes1 = axs2[0][0]
-    axes2 = axs2[0][1]
-    axes3 = axs2[1][0]
-    axes4 = axs2[1][1]
-    M_arm, I_arm = np.meshgrid(M_arm, I_arm)
-    Mnew, Inew = np.meshgrid(Mnew, Inew)
-
-
-    # surf1 = axes1.plot_surface(M_arm, I_arm, Fy)
-    # surf12 = axes1.plot_surface(M_arm, I_arm, Fy2)
-    # surf2 = axes2.plot_surface(M_arm, I_arm, u_h)
-    # surf22 = axes2.plot_surface(M_arm, I_arm, u_h2)
-    # surf3 = axes3.plot_surface(M_arm, I_arm, u_s)
-    # surf32 = axes3.plot_surface(M_arm, I_arm, u_s2)
-    # surf4 = axes4.plot_surface(M_arm, I_arm, t_b, cmap="inferno")
-    # surf42 = axes4.plot_surface(M_arm, I_arm, t_b2, cmap="inferno")
-    surf1 = axes1.plot_surface(Mnew, Inew, Fynew, label="Fy arm free")
-    surf12 = axes1.plot_surface(Mnew, Inew, Fynew2, label="Fy arm bound")
-    surf2 = axes2.plot_surface(Mnew, Inew, uhnew, label="Torque arm free")
-    surf22 = axes2.plot_surface(Mnew, Inew, uhnew2, label="Torque arm bound")
-    surf3 = axes3.plot_surface(Mnew, Inew, usnew, label="Torque arm free")
-    surf32 = axes3.plot_surface(Mnew, Inew, usnew2, label="Torque arm bound")
-    surf4 = axes4.plot_surface(Mnew, Inew, tbnew, label="Balance time arm free")
-    surf42 = axes4.plot_surface(Mnew, Inew, tbnew2, label="Balance time arm bound")
-    surf = [surf1,surf12,surf2,surf22,surf3,surf32,surf4,surf42]
-   
-    for k in range(8):
-        surf[k]._facecolors2d=surf[k]._facecolors3d
-        surf[k]._edgecolors2d=surf[k]._edgecolors3d
-    for i in range(2):
-        for j in range(2):
-
-            axs2[i][j].set_ylabel("Inertia")
-            axs2[i][j].set_xlabel("Mass")
-            axs2[i][j].set_zlabel(title[i][j])
-            axs2[i][j].set_title(title[i][j])
-            axs2[i][j].legend(loc="upper right")
-
-    plt.show()
-    pass
-
-def CostFunAnalysis():
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     import pickle
@@ -1107,36 +1065,46 @@ def CostFunAnalysis():
     f2 = open(save_dir+name2,'rb')
     data2 = pickle.load(f2)
 
-    Pcostfun1 = data1['P_J']
-    Vcostfun1 = data1['V_J']
-    Fcostfun1 = data1['F_J']
-    Pcostfun2 = data2['P_J']
-    Vcostfun2 = data2['V_J']
-    Fcostfun2 = data2['F_J']
+    Fy = data1['Fy']
+    u_h = data1['u_h']
+    u_s = data1['u_s']
+    u_a = data1['u_a']
+    t_b = data1['t_b']
+    Pwcostfun1 = data1['P_J']
 
-    Sumcostfun1 = Pcostfun1 + Vcostfun1 + Fcostfun1
-    Sumcostfun2 = Pcostfun2 + Vcostfun2 + Fcostfun2
+
+    Fy2 = data2['Fy']
+    u_h2 = data2['u_h']
+    u_s2 = data2['u_s']
+    u_a2 = data2['u_a']
+    t_b2 = data2['t_b']
+    Pwcostfun2 = data2['P_J']
+    t_b2[0][6] = 0.9
 
     # 数据插值光滑
     Mnew = np.linspace(3, 7.5, 30)
     Inew = np.linspace(0.012, 0.09, 30)
-    fp1 = interpolate.interp2d(M_arm, I_arm, Pcostfun1, kind='cubic')
-    fv1 = interpolate.interp2d(M_arm, I_arm, Vcostfun1, kind='cubic')
-    ff1 = interpolate.interp2d(M_arm, I_arm, Fcostfun1, kind='cubic')
-    fs1 = interpolate.interp2d(M_arm, I_arm, Sumcostfun1, kind='cubic')
-    Pnew = fp1(Mnew, Inew)
-    Vnew = fv1(Mnew, Inew)
-    Fnew = ff1(Mnew, Inew)
-    Snew = fs1(Mnew, Inew)
+    ffy = interpolate.interp2d(M_arm, I_arm, Fy, kind='cubic')
+    fuh = interpolate.interp2d(M_arm, I_arm, u_h, kind='cubic')
+    fus = interpolate.interp2d(M_arm, I_arm, u_s, kind='cubic')
+    ftb = interpolate.interp2d(M_arm, I_arm, t_b, kind='linear')
+    fw1 = interpolate.interp2d(M_arm, I_arm, Pwcostfun1, kind='cubic')
+    Fynew = ffy(Mnew, Inew)
+    uhnew = fuh(Mnew, Inew)
+    usnew = fus(Mnew, Inew)
+    tbnew = ftb(Mnew, Inew)
+    Pwnew1 = fw1(Mnew, Inew)
 
-    fp2 = interpolate.interp2d(M_arm, I_arm, Pcostfun2, kind='cubic')
-    fv2 = interpolate.interp2d(M_arm, I_arm, Vcostfun2, kind='cubic')
-    ff2 = interpolate.interp2d(M_arm, I_arm, Fcostfun2, kind='cubic')
-    fs2 = interpolate.interp2d(M_arm, I_arm, Sumcostfun2, kind='cubic')
-    Pnew2 = fp2(Mnew, Inew)
-    Vnew2 = fv2(Mnew, Inew)
-    Fnew2 = ff2(Mnew, Inew)
-    Snew2 = fs2(Mnew, Inew)
+    ffy2 = interpolate.interp2d(M_arm, I_arm, Fy2, kind='cubic')
+    fuh2 = interpolate.interp2d(M_arm, I_arm, u_h2, kind='cubic')
+    fus2 = interpolate.interp2d(M_arm, I_arm, u_s2, kind='cubic')
+    ftb2 = interpolate.interp2d(M_arm, I_arm, t_b2, kind='linear')
+    fw2 = interpolate.interp2d(M_arm, I_arm, Pwcostfun2, kind='cubic')
+    Fynew2 = ffy2(Mnew, Inew)
+    uhnew2 = fuh2(Mnew, Inew)
+    usnew2 = fus2(Mnew, Inew)
+    tbnew2 = ftb2(Mnew, Inew)
+    Pwnew2 = fw2(Mnew, Inew)
 
     
     plt.style.use("science")
@@ -1148,13 +1116,185 @@ def CostFunAnalysis():
         'axes.titlesize': 20,
         'xtick.labelsize': 15,
         'ytick.labelsize': 15,
-        'legend.fontsize': 12,
-        'figure.subplot.wspace': 0.4,
+        'legend.fontsize': 15,
+        'axes.titlepad': 15.0,
+        'axes.labelpad': 12.0,
+        'figure.subplot.wspace': 0.2,
         'figure.subplot.hspace': 0.3,
     }
 
     plt.rcParams.update(params)
-    title = [["Pos CostFun", "Vel CostFun"], ["Force CostFun", "Sum CostFun"]]
+    title = [["Fy", "Torque-Hip"], ["Power", "balance time"]]
+    Dataset = {"Fy":Fy, "Torque-shoulder":u_s, "Torque-Hip":u_h, "balance time":t_b}
+
+    fig, axs = plt.subplots(1, 1, figsize=(12, 12))
+    ax1 = axs
+    print(t_b)
+    pcm1 = ax1.imshow(Pwcostfun1, vmin = 40, vmax = 50)
+
+    cb1 = fig.colorbar(pcm1, ax=ax1)
+    ax1.set_xticks(np.arange(len(M_label)))
+    ax1.set_xticklabels(M_label)
+    ax1.set_yticks(np.arange(len(I_label)))
+    ax1.set_ylim(-0.5, len(I_label)-0.5)
+    ax1.set_yticklabels(I_label)
+    # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+    #        labeltop=True, labelbottom=False)
+
+    ax1.set_ylabel("Inertia")
+    ax1.set_xlabel("Mass")
+    ax1.set_title("Power")
+    cb1.set_label("Power (N)")
+    for k in range(len(M_arm)):
+        for m in range(len(I_arm)):
+            data = Pwcostfun1
+            data = np.round(data, 2)
+            ax1.text(m,k,data[k][m], ha="center", va="center",color="w",fontsize=10)
+    fig.tight_layout()
+
+    fig2, axs2 = plt.subplots(2, 2, figsize=(12, 12), subplot_kw={"projection": "3d"})
+    axes1 = axs2[0][0]
+    axes2 = axs2[0][1]
+    axes3 = axs2[1][0]
+    axes4 = axs2[1][1]
+    M_arm, I_arm = np.meshgrid(M_arm, I_arm)
+    Mnew, Inew = np.meshgrid(Mnew, Inew)
+
+
+    # surf1 = axes1.plot_surface(M_arm, I_arm, Fy)
+    # surf12 = axes1.plot_surface(M_arm, I_arm, Fy2)
+    # surf2 = axes2.plot_surface(M_arm, I_arm, u_h)
+    # surf22 = axes2.plot_surface(M_arm, I_arm, u_h2)
+    # surf3 = axes3.plot_surface(M_arm, I_arm, u_s)
+    # surf32 = axes3.plot_surface(M_arm, I_arm, u_s2)
+    # surf4 = axes4.plot_surface(M_arm, I_arm, t_b, cmap="inferno")
+    # surf42 = axes4.plot_surface(M_arm, I_arm, t_b2, cmap="inferno")
+    surf1 = axes1.plot_surface(Mnew, Inew, Fynew, label="arm free")
+    surf12 = axes1.plot_surface(Mnew, Inew, Fynew2, label="arm bound")
+    surf2 = axes2.plot_surface(Mnew, Inew, uhnew, label="arm free")
+    surf22 = axes2.plot_surface(Mnew, Inew, uhnew2, label="arm bound")
+    surf3 = axes3.plot_surface(Mnew, Inew, Pwnew1, label="arm free")
+    surf32 = axes3.plot_surface(Mnew, Inew, Pwnew2, label="arm bound")
+    surf4 = axes4.plot_surface(Mnew, Inew, tbnew, label="arm free")
+    surf42 = axes4.plot_surface(Mnew, Inew, tbnew2, label="arm bound")
+    surf = [surf1,surf12,surf2,surf22,surf3,surf32,surf4,surf42]
+   
+    for k in range(8):
+        surf[k]._facecolors2d=surf[k]._facecolors3d
+        surf[k]._edgecolors2d=surf[k]._edgecolors3d
+    for i in range(2):
+        for j in range(2):
+
+            axs2[i][j].set_ylabel("Inertia")
+            axs2[i][j].set_xlabel("Mass")
+            axs2[i][j].set_zlabel(title[i][j])
+            axs2[i][j].set_title(title[i][j])
+            axs2[i][j].legend(loc="upper left")
+    axes4.set_zlim(0.0, 1.2)
+    axes3.set_zlim(0.0, 150)
+
+    # elev =20
+    # def rotate(angle):
+    #     axes1.view_init(elev, angle)
+    #     axes2.view_init(elev, angle)
+    #     axes3.view_init(elev, angle)
+    #     axes4.view_init(elev, angle)
+    # rot_animation = animation.FuncAnimation(fig2, rotate, frames=np.arange(0,150,0.8), interval=0.3, blit=False)
+    # ani_flag = True
+    # if ani_flag:
+    #     ani_name = save_dir + "rotation ResCmp.gif"
+    #     rot_animation.save(ani_name, fps=30, writer='pillow')
+
+    plt.show()
+    pass
+
+def CostFunAnalysis():
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    import pickle
+    import random
+    from matplotlib.pyplot import MultipleLocator
+    from mpl_toolkits.mplot3d import Axes3D
+    from scipy import interpolate
+
+    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    todaytime=datetime.date.today()
+    save_dir = StorePath + "/data/" + str(todaytime) + "/"
+    name1 = "ForceMap3-7-arm-pw2.pkl"
+    name2 = "ForceMap3-7-noarm-pw.pkl"
+    
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    M_arm = [3.0, 4.0, 5.0, 6.0, 6.5, 7.0, 7.5]
+    I_arm = [0.012, 0.015, 0.03, 0.04, 0.06, 0.07, 0.09]
+    M_label = list(map(str, M_arm))
+    I_label = list(map(str, I_arm))
+
+    f1 = open(save_dir+name1,'rb')
+    data1 = pickle.load(f1)
+    f2 = open(save_dir+name2,'rb')
+    data2 = pickle.load(f2)
+
+    Pcostfun1 = data1['P_J']
+    Vcostfun1 = data1['V_J']
+    Pwcostfun1 = data1['Pw_J']
+    Pwcostfun1 = Pwcostfun1/1000
+    Fcostfun1 = data1['F_J']
+    Pcostfun2 = data2['P_J']
+    Vcostfun2 = data2['V_J']
+    Fcostfun2 = data2['F_J']
+    Pwcostfun2 = data2['Pw_J']
+    Pwcostfun2 = Pwcostfun2/1000
+
+    Sumcostfun1 = Pcostfun1 + Vcostfun1 + Fcostfun1
+    Sumcostfun2 = Pcostfun2 + Vcostfun2 + Fcostfun2
+
+    # 数据插值光滑
+    Mnew = np.linspace(3, 7.5, 30)
+    Inew = np.linspace(0.012, 0.09, 30)
+    fp1 = interpolate.interp2d(M_arm, I_arm, Pcostfun1, kind='cubic')
+    fv1 = interpolate.interp2d(M_arm, I_arm, Vcostfun1, kind='cubic')
+    ff1 = interpolate.interp2d(M_arm, I_arm, Fcostfun1, kind='cubic')
+    fs1 = interpolate.interp2d(M_arm, I_arm, Sumcostfun1, kind='cubic')
+    fw1 = interpolate.interp2d(M_arm, I_arm, Pwcostfun1, kind='cubic')
+    Pnew = fp1(Mnew, Inew)
+    Vnew = fv1(Mnew, Inew)
+    Fnew = ff1(Mnew, Inew)
+    Snew = fs1(Mnew, Inew)
+    Pwnew1 = fw1(Mnew, Inew)
+
+    fp2 = interpolate.interp2d(M_arm, I_arm, Pcostfun2, kind='cubic')
+    fv2 = interpolate.interp2d(M_arm, I_arm, Vcostfun2, kind='cubic')
+    ff2 = interpolate.interp2d(M_arm, I_arm, Fcostfun2, kind='cubic')
+    fs2 = interpolate.interp2d(M_arm, I_arm, Sumcostfun2, kind='cubic')
+    fw2 = interpolate.interp2d(M_arm, I_arm, Pwcostfun2, kind='cubic')
+    Pnew2 = fp2(Mnew, Inew)
+    Vnew2 = fv2(Mnew, Inew)
+    Fnew2 = ff2(Mnew, Inew)
+    Snew2 = fs2(Mnew, Inew)
+    Pwnew2 = fw2(Mnew, Inew)
+
+    
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'image.cmap': 'inferno',
+        'font.size': 18,
+        'axes.labelsize': 15,
+        'axes.titlesize': 20,
+        'xtick.labelsize': 15,
+        'ytick.labelsize': 15,
+        'legend.fontsize': 15,
+        'axes.titlepad': 15.0,
+        'axes.labelpad': 12.0,
+        'figure.subplot.wspace': 0.2,
+        'figure.subplot.hspace': 0.3,
+    }
+
+    plt.rcParams.update(params)
+    title = [[r'$\sum (\theta_i-\theta_d)^2*c_p$', r'$\sum (\dot{\theta}_i-\dot{\theta}_d)^2*c_v$'], 
+            [r'$\sum (u_i/u_{max})^2*c_f$', r'$\sum (u_i*\theta_i)^2$']]
 
     fig2, axs2 = plt.subplots(2, 2, figsize=(12, 12), subplot_kw={"projection": "3d"})
     axes1 = axs2[0][0]
@@ -1170,8 +1310,8 @@ def CostFunAnalysis():
     surf22 = axes2.plot_surface(Mnew, Inew, Vnew2, label="arm bound")
     surf3 = axes3.plot_surface(Mnew, Inew, Fnew, label="arm free")
     surf32 = axes3.plot_surface(Mnew, Inew, Fnew2, label="arm bound")
-    surf4 = axes4.plot_surface(Mnew, Inew, Snew, label="arm free")
-    surf42 = axes4.plot_surface(Mnew, Inew, Snew2, label="arm bound")
+    surf4 = axes4.plot_surface(Mnew, Inew, Pwnew1, label="arm free")
+    surf42 = axes4.plot_surface(Mnew, Inew, Pwnew2, label="arm bound")
     surf = [surf1,surf12,surf2,surf22,surf3,surf32,surf4,surf42]
    
     for k in range(8):
@@ -1182,22 +1322,203 @@ def CostFunAnalysis():
 
             axs2[i][j].set_ylabel("Inertia")
             axs2[i][j].set_xlabel("Mass")
-            axs2[i][j].set_zlabel(title[i][j])
+            axs2[i][j].set_zlabel("CostFun")
             axs2[i][j].set_title(title[i][j])
-            axs2[i][j].legend(loc="upper right")
+            axs2[i][j].legend(loc="upper left")
 
+    ani_flag = False
+    if ani_flag:
+        elev = 20
+        def rotate(angle):
+            axes1.view_init(elev, angle)
+            axes2.view_init(elev, angle)
+            axes3.view_init(elev, angle)
+            axes4.view_init(elev, angle)
+        rot_animation = animation.FuncAnimation(fig2, rotate, frames=np.arange(0,120,1), interval=0.2, blit=False)
+    
+        ani_name = save_dir + "rotation Cfun.gif"
+        rot_animation.save(ani_name, fps=25, writer='pillow')
+
+    print(Pwcostfun1)
+    fig, axs = plt.subplots(1, 1, figsize=(12, 12))
+    ax1 = axs
+    pcm1 = ax1.imshow(Pwcostfun1, vmin = -4, vmax = 0)
+    cb1 = fig.colorbar(pcm1, ax=ax1)
+    ax1.set_xticks(np.arange(len(M_label)))
+    ax1.set_xticklabels(M_label)
+    ax1.set_yticks(np.arange(len(I_label)))
+    ax1.set_ylim(-0.5, len(I_label)-0.5)
+    ax1.set_yticklabels(I_label)
+    # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+    #        labeltop=True, labelbottom=False)
+
+    ax1.set_ylabel("Inertia")
+    ax1.set_xlabel("Mass")
+    ax1.set_title("Power")
+    cb1.set_label("Power(N.s)")
+    
+    for k in range(len(M_arm)):
+        for m in range(len(I_arm)):
+            ids = i*2+1
+            data = Pwcostfun1
+            data = np.round(data, ids)
+            ax1.text(m,k,data[k][m], ha="center", va="center",color="w",fontsize=10)
+    fig.tight_layout()
     plt.show()
     pass
+
+def CharactTime():
+    M_arm = [3.0, 4.0, 5.0, 6.0, 6.5, 7.0, 7.5]
+    M_label = list(map(str, M_arm))
+    I_arm = [0.012, 0.015, 0.03, 0.04, 0.06, 0.07, 0.09]
+    I_label = list(map(str, I_arm))
+
+    lc = [0.5, 0.25, 0.2]
+    L = [0.9, 0.5, 0.4]
+    g = 9.8
+
+    Mass = [15, 20]
+    inertia = [1.0125, 0.417]
+    T=[]
+    for j in range(len(M_arm)):
+        m = Mass[0]+Mass[1]+M_arm[j]
+        l = (Mass[0]*lc[0]+Mass[1]*(L[0]+lc[1])+M_arm[j]*(L[0]+L[1]-lc[2])) / m
+        I = m*l**2/12
+        Tp = 2*np.pi*np.sqrt((m*l**2+I)/(m*g*l))
+        T.append(Tp)
+    print(T)
+    pass
+
+def VelAndPos(q, dq):
+    L = [0.9, 0.5, 0.4]
+    lc = [0.5, 0.25, 0.2]
+
+    x0 = lc[0]*sin(q[0])
+    y0 = lc[0]*cos(q[0])
+    x1 = L[0]*sin(q[0])+lc[1]*sin(q[0]+q[1])
+    y1 = L[0]*cos(q[0])+lc[1]*cos(q[0]+q[1])
+    x2 = L[0]*sin(q[0])+L[1]*sin(q[0]+q[1])+lc[2]*sin(q[0]+q[1]+q[2])
+    y2 = L[0]*cos(q[0])+L[1]*cos(q[0]+q[1])+lc[2]*cos(q[0]+q[1]+q[2])
+
+    dx0 = lc[0]*cos(q[0])*dq[0]
+    dy0 = -lc[0]*sin(q[0])*dq[0]
+    dx1 = L[0]*cos(q[0])*(dq[0])+lc[1]*cos(q[0]+q[1])*(dq[0]+dq[1])
+    dy1 = -L[0]*sin(q[0])*dq[0]-lc[1]*sin(q[0]+q[1])*(dq[0]+dq[1])
+    dx2 = L[0]*cos(q[0])*dq[0]+L[1]*cos(q[0]+q[1])*(dq[0]+dq[1])+lc[2]*cos(q[0]+q[1]+q[2])*(dq[0]+dq[1]+dq[2])
+    dy2 = -L[0]*sin(q[0])*dq[0]-L[1]*sin(q[0]+q[1])*(dq[0]+dq[1])-lc[2]*sin(q[0]+q[1]+q[2])*(dq[0]+dq[1]+dq[2])
+
+    r = np.asarray([[x0, y0],
+        [x1, y1],
+        [x2, y2]])
+    v = np.asarray([[dx0, dy0],
+        [dx1, dy1],
+        [dx2, dy2]])
+    return r, v
+    pass
+
+def MOmentCal():
+    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    todaytime=datetime.date.today()
+    save_dir = StorePath + "/data/" + str(todaytime) + "/"
+    name1 = "arm.pkl"
+    name2 = "noarm.pkl"
+    
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    f = open(save_dir+name1,'rb')
+    data = pickle.load(f)
+    f2 = open(save_dir+name2,'rb')
+    data2 = pickle.load(f2)
+
+    I = [15, 20, 4.0]
+    m = [1.0125, 0.417, 0.03]
+    q = data['q']
+    dq = data['dq']
+    t = data['t']
+    q2 = data2['q']
+    dq2 = data2['dq']
+    t2 = data2['t']
+
+    LegMomt = np.array([0.0])
+    BodyMomt = np.array([0.0])
+    ArmMomt = np.array([0.0])
+    LegMomt2 = np.array([0.0])
+    BodyMomt2 = np.array([0.0])
+    ArmMomt2 = np.array([0.0])
+
+    for i in range(len(t)):
+        r, v = VelAndPos(q[i], dq[i])
+        r2, v2 = VelAndPos(q2[i], dq2[i])
+        legtmp = I[0]*dq[i][0] + m[0]*np.cross(r[0,:], v[0,:])
+        bodytmp = I[1]*dq[i][1] + m[1]*np.cross(r[1,:], v[1,:])
+        armtmp = I[2]*dq[i][2] + m[2]*np.cross(r[2,:], v[2,:])
+
+        LegMomt = np.concatenate((LegMomt, [legtmp]))
+        BodyMomt = np.concatenate((BodyMomt, [bodytmp]))
+        ArmMomt = np.concatenate((ArmMomt, [armtmp]))
+
+        legtmp2 = I[0]*dq2[i][0] + m[0]*np.cross(r2[0,:], v2[0,:])
+        bodytmp2 = I[1]*dq2[i][1] + m[1]*np.cross(r2[1,:], v2[1,:])
+        armtmp2 = I[2]*dq2[i][2] + m[2]*np.cross(r2[2,:], v2[2,:])
+
+        LegMomt2 = np.concatenate((LegMomt2, [legtmp2]))
+        BodyMomt2 = np.concatenate((BodyMomt2, [bodytmp2]))
+        ArmMomt2 = np.concatenate((ArmMomt2, [armtmp2]))
+        pass
+
+    LegMomt = LegMomt[1:]
+    BodyMomt = BodyMomt[1:]
+    ArmMomt = ArmMomt[1:]
+    LegMomt2 = LegMomt2[1:]
+    BodyMomt2 = BodyMomt2[1:]
+    ArmMomt2 = ArmMomt2[1:]
+
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'image.cmap': 'inferno',
+        'font.size': 20,
+        "lines.linewidth": 3,
+        'axes.labelsize': 15,
+        'axes.titlesize': 22,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.3,
+    }
+
+    plt.rcParams.update(params)
+
+    # region: imshow
+    fig, axs = plt.subplots(2, 1, figsize=(12, 12))
+    ax1 = axs[0]
+    ax2 = axs[1]
+
+    ax1.plot(t, LegMomt, label="Leg Momt")
+    ax1.plot(t, BodyMomt, label="Body Momt")
+    ax1.plot(t, ArmMomt, label="Arm Momt")
+    ax1.set_ylabel("Angular Momentum (Kg.m2/s)")
+    ax1.legend()
+    ax1.grid()
+
+    ax2.plot(t, LegMomt2, label="Leg Momt")
+    ax2.plot(t, BodyMomt2, label="Body Momt")
+    ax2.plot(t, ArmMomt2, label="Arm Momt")
+    ax2.set_ylabel("Angular Momentum (Kg.m2/s)")
+    ax2.set_xlabel("Time (s)")
+    ax2.legend()
+    ax2.grid()
+
+
+    plt.show()
     pass
 
 if __name__ == "__main__":
     # main()
-    ForceMapMV()
-    # ResCmp()
+    # ForceMapMV()
+    # MOmentCal()
+    ResCmp()
     # CostFunAnalysis()
-    # ForceVisualization()
-    # power_analysis()
-    # Impact_inertia()
-    # Impact_process()
-    # Power_metrics_analysis()
+    # CharactTime()
     pass

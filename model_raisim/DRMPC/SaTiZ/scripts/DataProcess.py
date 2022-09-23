@@ -64,16 +64,16 @@ class DataProcess():
             dirname = "-Traj-Tcf_"+str(trackingCoeff)+"-Pcf_"+str(powerCoeff)+"-Fcf_"+str(forceCoeff)+\
                         "-Scf_"+str(smoothCoeff)+"-Icf_"+str(impactCoeff)+"-Vt_"+str(Vt)+"-Tp_"+str(Tp)+"-Tst_"+str(Tst)
         if method_choice==2:
-            # dirname = "-Traj-Tcf_"+str(trackingCoeff)+"-Pcf_"+str(powerCoeff)+"-Fcf_"+str(forceCoeff)+\
-            #             "-Scf_"+str(smoothCoeff)+"-Icf_"+str(impactCoeff)+"-Vt_"+str(Vt)+"-Tp_"+str(Tp)+"-Ang_"+str(theta)
-            dirname = "Iarm_"+str(self.arm_I)+"-Marm_"+str(self.arm_M)
+            dirname = "-Traj-Tcf_"+str(trackingCoeff)+"-Pcf_"+str(powerCoeff)+"-Fcf_"+str(forceCoeff)+\
+                        "-Scf_"+str(smoothCoeff)+"-Icf_"+str(impactCoeff)+"-Vt_"+str(Vt)+"-Tp_"+str(Tp)+"-Ang_"+str(theta)
+            # dirname = "Iarm_"+str(self.arm_I)+"-Marm_"+str(self.arm_M)
         elif method_choice==3:
             dirname = "-MPC-Pos_"+str(self.PostarCoef[1])+"-Tor_"+str(self.TorqueCoef[1])+"-DTor_"+str(self.DTorqueCoef[1]) +"-Vel_"+str(self.VeltarCoef[1])\
                     +"-dt_"+str(self.dt)+"-T_"+str(self.T)+"-Tp_"+str(self.Tp)+"-Tc_"+str(self.Nc)+"-ML_"+str(self.ML)+ "k" 
 
         # dirname = "-mM_"+str(m_M)
         # dirname = "-Ir_"+str(I_r)
-        save_dir = self.savepath + dirname+ "/"
+        save_dir = self.savepath + date + dirname+ "/"
 
         if self.save_flag:
             if not os.path.isdir(save_dir):

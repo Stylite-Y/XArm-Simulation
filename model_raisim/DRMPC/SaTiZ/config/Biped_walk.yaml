@@ -19,9 +19,9 @@ Controller:
   # Forward: False
   FrontForward: true
   HindForward: true
-  Target: 8
+  Target: 7
   Period: 0.35
-  Stance: 0.25
+  Stance: 0.28
   Phase: [0, 0.5]
   CollectionNum: 200
   

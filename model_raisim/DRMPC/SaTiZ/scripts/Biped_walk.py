@@ -1030,6 +1030,13 @@ def main(armflag):
     if save_flag:
         visual = DataProcess(cfg, robot, q, dq, ddq, u, F, t, save_dir)
         SaveDir = visual.DataSave(save_flag)
+    u4 = u[:,4]
+    u4a = np.sum(np.sqrt(u4**2)) / 200
+    u0 = u[:,0]
+    u0a = np.sum(np.sqrt(u0**2)) / 200
+    u1 = u[:,1]
+    u1a = np.sum(np.sqrt(u1**2)) / 200
+    print(u4a, u0a, u1a)
 
     if vis_flag:
         import matplotlib.pyplot as plt
@@ -1040,10 +1047,10 @@ def main(armflag):
         # cmap = mpl.cm.get_cmap('Paired')
         params = {
             'text.usetex': True,
-            'font.size': 8,
+            'font.size': 15,
             'pgf.preamble': [r'\usepackage{color}'],
         }
-        mpl.rcParams.update(params)
+        plt.rcParams.update(params)
 
         labelfont = 12
         labelfonty = 10
