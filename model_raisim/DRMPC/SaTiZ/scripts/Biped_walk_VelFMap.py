@@ -1562,7 +1562,7 @@ def VelForceCmp():
     }
     plt.rcParams.update(params)
 
-    title = [["Fx", "Fy"], ["Torque Hip", "Torque Knee"]]
+    title = [["Power", "Fy"], ["Torque Hip", "Torque Knee"]]
     ylabel = ["Force (N)", "Torque (N.m)"]
     fig, axs = plt.subplots(2, 2, figsize=(12, 12))
     ax1 = axs[0][0]
@@ -1570,16 +1570,16 @@ def VelForceCmp():
     ax3 = axs[1][0]
     ax4 = axs[1][1]
 
-    ax1.plot(Vt, Fx1, label="arm free")
+    # ax1.plot(Vt, Fx1, label="arm free")
     # ax1.plot(Vt, Fx2, label="arm bound")
-    # ax1.plot(Vt, P1, label="arm free")
-    # ax1.plot(Vt, P2, label="arm bound")
+    ax1.plot(Vt, P1, label="arm free")
+    ax1.plot(Vt, P2, label="arm bound")
     ax2.plot(Vt, Fy1, label="arm free")
-    # ax2.plot(Vt, Fy2, label="arm bound")
+    ax2.plot(Vt, Fy2, label="arm bound")
     ax3.plot(Vt, u_h1, label="arm free")
-    # ax3.plot(Vt, u_h2, label="arm bound")
+    ax3.plot(Vt, u_h2, label="arm bound")
     ax4.plot(Vt, u_k1, label="arm free")
-    # ax4.plot(Vt, u_k2, label="arm bound")
+    ax4.plot(Vt, u_k2, label="arm bound")
 
     for i in range(2):
         for j in range(2):
