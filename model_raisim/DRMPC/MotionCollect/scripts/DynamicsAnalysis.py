@@ -1,10 +1,15 @@
+'''
+1. 基于生物数据计算身体各部分角动量值
+2. 2022-09-23： 
+        - 增加身体z方向质心高度和速度变化曲线
+        - 明确了做角动量图选择的数据文件对应时间段和名称：index = [450, 800] Left liu_bal4（liu1_4.raw）        [10000, 10350]  Left liu_bal3（liu1_3.raw） 
+'''
 from cProfile import label
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 from scipy import signal
-from DataProcess import DataProcess
 
 def AnaTest():
     ## Trunk, Uarm, Farm, ULeg, Lleg
@@ -172,6 +177,85 @@ def LocalAxis(Data, rm0, m, time, i):
             print(Pos_res)    
     return Pos_lh
 
+def PosPlot():
+    filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu_bal2.calc'
+    filepath2 = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu_bal6.calc'
+    filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu_bal4.calc'
+    # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu_bal5.calc'
+
+    Data = []
+    with open(filepath, 'r') as f:
+        for i in range(6):
+            next(f)
+        for lines in f.readlines():
+            Data.append(list(map(float, lines.split())))
+    Data = np.asarray(Data)
+
+    Data2 = []
+    with open(filepath2, 'r') as f:
+        for i in range(6):
+            next(f)
+        for lines in f.readlines():
+            Data2.append(list(map(float, lines.split())))
+    Data2 = np.asarray(Data2)
+    print(Data.shape, Data2.shape)
+ 
+    # index = [2805, 3100]      # L liu_bal2
+    index = [450, 800]      # L liu_bal4
+    # index = [1800, 2100]      # L liu_bal4
+    # index = [1850, 2200]      # L liu_bal5
+    index2 = [10000, 10350]      # L liu_bal3
+    # index2 = [3200, 3750]      # L liu_bal3
+
+    t = np.linspace(0, index[1]-index[0], index[1]-index[0]) / 120
+    datas = Data[index[0]:index[1],:]
+
+    t2 = np.linspace(0, index2[1]-index2[0], index2[1]-index2[0]) / 120
+    datas2 = Data2[index2[0]:index2[1],:]
+
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'image.cmap': 'inferno',
+        'font.size': 18,
+        "lines.linewidth": 3,
+        'axes.labelsize': 20,
+        'axes.titlesize': 20,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 25,
+        'legend.fontsize': 20,
+        'axes.titlepad': 10.0,
+        'axes.labelpad': 4.0,
+        'figure.subplot.wspace': 0.2,
+        'figure.subplot.hspace': 0.3,
+    }
+    
+    plt.rcParams.update(params)
+    fig, axes = plt.subplots(2, 1, figsize=(12, 6))
+    ax1 = axes[0]
+    ax2 = axes[1]
+    
+    ids = [17, 16, 1, 2, 3, 9, 10]    
+    label_P = ["arm free", "head", "hip", "up leg", "lower leg", "up arm", "forearm"]
+    label_P2 = ["arm bound", "head noarm", "hip noarm", "up leg", "lower leg", "up arm", "forearm"]
+    for i in range(len(ids)-6):
+        ax1.plot(t, datas[:,(ids[i]-1)*16+2], label=label_P[i])
+        ax1.plot(t2, datas2[:,(ids[i]-1)*16+2], label=label_P2[i])
+        ax1.set_ylabel("Time (s)")
+        ax2.plot(t, datas[:,(ids[i]-1)*16+5], label=label_P[i])
+        ax2.plot(t2, datas2[:,(ids[i]-1)*16+5], label=label_P2[i])
+        pass
+    ax1.legend()
+    ax1.set_ylim(-0.8, 0.5)
+    ax1.grid()
+    ax2.legend()
+    ax2.grid()
+    ax1.set_ylabel("Z (m)")
+    ax2.set_xlabel("Time (s)")
+    ax2.set_ylabel("Z Velocity (m/s)")
+    plt.show()
+    pass
+
 def AnaBVH():
     # region: inertia params
     ## Trunk, Uarm, Farm, ULeg, Lleg
@@ -209,8 +293,8 @@ def AnaBVH():
     ## balance 工况下，y指向前方，z向下，x指向侧面
     ## walk工况下，x向前，z向下
     # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu_bal.calc'
-    # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu_bal2.calc'
-    filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu_bal3.calc'
+    filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu_bal2.calc'
+    # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu_bal3.calc'
     # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/liu/liu1_walk4.calc'
     # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/yuan/walk_noarm_yuan.calc'
     # filepath = os.path.dirname(os.path.dirname(__file__)) + '/data/yuan/walk_yuan2.calc'
@@ -224,7 +308,7 @@ def AnaBVH():
     Data = np.asarray(Data)
 
     # time = [3000, 4000] # walk_yuan2
-    time = [0, 10000] # celabri yuan1
+    time = [0, 4000] # celabri yuan1
     RefIndex = 4
     # walk yuan3 L
     # index = [184, 248]
@@ -233,8 +317,8 @@ def AnaBVH():
     # walk arm yuan
     # index = [2227, 2284]      # R
     # ticks = ['Right 1']
-    # index = [2805, 3020]      # L
-    index = [9700, 9945]      # L
+    index = [2805, 3020]      # L
+    # index = [9700, 9945]      # L
     ticks = ['Left 1']
 
     t = np.linspace(time[0], time[1]-1, time[1]-time[0]-1)
@@ -1081,6 +1165,7 @@ def AnaBVH():
     pass
 
 if __name__ == "__main__":
-    AnaBVH()
+    # AnaBVH()
+    PosPlot()
     # AnaTest()
     pass
