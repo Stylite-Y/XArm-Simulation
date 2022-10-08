@@ -1,0 +1,178 @@
+seed: 1
+record_video: True
+
+environment:
+  seedd: 1
+  render: True
+  num_envs: 200
+  num_threads: 40
+  simulation_dt: 0.001
+  control_dt: 0.004
+  max_time: 3.0
+
+  Visualization:
+    Camera: False
+    FPS: 100.0
+    CameraYaw: 4.2
+    CameraPitch: -1.57
+    CameraDis: 4.0
+
+  Mode:
+    Terrain: False
+    StochasticDynamics: True
+    ForceDisturbance: False
+    Manual: False
+
+  Reward:
+    terminalRewardCoeff: -1.0
+    BodyPosRewardCoeff: 0.05
+    BodyAttitudeRewardCoeff: 0.05
+    JointRewardCoeff: 0.0
+    VelRewardCoeff: 0.6
+    TorqueCoeff: 0.2
+    PowerCoeff: 0.0
+    SmoothCoeff: 0.1
+  
+  Gait:
+    Vx_max: 6
+    Vx_min: 0
+    Vy_max: 0.5
+    Vy_min: -0.5
+    OmegaZ_max: 2
+    OmegaZ_min: -2
+    CmdUpdateFreq: 0.24
+    MaxAcceleration: 1.0
+
+    stand_height: 0.7
+    up_height: 0.2
+    down_height: 0.00
+
+    Period: 0.32
+    lam: 0.5
+
+  Robot:
+    
+    URDF: Bipedal_V2.urdf
+
+    Geometry:
+      Upper_body_len: 0.5
+      Abad_len: 0
+      Thigh_len: 0.39
+      Shank_len: 0.39
+      Arm_len: 0.275
+      Forearm_len: 0.34
+      Root_Radius: 0.15
+      Upper_body_Radius: 0.15
+      Thigh_Radius: 0.08
+      Shank_Radius: 0.05
+      Arm_Radius: 0.07
+      Forearm_Radius: 0.035
+    
+    Mass:
+      RootMass: 5.0
+      BodyMass: 12.6
+      ThighMass: 3.15
+      ShankMass: 1.4
+      FootMass: 0.2
+      ArmMass: 1.5
+      FormarmMass: 1.0
+    
+    Motor:
+      Inertia: 0.05
+      Damping: 0.1
+      MaxTorque: 140
+      MaxSpeed: 60
+      CriticalSpeed: 50
+      ActionNoise: 1.0
+    
+    Noise:
+      ExternalForceAmp: 5000
+      MassDisRatio: 0.3
+      InertiaDisRatio: 0.1
+      DampDisRatio: 0.2
+      StiffDisRatio: 0.1
+      MeanAttackTime: 2
+    
+    Spring:
+      stiffness: 5
+      damping: 0.5
+
+  Controller:
+    Body:
+      ZAxisStd: 0.7
+      omegaStd: 5.0
+      defaultHeight: 1.06
+    
+    Waist:
+      stiff: 120
+      damping: 3.0
+      pstd: 0.6
+      dstd: 5.0
+      defaultPos: 0
+
+    Shoulder_x:
+      stiff: 40
+      damping: 1.0
+      pstd: 0.6
+      dstd: 5.0
+      defaultPos: 0.0
+    
+    Shoulder_y:
+      stiff: 40
+      damping: 1.0
+      pstd: 1.2
+      dstd: 40
+      defaultPos: -0.52
+    
+    Elbow:
+      stiff: 20
+      damping: 0.5
+      pstd: 1.4
+      dstd: 40
+      defaultPos: 1.04
+    
+    Abad:
+      stiff: 80
+      damping: 2.0
+      pstd: 0.6
+      dstd: 5.0
+      defaultPos: 0
+
+    Hip:
+      stiff: 80
+      damping: 2.0
+      pstd: 1.2
+      dstd: 40.0
+      defaultPos: 0.52
+
+    Knee:
+      stiff: 40
+      damping: 1.0
+      pstd: 1.4
+      dstd: 40.0
+      defaultPos: -1.04
+    
+    Ankle:
+      stiff: 20
+      damping: 0.5
+      pstd: 1.0
+      dstd: 40.0
+      defaultPos: 0.52
+    
+    Filter:
+      ObsFilterEnable: False
+      ObsFilterFreq: 200
+    
+    Noise:
+      ActionNoiseAmp: 0.0
+      ObsNoiseFlag: 1.0
+      ObsJointNoiseAmp: 0.01
+      ObsJointVelNoiseAmp: 0.8
+      ObsBodyPosNoiseAmp: 0.02
+      ObsBodyOmegaNoiseAmp: 0.5
+
+Train:
+  PolicyLogStd: -2.3
+  Shape:
+    Layer1: 64
+    Layer2: 64

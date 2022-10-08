@@ -1,0 +1,435 @@
+<!-- 
+Bipedal Robot with arm
+Active Joint: Waist, Abad_l, Hip_l, Knee_l, Abad_r, Hip_r, Knee_r
+Passive Joint: Root(free), Waist, (Abad, hip, knee, ankle_x, ankle_y)*2
+-->
+<?xml version="1.0" ?>
+
+<!-- 
+Hyper Parameter definetion
+
+Name            Default Value           Unit        Check
+RootMass              5.0                kg           X
+RootRadius            0.15               m            X
+UBMass                12.6               kg           X
+UBRadius              0.15               m            X
+UBLen                 0.5                m            X
+ThighMass             3.15               kg           X
+ThighLen              0.39               m            X
+ThighRadius           0.08               m            X
+ShankMass             1.4                kg           X
+ShankLen              0.39               m            X
+ShankRadius           0.05               m            X
+FootMass              0.2                kg           X
+ArmMass               1.5                kg           X
+ArmLen                0.275              m            X
+ArmRadius             0.07               m            X
+FormarmMass           1.0                kg           X
+FormarmLen            0.34               m            X
+FormarmRadius         0.035              m            X
+
+MotorInertia          0.05               kg.m^2       X
+JointDamping          0.1                Nm.s         X
+
+AnkleStiffness        2                  Nm/rad       X
+AnkleDamping          0.2                Nm.s         X
+-->
+
+<robot name="Iobot">
+
+    <link name="Root">
+        <inertial>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <mass value="@@RootMass"/>
+            <inertia ixx="{0.5*@@RootMass*@@RootRadius*@@RootRadius}" ixy="0.0" ixz="0.0" iyy="{0.5*@@RootMass*@@RootRadius*@@RootRadius}" iyz="0.0" izz="{0.5*@@RootMass*@@RootRadius*@@RootRadius}"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/root.dae" scale="1.0 1.0 1.0"/>
+                <!-- <sphere radius="@@RootRadius"/> -->
+            </geometry>
+        </visual>
+    </link>
+
+    <joint name="waist_x" type="revolute">
+        <parent link="Root"/>
+        <child link="Waist_Empty"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <axis xyz="1 0 0"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="@@MotorInertia"/>
+    </joint>
+
+    <link name="Waist_Empty">
+    </link>
+
+    <joint name="waist_y" type="revolute">
+        <parent link="Waist_Empty"/>
+        <child link="UpperBody"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <axis xyz="0 -1 0"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="@@MotorInertia"/>
+    </joint>
+
+    <link name="UpperBody">
+        <inertial>
+            <origin xyz="0.0 0.0 {@@UBLen/2}" rpy="0.0 0.0 0.0"/>
+            <mass value="@@UBMass"/>
+            <inertia ixx="{@@UBMass*@@UBLen*@@UBLen/12}" ixy="0.0" ixz="0.0" iyy="{@@UBMass*@@UBLen*@@UBLen/12}" iyz="0.0" izz="{@@UBMass*@@UBRadius*@@UBRadius/2}"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/UpperBody.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.0 0.0 {@@UBLen/2}" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.2 0.1 @@UBLen"/>
+            </geometry> -->
+        </visual>
+        <collision>
+            <origin xyz="0.0 0.0 {@@UBLen/2}" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <cylinder radius="@@UBRadius" length="@@UBLen"/>
+            </geometry>
+        </collision>
+    </link>
+
+
+    <!-- ====================== Right arm ====================== -->
+
+    <joint name="shoulder_x_R" type="revolute">
+        <axis xyz="-1 0 0"/>
+        <origin xyz="-0.08 0.2 0.4" rpy="0 0 0"/>
+        <parent link="UpperBody"/>
+        <child link="Arm_Empty_R"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="{@@MotorInertia*0.1}"/>
+    </joint>
+
+    <link name="Arm_Empty_R">
+    </link>
+
+    <joint name="shoulder_y_R" type="revolute">
+        <axis xyz="0 -1 0"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <parent link="Arm_Empty_R"/>
+        <child link="Arm_R"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="{@@MotorInertia*0.1}"/>
+    </joint>
+
+    <link name="Arm_R">
+        <inertial>
+            <origin xyz="0.0 0.0 {@@ArmLen*-0.5}" rpy="0.0 0.0 0.0"/>
+            <mass value="@@ArmMass"/>
+            <inertia ixx="{@@ArmMass*@@ArmLen*@@ArmLen/12}" ixy="0.0" ixz="0.0" iyy="{@@ArmMass*@@ArmLen*@@ArmLen/12}" iyz="0.0" izz="{@@ArmMass*@@ArmRadius*@@ArmRadius/2}"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Arm_R.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <joint name="elbow_R" type="revolute">
+        <axis xyz="0 -1 0"/>
+        <origin xyz="0 0 {@@ArmLen*-1}" rpy="0 0 0"/>
+        <parent link="Arm_R"/>
+        <child link="Formarm_R"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="{@@MotorInertia*0.1}"/>
+    </joint>
+
+    <link name="Formarm_R">
+        <inertial>
+            <origin xyz="0.0 0.0 {@@FormarmLen*-0.5}" rpy="0.0 0.0 0.0"/>
+            <mass value="@@FormarmMass"/>
+            <inertia ixx="{@@FormarmMass*@@FormarmLen*@@FormarmLen/12}" ixy="0.0" ixz="0.0" iyy="{@@FormarmMass*@@FormarmLen*@@FormarmLen/12}" iyz="0.0" izz="{@@FormarmMass*@@FormarmRadius*@@FormarmRadius/2}"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Forearm_L.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <!-- ====================== Left arm ====================== -->
+
+    <joint name="shoulder_x_L" type="revolute">
+        <axis xyz="1 0 0"/>
+        <origin xyz="-0.08 -0.2 0.4" rpy="0 0 0"/>
+        <parent link="UpperBody"/>
+        <child link="Arm_Empty_L"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="{@@MotorInertia*0.1}"/>
+    </joint>
+
+    <link name="Arm_Empty_L">
+    </link>
+
+    <joint name="shoulder_y_L" type="revolute">
+        <axis xyz="0 -1 0"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <parent link="Arm_Empty_L"/>
+        <child link="Arm_L"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="{@@MotorInertia*0.1}"/>
+    </joint>
+
+    <link name="Arm_L">
+        <inertial>
+            <origin xyz="0.0 0.0 {@@ArmLen*-0.5}" rpy="0.0 0.0 0.0"/>
+            <mass value="@@ArmMass"/>
+            <inertia ixx="{@@ArmMass*@@ArmLen*@@ArmLen/12}" ixy="0.0" ixz="0.0" iyy="{@@ArmMass*@@ArmLen*@@ArmLen/12}" iyz="0.0" izz="{@@ArmMass*@@ArmRadius*@@ArmRadius/2}"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Arm_L.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <joint name="elbow_L" type="revolute">
+        <axis xyz="0 -1 0"/>
+        <origin xyz="0 0 {@@ArmLen*-1}" rpy="0 0 0"/>
+        <parent link="Arm_L"/>
+        <child link="Formarm_L"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="{@@MotorInertia*0.1}"/>
+    </joint>
+
+    <link name="Formarm_L">
+        <inertial>
+            <origin xyz="0.0 0.0 {@@FormarmLen*-0.5}" rpy="0.0 0.0 0.0"/>
+            <mass value="@@FormarmMass"/>
+            <inertia ixx="{@@FormarmMass*@@FormarmLen*@@FormarmLen/12}" ixy="0.0" ixz="0.0" iyy="{@@FormarmMass*@@FormarmLen*@@FormarmLen/12}" iyz="0.0" izz="{@@FormarmMass*@@FormarmRadius*@@FormarmRadius/2}"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Forearm_L.dae" scale="1.0 -1.0 1.0"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <!-- ====================== Right Leg ====================== -->
+
+    <joint name="Abad_R" type="revolute">
+        <axis xyz="1 0 0"/>
+        <origin xyz="0 -0.1 -0.13" rpy="0 0 0"/>
+        <parent link="Root"/>
+        <child link="AbadEmpty_R"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="@@MotorInertia"/>
+    </joint>
+
+    <link name="AbadEmpty_R">
+    </link>
+
+    <joint name="Hip_R" type="revolute">
+        <axis xyz="0 -1 0"/>
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="AbadEmpty_R"/>
+        <child link="Thigh_R"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="@@MotorInertia"/>
+    </joint>
+
+    <link name="Thigh_R">
+        <inertial>
+            <origin xyz="0.0 0.0 {@@ThighLen*-0.5}" rpy="0.0 0.0 0.0"/>
+            <mass value="@@ThighMass"/>
+            <inertia ixx="{@@ThighMass*@@ThighLen*@@ThighLen/12}" ixy="0.0" ixz="0.0" iyy="{@@ThighMass*@@ThighLen*@@ThighLen/12}" iyz="0.0" izz="{@@ThighMass*@@ThighRadius*@@ThighRadius/2}"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Thigh_L.dae" scale="1.0 -1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.0 0.0 {@@ThighLen*-0.5}" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <capsule radius="@@ThighRadius" length="@@ThighLen"/>
+            </geometry> -->
+        </visual>
+    </link>
+
+    <joint name="Knee_R" type="revolute">
+        <origin xyz="0.0 0.0 {-@@ThighLen}" rpy="0.0 0.0 0.0"/>
+        <parent link="Thigh_R"/>
+        <child link="Shank_R"/>
+        <axis xyz="0 -1 0"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="@@MotorInertia"/>
+    </joint>
+
+    <link name="Shank_R">
+        <inertial>
+            <origin xyz="0.0 0.0 {@@ShankLen*-0.5}" rpy="0.0 0.0 0.0"/>
+            <mass value="@@ShankMass"/>
+            <inertia ixx="{@@ShankMass*@@ShankLen*@@ShankLen/12}" ixy="0.0" ixz="0.0" iyy="{@@ShankMass*@@ShankLen*@@ShankLen/12}" iyz="0.0" izz="{@@ShankMass*@@ShankRadius*@@ShankRadius/2}"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Shank_L.dae" scale="1.0 -1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.0 0.0 {@@ShankLen*-0.5}" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <capsule radius="@@ShankRadius" length="@@ShankLen"/>
+            </geometry> -->
+        </visual>
+    </link>
+
+    <joint name="Ankle_y_R" type="revolute">
+        <origin xyz="0.0 0.0 {-@@ShankLen}" rpy="0.0 0.0 0.0"/>
+        <parent link="Shank_R"/>
+        <child link="Foot_R"/>
+        <axis xyz="0.0 -1 0.0"/>
+        <!-- <dynamics damping="@@AnkleDamping" spring_mount="0" stiffness="@@AnkleStiffness"/> -->
+        <dynamics damping="@@JointDamping" rotor_inertia="@@MotorInertia"/>
+    </joint>
+
+    <!-- <link name="Ankle_Empty_R">
+    </link>
+
+    <joint name="Ankle_x_R" type="revolute">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="Ankle_Empty_R"/>
+        <child link="Foot_R"/>
+        <axis xyz="1 0 0.0"/>
+        <dynamics damping="@@AnkleDamping" spring_mount="0" stiffness="@@AnkleStiffness"/>
+    </joint> -->
+
+    <link name="Foot_R">
+        <inertial>
+            <origin xyz="0.08 0.0 -0.064" rpy="0.0 0.0 0.0"/>
+            <mass value="@@FootMass"/>
+            <inertia ixx="0.0003" ixy="0.0" ixz="0.0" iyy="0.0003" iyz="0.0" izz="0.0003"/>
+        </inertial>
+
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Foot_L.dae" scale="1.0 -1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.08 0.0 -0.064" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.28 0.08 0.128"/>
+            </geometry> -->
+        </visual>
+
+        <collision>
+            <origin xyz="0.08 -0.03 -0.118" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.28 0.1 0.02"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- ====================== Left Leg ====================== -->
+
+    <joint name="Abad_L" type="revolute">
+        <axis xyz="1 0 0"/>
+        <origin xyz="0 0.1 -0.13" rpy="0 0 0"/>
+        <parent link="Root"/>
+        <child link="AbadEmpty_L"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="@@MotorInertia"/>
+    </joint>
+
+    <link name="AbadEmpty_L">
+    </link>
+
+    <joint name="Hip_L" type="revolute">
+        <axis xyz="0 -1 0"/>
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="AbadEmpty_L"/>
+        <child link="Thigh_L"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="@@MotorInertia"/>
+    </joint>
+
+    <link name="Thigh_L">
+        <inertial>
+            <origin xyz="0.0 0.0 {@@ThighLen*-0.5}" rpy="0.0 0.0 0.0"/>
+            <mass value="@@ThighMass"/>
+            <inertia ixx="{@@ThighMass*@@ThighLen*@@ThighLen/12}" ixy="0.0" ixz="0.0" iyy="{@@ThighMass*@@ThighLen*@@ThighLen/12}" iyz="0.0" izz="{@@ThighMass*@@ThighRadius*@@ThighRadius/2}"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Thigh_L.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.0 0.0 {@@ThighLen*-0.5}" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <capsule radius="@@ThighRadius" length="@@ThighLen"/>
+            </geometry> -->
+        </visual>
+    </link>
+
+    <joint name="Knee_L" type="revolute">
+        <origin xyz="0.0 0.0 {-@@ThighLen}" rpy="0.0 0.0 0.0"/>
+        <parent link="Thigh_L"/>
+        <child link="Shank_L"/>
+        <axis xyz="0 -1 0"/>
+        <dynamics damping="@@JointDamping" rotor_inertia="@@MotorInertia"/>
+    </joint>
+
+    <link name="Shank_L">
+        <inertial>
+            <origin xyz="0.0 0.0 {@@ShankLen*-0.5}" rpy="0.0 0.0 0.0"/>
+            <mass value="@@ShankMass"/>
+            <inertia ixx="{@@ShankMass*@@ShankLen*@@ShankLen/12}" ixy="0.0" ixz="0.0" iyy="{@@ShankMass*@@ShankLen*@@ShankLen/12}" iyz="0.0" izz="{@@ShankMass*@@ShankRadius*@@ShankRadius/2}"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Shank_L.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.0 0.0 {@@ShankLen*-0.5}" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <capsule radius="@@ShankRadius" length="@@ShankLen"/>
+            </geometry> -->
+        </visual>
+    </link>
+
+    <joint name="Ankle_y_L" type="revolute">
+        <origin xyz="0.0 0.0 {-@@ShankLen}" rpy="0.0 0.0 0.0"/>
+        <parent link="Shank_L"/>
+        <child link="Foot_L"/>
+        <axis xyz="0.0 -1 0.0"/>
+        <!-- <dynamics damping="@@AnkleDamping" spring_mount="0" stiffness="@@AnkleStiffness"/> -->
+        <dynamics damping="@@JointDamping" rotor_inertia="@@MotorInertia"/>
+    </joint>
+
+    <!-- <link name="Ankle_Empty_L">
+    </link>
+
+    <joint name="Ankle_x_L" type="revolute">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="Ankle_Empty_L"/>
+        <child link="Foot_L"/>
+        <axis xyz="1 0 0.0"/>
+        <dynamics damping="@@AnkleDamping" spring_mount="0" stiffness="@@AnkleStiffness"/>
+    </joint> -->
+
+    <link name="Foot_L">
+        <inertial>
+            <origin xyz="0.08 0.0 -0.064" rpy="0.0 0.0 0.0"/>
+            <mass value="@@FootMass"/>
+            <inertia ixx="0.0003" ixy="0.0" ixz="0.0" iyy="0.0003" iyz="0.0" izz="0.0003"/>
+        </inertial>
+
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Foot_L.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.08 0.0 -0.064" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.28 0.08 0.128"/>
+            </geometry> -->
+        </visual>
+
+        <collision>
+            <origin xyz="0.08 0.03 -0.118" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.28 0.1 0.02"/>
+            </geometry>
+        </collision>
+    </link>
+
+</robot>

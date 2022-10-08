@@ -564,8 +564,6 @@ class SolutionData():
     pass
 
 
-    vis_flag = True
-
 def main(Mass, inertia, armflag, vis_flag):
     # region optimization trajectory for bipedal hybrid robot system
     # vis_flag = True
@@ -775,8 +773,8 @@ def ForceMapMV():
     from mpl_toolkits.mplot3d import Axes3D
 
     saveflag = True
-    armflag = False
-    vis_flag = False
+    armflag = True
+    vis_flag = True
     ani_flag = False
 
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -789,11 +787,11 @@ def ForceMapMV():
 
     M_arm = [3.0, 4.0, 5.0, 6.0, 6.5, 7.0, 7.5]
     # M_arm = [4.0, 6.0, 7.0]
-    # M_arm = [4.0]
+    M_arm = [4.0]
     M_label = list(map(str, M_arm))
     I_arm = [0.012, 0.015, 0.03, 0.04, 0.06, 0.07, 0.09]
     # I_arm = [0.012, 0.04, 0.09]
-    # I_arm = [0.03]
+    I_arm = [0.03]
     I_label = list(map(str, I_arm))
 
     Mass = [15, 20]
@@ -1516,9 +1514,9 @@ def MOmentCal():
 
 if __name__ == "__main__":
     # main()
-    # ForceMapMV()
+    ForceMapMV()
     # MOmentCal()
-    ResCmp()
+    # ResCmp()
     # CostFunAnalysis()
     # CharactTime()
     pass

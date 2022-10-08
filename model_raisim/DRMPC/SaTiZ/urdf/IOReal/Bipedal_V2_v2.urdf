@@ -1,0 +1,435 @@
+<!-- 
+Bipedal Robot with arm
+Active Joint: Waist, Abad_l, Hip_l, Knee_l, Abad_r, Hip_r, Knee_r
+Passive Joint: Root(free), Waist, (Abad, hip, knee, ankle_x, ankle_y)*2
+-->
+<?xml version="1.0" ?>
+
+<!-- 
+Hyper Parameter definetion
+
+Name            Default Value           Unit        Check
+RootMass              5.0                kg           X
+RootRadius            0.15               m            X
+UBMass                12.6               kg           X
+UBRadius              0.15               m            X
+UBLen                 0.5                m            X
+ThighMass             3.15               kg           X
+ThighLen              0.39               m            X
+ThighRadius           0.08               m            X
+ShankMass             1.4                kg           X
+ShankLen              0.39               m            X
+ShankRadius           0.05               m            X
+FootMass              0.2                kg           X
+ArmMass               1.5                kg           X
+ArmLen                0.275              m            X
+ArmRadius             0.07               m            X
+FormarmMass           1.0                kg           X
+FormarmLen            0.34               m            X
+FormarmRadius         0.035              m            X
+
+MotorInertia          0.05               kg.m^2       X
+JointDamping          0.1                Nm.s         X
+
+AnkleStiffness        2                  Nm/rad       X
+AnkleDamping          0.2                Nm.s         X
+-->
+
+<robot name="Iobot">
+
+    <link name="Root">
+        <inertial>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <mass value="5.0"/>
+            <inertia ixx="0.05625" ixy="0.0" ixz="0.0" iyy="0.05625" iyz="0.0" izz="0.05625"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/root.dae" scale="1.0 1.0 1.0"/>
+                <!-- <sphere radius="RootRadius"/> -->
+            </geometry>
+        </visual>
+    </link>
+
+    <joint name="waist_x" type="revolute">
+        <parent link="Root"/>
+        <child link="Waist_Empty"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <axis xyz="1 0 0"/>
+        <dynamics damping="0.1" rotor_inertia="0.05"/>
+    </joint>
+
+    <link name="Waist_Empty">
+    </link>
+
+    <joint name="waist_y" type="revolute">
+        <parent link="Waist_Empty"/>
+        <child link="UpperBody"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <axis xyz="0 -1 0"/>
+        <dynamics damping="0.1" rotor_inertia="0.05"/>
+    </joint>
+
+    <link name="UpperBody">
+        <inertial>
+            <origin xyz="0.0 0.0 0.25" rpy="0.0 0.0 0.0"/>
+            <mass value="12.6"/>
+            <inertia ixx="0.2625" ixy="0.0" ixz="0.0" iyy="0.2625" iyz="0.0" izz="0.14175"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/UpperBody.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.0 0.0 0.5/2" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.2 0.1 0.5"/>
+            </geometry> -->
+        </visual>
+        <collision>
+            <origin xyz="0.0 0.0 0.25" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <cylinder radius="0.15" length="0.5"/>
+            </geometry>
+        </collision>
+    </link>
+
+
+    <!-- ====================== Right arm ====================== -->
+
+    <joint name="shoulder_x_R" type="revolute">
+        <axis xyz="-1 0 0"/>
+        <origin xyz="0.08 0.2 0.4" rpy="0 0 0"/>
+        <parent link="UpperBody"/>
+        <child link="Arm_Empty_R"/>
+        <dynamics damping="0.1" rotor_inertia="0.005"/>
+    </joint>
+
+    <link name="Arm_Empty_R">
+    </link>
+
+    <joint name="shoulder_y_R" type="revolute">
+        <axis xyz="0 1 0"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <parent link="Arm_Empty_R"/>
+        <child link="Arm_R"/>
+        <dynamics damping="0.1" rotor_inertia="0.005"/>
+    </joint>
+
+    <link name="Arm_R">
+        <inertial>
+            <origin xyz="0.0 0.0 -0.1375" rpy="0.0 0.0 0.0"/>
+            <mass value="1.5"/>
+            <inertia ixx="0.00945" ixy="0.0" ixz="0.0" iyy="0.00945" iyz="0.0" izz="0.003675"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 3.14"/>
+            <geometry>
+                <mesh filename="meshes/Arm_L.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <joint name="elbow_R" type="revolute">
+        <axis xyz="0 1 0"/>
+        <origin xyz="0 0.02 -0.29" rpy="0 0 0"/>
+        <parent link="Arm_R"/>
+        <child link="Formarm_R"/>
+        <dynamics damping="0.1" rotor_inertia="0.005"/>
+    </joint>
+
+    <link name="Formarm_R">
+        <inertial>
+            <origin xyz="0.0 0.0 -0.17" rpy="0.0 0.0 0.0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.00963" ixy="0.0" ixz="0.0" iyy="0.00963" iyz="0.0" izz="0.0006125"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 3.14"/>
+            <geometry>
+                <mesh filename="meshes/Forearm_R.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <!-- ====================== Left arm ====================== -->
+
+    <joint name="shoulder_x_L" type="revolute">
+        <axis xyz="1 0 0"/>
+        <origin xyz="0.08 -0.2 0.4" rpy="0 0 0"/>
+        <parent link="UpperBody"/>
+        <child link="Arm_Empty_L"/>
+        <dynamics damping="0.1" rotor_inertia="0.005"/>
+    </joint>
+
+    <link name="Arm_Empty_L">
+    </link>
+
+    <joint name="shoulder_y_L" type="revolute">
+        <axis xyz="0 1 0"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <parent link="Arm_Empty_L"/>
+        <child link="Arm_L"/>
+        <dynamics damping="0.1" rotor_inertia="0.005"/>
+    </joint>
+
+    <link name="Arm_L">
+        <inertial>
+            <origin xyz="0.0 0.0 -0.1375" rpy="0.0 0.0 0.0"/>
+            <mass value="1.5"/>
+            <inertia ixx="0.00945" ixy="0.0" ixz="0.0" iyy="0.00945" iyz="0.0" izz="0.003675"/>
+            </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 3.14"/>
+            <geometry>
+                <mesh filename="meshes/Arm_R.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <joint name="elbow_L" type="revolute">
+        <axis xyz="0 1 0"/>
+        <origin xyz="0 -0.02 -0.29" rpy="0 0 0"/>
+        <parent link="Arm_L"/>
+        <child link="Formarm_L"/>
+        <dynamics damping="0.1" rotor_inertia="0.005"/>
+    </joint>
+
+    <link name="Formarm_L">
+        <inertial>
+            <origin xyz="0.0 0.0 -0.17" rpy="0.0 0.0 0.0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.00963" ixy="0.0" ixz="0.0" iyy="0.00963" iyz="0.0" izz="0.0006125"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 3.14"/>
+            <geometry>
+                <mesh filename="meshes/Forearm_R.dae" scale="1.0 -1.0 1.0"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <!-- ====================== Right Leg ====================== -->
+
+    <joint name="Abad_R" type="revolute">
+        <axis xyz="1 0 0"/>
+        <origin xyz="0 0.1 -0.13" rpy="0 0 0"/>
+        <parent link="Root"/>
+        <child link="AbadEmpty_R"/>
+        <dynamics damping="0.1" rotor_inertia="0.05"/>
+    </joint>
+
+    <link name="AbadEmpty_R">
+    </link>
+
+    <joint name="Hip_R" type="revolute">
+        <axis xyz="0 -1 0"/>
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="AbadEmpty_R"/>
+        <child link="Thigh_R"/>
+        <dynamics damping="0.1" rotor_inertia="0.05"/>
+    </joint>
+
+    <link name="Thigh_R">
+        <inertial>
+            <origin xyz="0.0 0.0 -0.195" rpy="0.0 0.0 0.0"/>
+            <mass value="3.15"/>
+            <inertia ixx="0.0399" ixy="0.0" ixz="0.0" iyy="0.0399" iyz="0.0" izz="0.01008"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Thigh_L.dae" scale="1.0 -1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.0 0.0 0.39*-0.5" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <capsule radius="0.08" length="0.39"/>
+            </geometry> -->
+        </visual>
+    </link>
+
+    <joint name="Knee_R" type="revolute">
+        <origin xyz="0.0 0.0 -0.39" rpy="0.0 0.0 0.0"/>
+        <parent link="Thigh_R"/>
+        <child link="Shank_R"/>
+        <axis xyz="0 -1 0"/>
+        <dynamics damping="0.1" rotor_inertia="0.05"/>
+    </joint>
+
+    <link name="Shank_R">
+        <inertial>
+            <origin xyz="0.0 0.0 -0.195" rpy="0.0 0.0 0.0"/>
+            <mass value="1.4"/>
+            <inertia ixx="0.017745" ixy="0.0" ixz="0.0" iyy="0.017745" iyz="0.0" izz="0.00175"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Shank_L.dae" scale="1.0 -1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.0 0.0 0.39*-0.5" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <capsule radius="0.05" length="0.39"/>
+            </geometry> -->
+        </visual>
+    </link>
+
+    <joint name="Ankle_y_R" type="revolute">
+        <origin xyz="0.0 0.0 -0.39" rpy="0.0 0.0 0.0"/>
+        <parent link="Shank_R"/>
+        <child link="Foot_R"/>
+        <axis xyz="0.0 -1 0.0"/>
+        <!-- <dynamics damping="0.2" spring_mount="0" stiffness="2"/> -->
+        <dynamics damping="0.1" rotor_inertia="0.05"/>
+    </joint>
+
+    <!-- <link name="Ankle_Empty_R">
+    </link>
+
+    <joint name="Ankle_x_R" type="revolute">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="Ankle_Empty_R"/>
+        <child link="Foot_R"/>
+        <axis xyz="1 0 0.0"/>
+        <dynamics damping="0.2" spring_mount="0" stiffness="2"/>
+    </joint> -->
+
+    <link name="Foot_R">
+        <inertial>
+            <origin xyz="0.08 0.0 -0.064" rpy="0.0 0.0 0.0"/>
+            <mass value="0.2"/>
+            <inertia ixx="0.0003" ixy="0.0" ixz="0.0" iyy="0.0003" iyz="0.0" izz="0.0003"/>
+        </inertial>
+
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Foot_L.dae" scale="1.0 -1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.08 0.0 -0.064" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.28 0.08 0.128"/>
+            </geometry> -->
+        </visual>
+
+        <collision>
+            <origin xyz="0.08 -0.03 -0.118" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.28 0.1 0.02"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- ====================== Left Leg ====================== -->
+
+    <joint name="Abad_L" type="revolute">
+        <axis xyz="1 0 0"/>
+        <origin xyz="0 -0.1 -0.13" rpy="0 0 0"/>
+        <parent link="Root"/>
+        <child link="AbadEmpty_L"/>
+        <dynamics damping="0.1" rotor_inertia="0.05"/>
+    </joint>
+
+    <link name="AbadEmpty_L">
+    </link>
+
+    <joint name="Hip_L" type="revolute">
+        <axis xyz="0 -1 0"/>
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="AbadEmpty_L"/>
+        <child link="Thigh_L"/>
+        <dynamics damping="0.1" rotor_inertia="0.05"/>
+    </joint>
+
+    <link name="Thigh_L">
+        <inertial>
+            <origin xyz="0.0 0.0 -0.195" rpy="0.0 0.0 0.0"/>
+            <mass value="3.15"/>
+            <inertia ixx="0.0399" ixy="0.0" ixz="0.0" iyy="0.0399" iyz="0.0" izz="0.01008"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Thigh_L.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.0 0.0 0.39*-0.5" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <capsule radius="0.08" length="0.39"/>
+            </geometry> -->
+        </visual>
+    </link>
+
+    <joint name="Knee_L" type="revolute">
+        <origin xyz="0.0 0.0 -0.39" rpy="0.0 0.0 0.0"/>
+        <parent link="Thigh_L"/>
+        <child link="Shank_L"/>
+        <axis xyz="0 -1 0"/>
+        <dynamics damping="0.1" rotor_inertia="0.05"/>
+    </joint>
+
+    <link name="Shank_L">
+        <inertial>
+            <origin xyz="0.0 0.0 -0.195" rpy="0.0 0.0 0.0"/>
+            <mass value="1.4"/>
+            <inertia ixx="0.017745" ixy="0.0" ixz="0.0" iyy="0.017745" iyz="0.0" izz="0.00175"/>
+        </inertial>
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Shank_L.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.0 0.0 0.39*-0.5" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <capsule radius="0.05" length="0.39"/>
+            </geometry> -->
+        </visual>
+    </link>
+
+    <joint name="Ankle_y_L" type="revolute">
+        <origin xyz="0.0 0.0 -0.39" rpy="0.0 0.0 0.0"/>
+        <parent link="Shank_L"/>
+        <child link="Foot_L"/>
+        <axis xyz="0.0 -1 0.0"/>
+        <!-- <dynamics damping="0.2" spring_mount="0" stiffness="2"/> -->
+        <dynamics damping="0.1" rotor_inertia="0.05"/>
+    </joint>
+
+    <!-- <link name="Ankle_Empty_L">
+    </link>
+
+    <joint name="Ankle_x_L" type="revolute">
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="Ankle_Empty_L"/>
+        <child link="Foot_L"/>
+        <axis xyz="1 0 0.0"/>
+        <dynamics damping="0.2" spring_mount="0" stiffness="2"/>
+    </joint> -->
+
+    <link name="Foot_L">
+        <inertial>
+            <origin xyz="0.08 0.0 -0.064" rpy="0.0 0.0 0.0"/>
+            <mass value="0.2"/>
+            <inertia ixx="0.0003" ixy="0.0" ixz="0.0" iyy="0.0003" iyz="0.0" izz="0.0003"/>
+        </inertial>
+
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <mesh filename="meshes/Foot_L.dae" scale="1.0 1.0 1.0"/>
+            </geometry>
+            <!-- <origin xyz="0.08 0.0 -0.064" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.28 0.08 0.128"/>
+            </geometry> -->
+        </visual>
+
+        <collision>
+            <origin xyz="0.08 0.03 -0.118" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <box size="0.28 0.1 0.02"/>
+            </geometry>
+        </collision>
+    </link>
+
+</robot>
