@@ -72,7 +72,7 @@ class nlp():
         CostFun = 0
 
         for i in range(walker.N):
-            CostFun += 0.4*(walker.t_b[i]/0.8)**2 + 0.2*(walker.u[i][0]/120)**2+\
+            CostFun += 0.8*(walker.t_b[i]/1.0)**2 + 0.2*(walker.u[i][0]/120)**2+\
                         0.2*(walker.u[i][1]/15)**2 + 0.2*(walker.F[i]/600)**2
             pass
 
@@ -220,12 +220,12 @@ def Opt(M_arm, I_arm, F):
     params = {
         'text.usetex': True,
         'font.size': 20,
-        'axes.labelsize': 20,
-        'axes.titlesize': 22,
+        'axes.labelsize': 22,
+        'axes.titlesize': 25,
         'xtick.labelsize': 20,
         'ytick.labelsize': 20,
-        'axes.titlepad': 15.0,
-        'axes.labelpad': 12.0,
+        'axes.titlepad': 6.0,
+        'axes.labelpad': 15.0,
         'figure.subplot.wspace': 0.4,
         'figure.subplot.hspace': 0.3,
     }
@@ -234,9 +234,10 @@ def Opt(M_arm, I_arm, F):
     fig, ax = plt.subplots(1, 1, figsize=(12, 12), subplot_kw={"projection": "3d"})
     ax.plot_surface(Mass0, Inertia0, Z, rstride=1, cstride=1, alpha=0.2)
     ax.scatter(Mass0, Inertia0, F, c='r', s=50)
-    plt.xlabel('Mass')
-    plt.ylabel('Inertia')
-    ax.set_zlabel('Params')
+    plt.xlabel('Mass(kg)')
+    plt.ylabel('Inertia(kg.m2)')
+    ax.set_zlabel('Time(s)')
+    ax.set_title('Balance Time')
     ax.axis('equal')
     ax.axis('tight')
     plt.show()

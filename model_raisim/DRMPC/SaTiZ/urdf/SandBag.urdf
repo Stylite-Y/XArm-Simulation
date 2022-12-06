@@ -1,0 +1,138 @@
+<?xml version="1.0" ?>
+<robot name="LISM_Arm">
+
+    <!-- Basic colors -->
+    <material name="black">
+        <color rgba="0.0 0.0 0.0 1.0"/>
+    </material>
+    <material name="greyblack">
+        <color rgba="0.8 0.8 0.8 1"/>
+    </material>
+    <material name="blue">
+        <color rgba="0.0 0.0 0.8 1.0"/>
+    </material>
+    <material name="green">
+        <color rgba="0.0 0.8 0.0 1.0"/>
+    </material>
+    <material name="grey">
+        <color rgba="0.3 0.3 0.3 1"/>
+    </material>
+    <material name="silver">
+        <color rgba="0.8 0.8 0.8 1"/>
+    </material>
+    <material name="red">
+        <color rgba="0.8 0.0 0.0 1.0"/>
+    </material>
+    <material name="white">
+        <color rgba="1.0 1.0 1.0 1.0"/>
+    </material>
+
+    <material name="anymal_material">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+    </material>
+
+
+    <!-- Material for the visual primitives -->
+    <material name="anymal_material">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+    </material>
+
+<!---=============================the base of fixing arm======================-->
+    <!--base of fixing arm-->
+    <link name="world"/>
+
+    <joint name="worldTolink1" type="fixed">
+        <parent link="world"/>
+        <child link="base_plate"/>
+        <origin xyz="0.5 0.1 0"/>
+    </joint>
+
+    <link name="base_plate">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0"/>
+            <geometry>
+                <box size="0.2 0.3 0.02"/>
+            </geometry>
+            <material name="anymal_material"/>
+        </visual>
+        
+    </link>
+
+    <joint name="base_fix" type="fixed">
+        <axis xyz="1 0 0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <parent link="base_plate"/>
+        <child link="fix_pillar"/>
+    </joint>
+
+    <link name="fix_pillar">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.1"/>
+            <geometry>
+                <cylinder length="0.2" radius="0.02"/>
+            </geometry>
+            <material name="greyblack"/>
+        </visual>
+    </link>
+
+    <joint name="pillar_bag" type="fixed">
+        <axis xyz="1 0 0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <parent link="fix_pillar"/>
+        <child link="bag"/>
+    </joint>
+
+    <link name="bag">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.6"/>
+            <geometry>
+                <cylinder length="0.8" radius="0.08"/>
+            </geometry>
+            <material name="greyblack"/>
+        </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0.6"/>
+            <geometry>
+                <cylinder length="0.8" radius="0.08"/>
+            </geometry>
+            <!-- <material name="">
+                <contact name="rub"/>
+            </material> -->
+        </collision>
+        <inertial>
+            <mass value="70.0"/>
+            <inertia ixx="3.73" ixy="0" ixz="0" iyy="3.73" iyz="0" izz="0.224"/>
+        </inertial>
+    </link>
+
+    <joint name="pillar_test" type="revolute">
+        <axis xyz="0 0 1"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <parent link="bag"/>
+        <child link="test"/>
+    </joint>
+
+    <link name="test">
+        <visual>
+            <origin rpy="0.0 0.0 0.0" xyz="0 0 0.6"/>
+            <geometry>
+                <cylinder length="0.01" radius="0.08"/>
+            </geometry>
+            <material name="greyblack"/>
+        </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0.6"/>
+            <geometry>
+                <cylinder length="0.01" radius="0.08"/>
+            </geometry>
+            <!-- <material name="">
+                <contact name="rub"/>
+            </material> -->
+        </collision>
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.05" ixy="0" ixz="0" iyy="0.05" iyz="0" izz="0.00224"/>
+        </inertial>
+    </link>
+
+</robot>

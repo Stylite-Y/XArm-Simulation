@@ -785,11 +785,11 @@ def ForceMapMV():
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
-    M_arm = [3.0, 4.0, 5.0, 6.0, 6.5, 7.0, 7.5]
+    # M_arm = [3.0, 4.0, 5.0, 6.0, 6.5, 7.0, 7.5]
     # M_arm = [4.0, 6.0, 7.0]
     M_arm = [4.0]
     M_label = list(map(str, M_arm))
-    I_arm = [0.012, 0.015, 0.03, 0.04, 0.06, 0.07, 0.09]
+    # I_arm = [0.012, 0.015, 0.03, 0.04, 0.06, 0.07, 0.09]
     # I_arm = [0.012, 0.04, 0.09]
     I_arm = [0.03]
     I_label = list(map(str, I_arm))
@@ -806,7 +806,6 @@ def ForceMapMV():
     u_s = np.array([[0.0]*len(M_arm)])
     u_e = np.array([[0.0]*len(M_arm)])
     t_b = np.array([[0.0]*len(M_arm)])
-
     Pcostfun = np.array([[0.0]*len(M_arm)])
     Vcostfun = np.array([[0.0]*len(M_arm)])
     Fcostfun = np.array([[0.0]*len(M_arm)])
