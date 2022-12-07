@@ -1,5 +1,5 @@
 import os
-import sympy, math
+import sympy as sy
 import raisimpy as raisim
 import yaml
 import time
@@ -1230,6 +1230,63 @@ def ballPlot():
 
     pass
 
+def ImpactBioFit():
+    # gamma = 4
+    c = 0.02
+    f = 0.04
+    g = 0.8
+    I_m = 5e-4
+    I_l = 2.0*0.6**2/12
+    tm = 10
+    qm = 100*np.pi
+
+    # y = sy.symbols('y')
+    # Lambda = qm*(y**2*I_m+I_l)*(1-sy.exp(1-f*c*y**g*y*tm/(y**2*I_m+I_l)))
+
+    # d_Lambda = sy.diff(Lambda, y)
+
+    # sol = sy.solve(d_Lambda, y)
+    # sol = sy.nsolve(d_Lambda, 10)
+
+    # print(d_Lambda)
+    # print(sol)
+
+    y = np.linspace(1,20,20)
+    # Lambda = qm*(y**2*I_m+I_l)*(1-np.exp(1-f*c*y**g*y*tm/(y**2*I_m+I_l)))
+    Lambda = qm*(1-np.exp(-f*c*y**g*y*tm/(y**2*I_m+I_l)))
+    x = f*c*y**g*y*tm/(y**2*I_m+I_l)
+    tmp = np.exp(-x)
+    # print(x)
+    # print(tmp)
+
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'font.size': 20,
+        'axes.labelsize': 22,
+        'lines.linewidth': 3,
+        'axes.titlesize': 25,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'axes.titlepad': 3.0,
+        'axes.labelpad': 5.0,
+        'lines.markersize': 15,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.5,
+    }
+
+    plt.rcParams.update(params)
+    fig, axs = plt.subplots(1, 1, figsize=(12, 12))
+    ax1 = axs
+
+    ax1.plot(y, Lambda,'o-')
+    ax1.set_xlabel(r'Reduction ratio $\gamma$ (s)')
+    ax1.set_ylabel(r'Impact $\Lambda$ (kg)')
+    # ax1.set_title('SVD')
+    # ax1.axis('equal')
+    plt.show()
+
+    
 
 if __name__ == "__main__":
     # EigAndSVD()
@@ -1239,7 +1296,8 @@ if __name__ == "__main__":
     # ThreeLinksInetSVD()
     # ThreeLinksDexterity()
     # DynamicsIndex()
-    DIPImpactModel()
+    # DIPImpactModel()
     # ballPlot()
     # test()
+    ImpactBioFit()
     pass
