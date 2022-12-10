@@ -1,2 +1,2 @@
-)
-    # print(Mc@V_end)
+ 2.0*0.6**2/12
+    gamma

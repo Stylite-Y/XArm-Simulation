@@ -1230,11 +1230,13 @@ def ballPlot():
 
     pass
 
+
+# 减速比-冲量
 def ImpactBioFit():
     # gamma = 4
     c = 0.02
     f = 0.04
-    g = 0.8
+    g = 1.0
     I_m = 5e-4
     I_l = 2.0*0.6**2/12
     tm = 10
@@ -1251,10 +1253,12 @@ def ImpactBioFit():
     # print(d_Lambda)
     # print(sol)
 
-    y = np.linspace(1,20,20)
-    # Lambda = qm*(y**2*I_m+I_l)*(1-np.exp(1-f*c*y**g*y*tm/(y**2*I_m+I_l)))
-    Lambda = qm*(1-np.exp(-f*c*y**g*y*tm/(y**2*I_m+I_l)))
-    x = f*c*y**g*y*tm/(y**2*I_m+I_l)
+    gamma = np.linspace(1,20,20)
+    k = c * gamma*tm/(gamma**2*I_m+I_l)
+    t = f*gamma**g
+    Lambda = qm*(gamma**2*I_m+I_l)*(1-np.exp(-f*c*gamma**g*gamma*tm/(gamma**2*I_m+I_l)))/gamma
+    # Lambda = qm*(1-np.exp(-f*c*gamma**g*gamma*tm/(gamma**2*I_m+I_l)))/gamma
+    x = f*c*gamma**g*gamma*tm/(gamma**2*I_m+I_l)
     tmp = np.exp(-x)
     # print(x)
     # print(tmp)
@@ -1276,17 +1280,129 @@ def ImpactBioFit():
     }
 
     plt.rcParams.update(params)
-    fig, axs = plt.subplots(1, 1, figsize=(12, 12))
-    ax1 = axs
+    fig, axs = plt.subplots(2, 1, figsize=(12, 12))
+    ax1 = axs[0]
+    ax2 = axs[1]
+    ax22 = ax2.twinx()
 
-    ax1.plot(y, Lambda,'o-')
-    ax1.set_xlabel(r'Reduction ratio $\gamma$ (s)')
-    ax1.set_ylabel(r'Impact $\Lambda$ (kg)')
+    ax1.plot(gamma, Lambda,'o-')
+    ax2.plot(gamma, k,'o-', label='k')
+    ax22.plot(gamma, t,'o-', label='t',c='C1')
+    ax1.set_xlabel(r'Reduction ratio $\gamma$')
+    ax1.set_ylabel(r'Impact $\Lambda (kg.m.s^{-1})$')
+    ax2.legend()
+    ax22.legend(loc="lower right")
     # ax1.set_title('SVD')
     # ax1.axis('equal')
     plt.show()
 
+# link mass-impace
+def ImpactBioFit2():
+    # gamma = 4
+    c = 0.02
+    f = 0.04
+    g = 0.8
+    I_m = 5e-4
+    I_l = 2.0*0.6**2/12
+    tm = 10
+    qm = 100*np.pi
+    gamma = 5
+
+    I_l = np.linspace(0.5,8,50)*0.6**2/12
+    k = c * gamma*tm/(gamma**2*I_m+I_l)
+    t = f*I_l**g
+    # Lambda = qm*(y**2*I_m+I_l)*(1-np.exp(1-f*c*y**g*y*tm/(y**2*I_m+I_l)))
+    Lambda = qm*(1-np.exp(-f*c*I_l**g*gamma*tm/(gamma**2*I_m+I_l)))
+    x = f*c*gamma**g*gamma*tm/(gamma**2*I_m+I_l)
+    tmp = np.exp(-x)
+ 
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'font.size': 20,
+        'axes.labelsize': 22,
+        'lines.linewidth': 3,
+        'axes.titlesize': 25,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'axes.titlepad': 3.0,
+        'axes.labelpad': 5.0,
+        'lines.markersize': 15,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.5,
+    }
+
+    plt.rcParams.update(params)
+    fig, axs = plt.subplots(2, 1, figsize=(12, 12))
+    ax1 = axs[0]
+    ax2 = axs[1]
+    ax22 = ax2.twinx()
+
+    ax1.plot(I_l, Lambda,'o-')
+    ax2.plot(I_l, k,'o-', label='k')
+    ax22.plot(I_l, t,'o-', label='t',c='C1')
+    ax1.set_xlabel(r'Link Inertia $I_l (kg.m^2)$')
+    ax1.set_ylabel(r'Impact $\Lambda (kg.m.s^{-1})$')
+    ax22.legend(loc="lower right")
+    ax2.legend()
+    # ax1.set_title('SVD')
+    # ax1.axis('equal')
+    plt.show()
+
+
+def ImpactBioFit3():
+    U0 = 24.0
+    R = 0.127
+    Kv = 0.6
+    Kt = 0.075
+    I_m = 5e-4
+    t = 0.1
+    tm=10
+
+    I_l = 3.0*0.7**2/3
+    gamma = np.linspace(1,20,50)
+    kd = 0.1
     
+    # I_l = np.linspace(0.5,8,50)*0.6**2/12
+    # gamma = 5
+    f = kd*gamma
+    a = (gamma**2*I_m+I_l)
+    b = gamma**2*Kt*Kv/R
+    c = gamma*Kt*U0/R
+    
+    dq = c*(1-np.exp(-b*t/a))/b
+    Lambda = (gamma**2*I_m+I_l) * dq
+ 
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'font.size': 20,
+        'axes.labelsize': 22,
+        'lines.linewidth': 3,
+        'axes.titlesize': 25,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'axes.titlepad': 3.0,
+        'axes.labelpad': 5.0,
+        'lines.markersize': 15,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.5,
+    }
+
+    plt.rcParams.update(params)
+    fig, axs = plt.subplots(1, 1, figsize=(12, 12))
+    ax1 = axs
+    print(dq*gamma)
+
+    # ax1.plot(I_l, Lambda,'o-')
+    ax1.plot(gamma, Lambda,'o-')
+    ax1.set_xlabel(r'Reduction ratio $\gamma$')
+    ax1.set_ylabel(r'Impact $\Lambda (kg.m.s^{-1})$')
+    # ax1.set_title('SVD')
+    # ax1.axis('equal')
+    plt.show()
+
+   
 
 if __name__ == "__main__":
     # EigAndSVD()
@@ -1299,5 +1415,7 @@ if __name__ == "__main__":
     # DIPImpactModel()
     # ballPlot()
     # test()
-    ImpactBioFit()
+    # ImpactBioFit()
+    # ImpactBioFit2()
+    ImpactBioFit3()
     pass
