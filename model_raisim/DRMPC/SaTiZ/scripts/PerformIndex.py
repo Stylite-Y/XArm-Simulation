@@ -182,7 +182,6 @@ def EigAndSVD2():
         longaxs = 0.0
     if Sigma_m[1] ==0:
         shortaxs = 0.0
-    # endregion
 
     # region: print
     print("="*50)
@@ -487,7 +486,6 @@ def TwoLinksInetSVD():
         longaxs = 0.0
     if Sigma_m[1] ==0:
         shortaxs = 0.0
-    # endregion
 
     # region: print
     print("="*50)
@@ -658,7 +656,6 @@ def ThreeLinksInetSVD():
         longaxs = 0.0
     if Sigma_m[1] ==0:
         shortaxs = 0.0
-    # endregion
 
     # region: print
     print("="*50)
@@ -826,7 +823,6 @@ def ThreeLinksDexterity():
         longaxs = 0.0
     if Sigma_m[1] ==0:
         shortaxs = 0.0
-    # endregion
 
     # region: print
     print("="*50)
@@ -1188,7 +1184,7 @@ def DIPImpactModel():
     
     pass
 
-def ballPlot():
+def ContTimePlot():
     mball = [0.0027, 0.005, 0.045, 0.057, 0.145, 0.27, 0.4]
     dtball = np.array([1.4, 4.0, 0.42, 5.2, 0.8, 12.7, 9.3])
     dtball = 0.001*dtball
@@ -1226,6 +1222,44 @@ def ballPlot():
     ax1.set_ylabel('Mass (kg)')
     # ax1.set_title('SVD')
     ax1.axis('equal')
+    plt.show()
+
+    pass
+
+def SwingTimePlot():
+    mball = [0.0027, 0.005, 0.045, 0.057, 0.145, 0.27, 0.4]
+    dtball = np.array([150, 80, 250, 140, 200, 260, 150])
+
+    mbox = [60]
+    dtbox = [230]
+
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'font.size': 20,
+        'axes.labelsize': 22,
+        'lines.linewidth': 3,
+        'axes.titlesize': 25,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'axes.titlepad': 3.0,
+        'axes.labelpad': 5.0,
+        'lines.markersize': 15,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.5,
+    }
+
+    plt.rcParams.update(params)
+    fig, axs = plt.subplots(1, 1, figsize=(12, 12))
+    ax1 = axs
+
+    ax1.semilogy(dtball, mball, 's', c='C0')
+    ax1.semilogy(dtbox, mbox, '^', c='C2')
+    # ax1.set_ylim(0.001, 100)
+    ax1.set_xlabel('Swing Time (ms)')
+    ax1.set_ylabel('Mass (kg)')
+    # ax1.set_title('SVD')
+    # ax1.axis('equal')
     plt.show()
 
     pass
@@ -1356,14 +1390,22 @@ def ImpactBioFit3():
     Kv = 0.6
     Kt = 0.075
     I_m = 5e-4
-    t = 0.1
-    tm=10
 
-    I_l = 3.0*0.7**2/3
-    gamma = np.linspace(1,20,50)
+    # maxon ec60 48v, 400w
+    U0 = 48.0
+    R = 0.844
+    Kv = 0.231
+    Kt = 0.231
+    I_m = 1.e-3
+
+    t = 0.2
+
+    I_l = 4.0*0.7**2/3
+    gamma = np.linspace(1,15,50)
+    # gamma = np.linspace(1,200,200)
     kd = 0.1
     
-    # I_l = np.linspace(0.5,8,50)*0.6**2/12
+    # I_l = np.linspace(0.5,8,50)*0.7**2/3
     # gamma = 5
     f = kd*gamma
     a = (gamma**2*I_m+I_l)
@@ -1372,6 +1414,7 @@ def ImpactBioFit3():
     
     dq = c*(1-np.exp(-b*t/a))/b
     Lambda = (gamma**2*I_m+I_l) * dq
+    print(gamma)
  
     plt.style.use("science")
     params = {
@@ -1402,6 +1445,25 @@ def ImpactBioFit3():
     # ax1.axis('equal')
     plt.show()
 
+
+def GammaOpti():
+    y = sy.symbols('gamma')
+    U0 = sy.symbols('U0')
+    kv = sy.symbols('kv')
+    kt = sy.symbols('kt')
+    R = sy.symbols('R')
+    Im = sy.symbols('Im')
+    Il = sy.symbols('Il')
+    t = sy.symbols('t')
+
+
+    f = (y*y*Im+Il)*U0*(1-sy.exp(-y*y*kv*kt*t/(R*(y*y*Im+Il))))/(y*kv)
+    df = f.diff(y)
+    print(df)
+
+    res = sy.nonlinsolve(df, [y])
+    print(df)
+    print(res)
    
 
 if __name__ == "__main__":
@@ -1418,4 +1480,6 @@ if __name__ == "__main__":
     # ImpactBioFit()
     # ImpactBioFit2()
     ImpactBioFit3()
+    # SwingTimePlot()
+    # GammaOpti()
     pass
