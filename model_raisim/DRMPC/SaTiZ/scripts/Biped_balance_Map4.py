@@ -216,6 +216,7 @@ class Bipedal_hybrid():
         inertia_force = [mm[i][0]*acc[0]+mm[i][1]*acc[1]+mm[i][2]*acc[2] for i in range(3)]
         inertia_main = [mm[i][i]*acc[i] for i in range(3)]
         inertia_coupling = [inertia_force[i]-inertia_main[i] for i in range(3)]
+        # endregion
         return inertia_main, inertia_coupling
 
     def SupportForce(self, q, dq, ddq):
@@ -341,6 +342,7 @@ class nlp():
         qmax = walker.qmax
         dqmax = walker.dqmax
         umax = walker.umax
+        # endregion
         
         for i in range(walker.N):
             for k in range(3):
@@ -405,6 +407,7 @@ class nlp():
             
             pass
 
+        # endregion
 
         # region leg locomotion constraint
         for i in range(walker.N-1):
@@ -564,6 +567,7 @@ def main(Mass, inertia, armflag, vis_flag):
     save_flag = True
     # armflag = False
     # armflag = True
+    # endregion
 
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
@@ -1459,8 +1463,7 @@ def MOmentCal():
     }
 
     plt.rcParams.update(params)
-
-    # region: imshow
+    
     fig, axs = plt.subplots(2, 1, figsize=(12, 12))
     ax1 = axs[0]
     ax2 = axs[1]

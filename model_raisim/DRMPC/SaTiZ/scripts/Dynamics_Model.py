@@ -3,6 +3,8 @@ This script is used to derive dynamics equation using Lagrange method
 Author: hyyuan
 CopyRight @ Xmech, ZJU, 2022.03.18
 '''
+
+
 import sympy
 from sympy import sin
 from sympy import cos
@@ -347,6 +349,168 @@ def TwoLinkDynamics():
     # get_coriolis_term(eq[2])
     pass
  
+def TwoLinkDynamics2():
+    t = sym('t')
+
+    # ================= variable and parameter defination ==================
+    # define state variable
+    theta1 = Fun('theta1', real=True)(t)
+    theta2 = Fun('theta2', real=True)(t)
+    
+    theta1_d = theta1.diff(t)
+    theta2_d = theta2.diff(t)
+
+    # define geometry and mass parameter
+    mb = sym('mb')
+    Ib = sym('Ib')
+    m = [sym('m'+str(1+i)) for i in range(1)]
+    I = [sym('I'+str(1+i)) for i in range(1)]
+    g = sym('g')
+    Lb = sym('Lb')  
+    Ls = sym('Ls')
+    Lt = sym('Lt')
+    lt = sym('lt')  # mass center of thigh
+    ls = sym('ls')  # mass center of shank
+    lb = sym('lb')  # mass center of body
+
+    # ==================== geometry constraint ===================
+    # position relationship
+    theta1_hat = theta1
+    theta2_hat = theta1 + theta2
+
+    xb = lb * sin(theta1)       # body link x mass center position
+    yb = lb * cos(theta1)       # body link y mass center position
+    x1 = Lb * sin(theta1) + lt * sin(theta1 + theta2)       # link 1 x mcp
+    y1 = Lb * cos(theta1) + lt * cos(theta1 + theta2)       # link 1 y mcp
+
+    # velocity relationship
+    theta1_hat_d = theta1_d
+    theta2_hat_d = theta1_d + theta2_d
+
+    xb_d = lb * cos(theta1) * theta1_d       # body link x mass center vel
+    yb_d = - lb * sin(theta1) * theta1_d      # body link y mass center vel
+    x1_d = Lb * cos(theta1) * theta1_d + lt * cos(theta1 + theta2) * (theta1_d + theta2_d)      # link 1 x mcv
+    y1_d = - Lb * sin(theta1) * theta1_d  - lt * sin(theta1 + theta2) * (theta1_d + theta2_d)       # link 1 y mcv
+    
+    # ==================== kinematic and potential energy ===================
+    # 动能计算： 刚体动能 = 刚体质心平移动能 + 绕质心转动动能 = 1 / 2 * m * vc ** 2 + 1 / 2 * Ic * dtheta ** 2
+    Tb = 0.5 * mb * xb_d ** 2 + 0.5 * mb * yb_d ** 2 + 0.5 * Ib * theta1_hat_d ** 2    
+    T1 = 0.5 * m[0] * x1_d ** 2 + 0.5 * m[0] * y1_d ** 2 + 0.5 * I[0] * theta2_hat_d ** 2
+
+    T = Tb + T1
+
+    # potential energy
+    V = mb * g * yb + m[0] * g * y1
+
+    # Lagrange function
+    L = T - V
+
+    os.system('cls' if os.name == 'nt' else 'clear')
+    init_printing()
+
+    eq1 = L.diff(theta1_d).diff(t) - L.diff(theta1)
+    eq2 = L.diff(theta2_d).diff(t) - L.diff(theta2)
+    # print(eq1)
+
+    eq = [eq1, eq2]
+    
+
+    def get_inertia_term(f):
+        print("Inertia term")
+
+        def try_print(expre, s):
+            temp = sympy.collect(expre.expand(), s, evaluate=False)
+            print("-"*50)
+
+            try:
+                pprint(sympy.trigsimp(temp[s]), use_unicode=True)
+                # pprint(temp[s], use_unicode=True)
+            except:
+                print("")
+            pass
+
+        for i in range(2):
+            print("="*50)
+            print("Inertia term wrt. joint ", i+1)
+            try_print(f[i], theta1.diff(t).diff(t))
+            try_print(f[i], theta2.diff(t).diff(t))
+        pass
+
+    def get_gravity_term(f):
+        print("Gravity term")
+
+        def try_print(expre, s):
+            temp = sympy.collect(expre.expand(), s, evaluate=False)
+            print("-"*50)
+            try:
+                pprint(temp[s], use_unicode=True)
+            except:
+                print("")
+            pass
+
+        for i in range(2):
+            print("="*50)
+            print("Gravity term wrt. joint ", i+1)
+            try_print(f[i], g)
+        pass
+
+    def get_coriolis_term(f):
+        print("Coriolis term")
+        s = [theta1_d, theta2_d]
+        ss = [sym('O1\''), sym('O2\'')]
+
+        for i in range(3):
+            f = f.replace(s[i], ss[i])
+            pass
+        # print(f)
+        sss = []
+        for i in range(2):
+            for j in range(i, 2):
+                sss.append(ss[i]*ss[j])
+                pass
+            pass
+        print(sss)
+        # s = [Xb.diff(t), Yb.diff(t), Ob.diff(t), O1[0].diff(t),
+        #      O2[0].diff(t), O3[0].diff(t)]
+        # temp = sympy.collect(
+        #     f.expand(), sss, evaluate=False)
+        # pprint(temp)
+        cor = None
+        for i in range(2):
+            for j in range(i, 2):
+                print("-"*50)
+                temp= sympy.collect(f.expand(), ss[i]*ss[j],  evaluate=False)
+                print(i, j)
+                
+                try:
+                    tttt = temp[ss[i]*ss[j]]*s[i]*s[j]
+                    # cor = cor + tttt if cor else tttt
+                    # print(cor)
+                    # print(tttt)
+                    cor = sympy.simplify(tttt)
+                    pprint(cor, use_unicode=True)
+
+                except:
+                    pass
+                pass
+            # print("-"*50)
+            pass
+        print("-"*50)
+
+        # print(cor)
+        # cor = sympy.simplify(cor)
+        # # cor = sympy.factor(cor)
+        # pprint(cor, use_unicode=True)
+        pass
+
+    get_inertia_term(eq)
+    # print("\n"*5)
+    get_gravity_term(eq)
+    # print("\n"*5)
+    # get_coriolis_term(eq[2])
+    pass
+ 
+
 def TwoLink2ndDown():
     t = sym('t')
 

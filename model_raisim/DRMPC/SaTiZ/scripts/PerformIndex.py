@@ -1,3 +1,11 @@
+'''
+1. 连杆机械臂基于雅克比矩阵的指标分析：可操作性行、条件书、动态可操作性
+2. 2022.12.12:
+        - 单杆简化模型的冲量方程推导和冲量—减速比结果分析
+8. 2022.12.19:
+        - 二连杆简化模型的冲量方程推导和冲量—减速比结果分析
+'''
+
 import os
 import sympy as sy
 import raisimpy as raisim
@@ -5,6 +13,7 @@ import yaml
 import time
 from cv2 import ellipse2Poly
 import numpy as np
+from scipy.integrate import odeint
 from numpy import sin as s
 from numpy import cos as c
 from mpl_toolkits.mplot3d import Axes3D
@@ -1383,7 +1392,7 @@ def ImpactBioFit2():
     # ax1.axis('equal')
     plt.show()
 
-
+# 基于单杆动力学减速比-冲量 
 def ImpactBioFit3():
     U0 = 24.0
     R = 0.127
@@ -1392,16 +1401,24 @@ def ImpactBioFit3():
     I_m = 5e-4
 
     # maxon ec60 48v, 400w
-    U0 = 48.0
-    R = 0.844
-    Kv = 0.231
-    Kt = 0.231
-    I_m = 1.e-3
+    # U0 = 48.0
+    # R = 0.844
+    # Kv = 0.231
+    # Kt = 0.231
+    # I_m = 1.e-3
+
+    # maxon ec i 52 48v, 420w
+    # U0 = 48.0
+    # R = 0.281
+    # Kv = 0.089
+    # Kt = 0.089
+    # I_m = 2.5e-4
 
     t = 0.2
+    tt = np.linspace(1, t, 1000)
 
     I_l = 4.0*0.7**2/3
-    gamma = np.linspace(1,15,50)
+    gamma = np.linspace(1,20,50)
     # gamma = np.linspace(1,200,200)
     kd = 0.1
     
@@ -1414,7 +1431,12 @@ def ImpactBioFit3():
     
     dq = c*(1-np.exp(-b*t/a))/b
     Lambda = (gamma**2*I_m+I_l) * dq
-    print(gamma)
+
+    q_t = 0
+    y = 5
+    for i in range(len(tt)):
+        q_t += (y*Kt*U0/R)*(1-np.exp(-(y**2*Kt*Kv/R)*tt[i]/(y**2*I_m+I_l)))/(y**2*Kt*Kv/R)*0.0002
+    print(q_t)
  
     plt.style.use("science")
     params = {
@@ -1445,26 +1467,223 @@ def ImpactBioFit3():
     # ax1.axis('equal')
     plt.show()
 
+# 基于二连杆动力学减速比-冲量 
+def TwoLinkImpactFit():
+    # link params
+    l1 = 0.4
+    l2 = 0.4
+    m1 = 2.0
+    m2 = 2.0
+    g = 9.8
+
+    # motor params
+    U0 = 24.0
+    R = 0.127
+    Kv = 0.6
+    Kt = 0.075
+    Im = 5e-4
+
+    # maxon ec i 52 48v, 420w
+    U0 = 48.0
+    R = 0.281
+    Kv = 0.089
+    Kt = 0.089
+    Im = 2.5e-4
+    ts = 0.12
+    Nsample = 200
+    t = np.linspace(0, ts, Nsample)
+    gamma = np.linspace(1,20,50)
+    
+    Lambda_p = []
+    Lambda_s = []
+
+    def Dynamic(w, t, gam, U0, Kt, Kv, R, Im):
+        y11, y12, y21, y22 = w
+        
+        b_f = gam**2*Kt*Kv/R
+        c_f = gam*Kt*U0/R
+        
+        m11 = (36*Im*gam**2 + 12*l2**2*m2)/(36*Im**2*gam**4 + 12*Im*gam**2*l1**2*m1 + 36*Im*gam**2*l1**2*m2 + 36*Im*gam**2*l1*l2*m2*np.cos(y21) + 24*Im*gam**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*np.cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        m12 = (-18*l1*l2*m2*np.cos(y21) - 12*l2**2*m2)/(36*Im**2*gam**4 + 12*Im*gam**2*l1**2*m1 + 36*Im*gam**2*l1**2*m2 + 36*Im*gam**2*l1*l2*m2*np.cos(y21) + 24*Im*gam**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*np.cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        m21 = (-18*l1*l2*m2*np.cos(y21) - 12*l2**2*m2)/(36*Im**2*gam**4 + 12*Im*gam**2*l1**2*m1 + 36*Im*gam**2*l1**2*m2 + 36*Im*gam**2*l1*l2*m2*np.cos(y21) + 24*Im*gam**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*np.cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        m22 = (36*Im*gam**2 + 12*l1**2*m1 + 36*l1**2*m2 + 36*l1*l2*m2*np.cos(y21) + 12*l2**2*m2)/(36*Im**2*gam**4 + 12*Im*gam**2*l1**2*m1 + 36*Im*gam**2*l1**2*m2 + 36*Im*gam**2*l1*l2*m2*np.cos(y21) + 24*Im*gam**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*np.cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        
+        cq1 = -m2*l1*l2*np.sin(y21)*y12*y22-m2*l1*l2*np.sin(y21)*y22*y22/2
+        cq2 = m2*l1*l2*np.sin(y21)*y12*y12/2
+
+        dy11 = y12
+        dy12 = m11*(c_f - b_f*y12 - cq1) + m12*(c_f - b_f*y22 - cq2)
+        dy21 = y22
+        dy22 = m21*(c_f - b_f*y12 - cq1) + m22*(c_f - b_f*y22 - cq2)
+
+        ## 肘关节角度固定,不按照最大功率运行: 结果奇怪
+        # dy11 = y12
+        # dy12 = m11*(c_f - b_f*y12) + m12*(c_f - cq2)
+        # dy21 = y22
+        # dy22 = m21*(c_f - b_f*y12) + m22*(c_f - cq2)
+
+        return np.array([dy11, dy12, dy21, dy22])
+
+    for i in range(len(gamma)):
+        w1 = (-np.pi/8, 0.001, np.pi/6, 0.001)
+        qres = odeint(Dynamic, w1, t, args=(gamma[i], U0, Kt, Kv, R, Im))
+        
+        q0 = [qres[-1][0], qres[-1][2]]
+        dq0 = np.array([qres[-1][1], qres[-1][3]])
+        Jq = np.array([[-l1*np.sin(q0[0])-l2*np.sin(q0[0]+q0[1]), -l2*np.sin(q0[0]+q0[1])],
+                            [l1*np.cos(q0[0])+l2*np.cos(q0[0]+q0[1]), l2*np.cos(q0[0]+q0[1])]])
+        Mq = np.array([[Im*gamma[i]**2 + m2*l1**2+m1*l1**2/3+m2*l2**2/3+m2*l1*l2*np.cos(q0[1]), m2*l2**2/3+m2*l1*l2*np.cos(q0[1]/2)],
+                    [m2*l2**2/3+m2*l1*l2*np.cos(q0[1])/2, m2*l2**2/3+Im*gamma[i]**2]])
+        M_inv = np.linalg.inv(Mq)
+        Mtmp = Jq @ M_inv @ Jq.T
+        Mc = np.linalg.inv(Mtmp)
+        Ltmp = Mc @ Jq @ dq0
+        Lsmp = np.sqrt(Ltmp[0]**2+Ltmp[1]**2)
+        Lambda_p.append(Ltmp)
+        Lambda_s.append(Lsmp)
+
+        if i == 8:
+            L = [l1, l2]
+            q1 = qres[:,0]
+            q2 = qres[:,2]
+            print(qres[:,2])
+            # print(q2)
+            dt = ts / Nsample
+            animation(L, q1, q2, t, dt)
+        pass
+    
+ 
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'font.size': 20,
+        'axes.labelsize': 22,
+        'lines.linewidth': 3,
+        'axes.titlesize': 25,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'axes.titlepad': 3.0,
+        'axes.labelpad': 5.0,
+        'lines.markersize': 15,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.5,
+    }
+
+    plt.rcParams.update(params)
+    fig, axs = plt.subplots(1, 1, figsize=(12, 12))
+    ax1 = axs
+    # print(dq*gamma)
+
+    # ax1.plot(I_l, Lambda,'o-')
+    ax1.plot(gamma, Lambda_s,'o-')
+    ax1.set_xlabel(r'Reduction ratio $\gamma$')
+    ax1.set_ylabel(r'Impact $\Lambda (kg.m.s^{-1})$')
+    # ax1.set_title('SVD')
+    # ax1.axis('equal')
+    plt.show()
+
 
 def GammaOpti():
-    y = sy.symbols('gamma')
+    gamma = sy.symbols('gamma')
     U0 = sy.symbols('U0')
     kv = sy.symbols('kv')
     kt = sy.symbols('kt')
     R = sy.symbols('R')
     Im = sy.symbols('Im')
     Il = sy.symbols('Il')
+    m1 = sy.symbols('m1')
+    m2 = sy.symbols('m2')
+    l1 = sy.symbols('l1')
+    l2 = sy.symbols('l2')
     t = sy.symbols('t')
+    q1 = sy.symbols('q1')
+    q2 = sy.symbols('q2')
+    # q2 = sy.Function('q1', real=True)(t)
+    # q1 = sy.Function('q2', real=True)(t)
+    # dq1 = q1.diff(t)
+    # dq2 = q2.diff(t)
+    # ddq1 = dq1.diff(t)
+    # ddq2 = dq2.diff(t)
+
+    Mq = sy.Matrix([[Im*gamma**2 + m2*l1**2+m1*l1**2/3+m2*l2**2/3+m2*l1*l2*sy.cos(q2), m2*l2**2/3+m2*l1*l2*sy.cos(q2)/2],
+                        [m2*l2**2/3+m2*l1*l2*sy.cos(q2)/2, m2*l2**2/3+Im*gamma**2]])
+    # Cq = sy.Matrix([-m2*l1*l2*np.sin(q2)*dq1*dq2-m2*l1*l2*np.sin(q2)*dq2*dq2/2, m2*l1*l2*np.sin(q2)*dq1*dq1/2])
+
+    tmp = sy.Matrix([[l1, R],[kt,kv]])
+    tmp_inv = tmp**(-1)
+    print(tmp_inv)
+    M_inv = Mq**(-1)
+    print(M_inv)
+    print(Mq.inv())
 
 
-    f = (y*y*Im+Il)*U0*(1-sy.exp(-y*y*kv*kt*t/(R*(y*y*Im+Il))))/(y*kv)
-    df = f.diff(y)
-    print(df)
+def animation(L, q1, q2, t, dt):
+    from numpy import sin, cos
+    import matplotlib.pyplot as plt
+    import matplotlib.animation as animation
+    from collections import deque
 
-    res = sy.nonlinsolve(df, [y])
-    print(df)
-    print(res)
-   
+
+    ## kinematic equation
+    L0 = L[0]
+    L1 = L[1]
+    L_max = L0+L1
+    x1 = L0*sin(q1)
+    y1 = L0*cos(q1)
+    x2 = L1*sin(q1 + q2) + x1
+    y2 = L1*cos(q1 + q2) + y1
+
+    history_len = 100
+    
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(autoscale_on=False, xlim=(-L0, L_max), ylim=(-0.05, (L0+L1)*1.2))
+    ax.set_aspect('equal')
+    ax.set_xlabel('X axis ', fontsize = 20)
+    ax.set_ylabel('Y axis ', fontsize = 20)
+    ax.xaxis.set_tick_params(labelsize = 18)
+    ax.yaxis.set_tick_params(labelsize = 18)
+    ax.grid()
+
+    line, = ax.plot([], [], 'o-', lw=3,markersize=8)
+    trace, = ax.plot([], [], '.-', lw=1, ms=1)
+    time_template = 'time = %.2fs'
+    time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes, fontsize=15)
+    history_x, history_y = deque(maxlen=history_len), deque(maxlen=history_len)
+
+    def animate(i):
+        thisx = [0, x1[i], x2[i]]
+        thisy = [0, y1[i], y2[i]]
+
+        if i == 0:
+            history_x.clear()
+            history_y.clear()
+
+        history_x.appendleft(thisx[2])
+        history_y.appendleft(thisy[2])
+
+        alpha = (i / history_len) ** 2
+        line.set_data(thisx, thisy)
+        trace.set_data(history_x, history_y)
+        # trace.set_alpha(alpha)
+        time_text.set_text(time_template % (i*dt))
+        return line, trace, time_text
+    
+    ani = animation.FuncAnimation(
+        fig, animate, len(t), interval=0.1, save_count = 30, blit=True)
+
+    ## animation save to gif
+    # date = self.date
+    # name = "traj_ani" + ".gif"
+
+    saveflag = True
+    save_dir = "/home/hyyuan/Documents/Master/Manipulator/XArm-Simulation/model_raisim/DRMPC/SaTiZ/data/2022-12-19/"
+    savename = save_dir + "t_0.12.gif"
+    # savename = save_dir +date+ name
+
+    if saveflag:
+        ani.save(savename, writer='pillow', fps=30)
+
+    # plt.show()
 
 if __name__ == "__main__":
     # EigAndSVD()
@@ -1479,7 +1698,8 @@ if __name__ == "__main__":
     # test()
     # ImpactBioFit()
     # ImpactBioFit2()
-    ImpactBioFit3()
+    # ImpactBioFit3()
     # SwingTimePlot()
     # GammaOpti()
+    TwoLinkImpactFit()
     pass
