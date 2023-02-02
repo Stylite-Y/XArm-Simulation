@@ -1,48 +1,74 @@
+import os
+import pickle
+import datetime
+import numpy as np
+import scipy.linalg
+from scipy.optimize import minimize
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
-import numpy as np
-from itertools import product, combinations
+import casadi as ca
+from casadi import sin as s
+from casadi import cos as c
 
+class Bipedal_hybrid():
+    def __init__(self):
+        self.opti = ca.Opti()
+        self.qmax = 0.75*np.pi
+        self.dqmax = 64
+        self.umax = 27
 
-fig = plt.figure()
-ax = fig.add_subplot(projection='3d')
-ax.set_aspect("equal")
+        # time and collection defination related parameter
+        self.N = 2
+        self.m = [1.0, 1.0]
+        self.I = [0.0075, 0.0075]
+        self.l = [0.15, 0.15]
+        self.I_ = [self.m[i]*self.l[i]**2+self.I[i] for i in range(2)]
 
-# draw cube
-r = [-1, 1]
-for s, e in combinations(np.array(list(product(r, r, r))), 2):
-    if np.sum(np.abs(s-e)) == r[1]-r[0]:
-        ax.plot3D(*zip(s, e), color="b")
+        self.L = [0.3, 0.3]
 
-# draw sphere
-u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
-x = np.cos(u)*np.sin(v)
-y = np.sin(u)*np.sin(v)
-z = np.cos(v)
-ax.plot_wireframe(x, y, z, color="r")
+        # * define variable
+        self.q = [self.opti.variable(2) for _ in range(self.N)]
+        self.dq = [self.opti.variable(2) for _ in range(self.N)]
+        # self.ddq = [(self.dq[i+1]-self.dq[i]) /
+        #                 0.001 for i in range(self.N-1)]
 
-# draw a point
-ax.scatter([0], [0], [0], color="g", s=100)
+        # ! set the last u to be zero at constraint
+        self.u = [self.opti.variable(2) for _ in range(self.N)]
 
-# draw a vector
-from matplotlib.patches import FancyArrowPatch
-from mpl_toolkits.mplot3d import proj3d
+        pass
 
+    def MassMatrix(self, q):
+        m0 = self.m[0]
+        m1 = self.m[1]
+        lc0 = self.l[0]
+        lc1 = self.l[1]
+        L0 = self.L[0]
+        L1 = self.L[1]
+        I0 = self.I[0]
+        I1 = self.I[1]
 
-class Arrow3D(FancyArrowPatch):
+        M11 = I0 + I1 + m0*lc0**2+m1*(L0**2+lc1**2+2*L0*lc1*c(q[1]))
 
-    def __init__(self, xs, ys, zs, *args, **kwargs):
-        FancyArrowPatch.__init__(self, (0, 0), (0, 0), *args, **kwargs)
-        self._verts3d = xs, ys, zs
+        M12 = I1 + m1*(lc1**2+L0*lc1*c(q[1]))
+        M21 = M12
+        M22 = I1 + m1*lc1**2
 
-    def do_3d_projection(self, renderer=None):
-        xs3d, ys3d, zs3d = self._verts3d
-        xs, ys, zs = proj3d.proj_transform(xs3d, ys3d, zs3d, self.axes.M)
-        self.set_positions((xs[0],ys[0]),(xs[1],ys[1]))
+        return [[M11, M12],
+                [M21, M22]]
 
-        return np.min(zs)
-
-a = Arrow3D([0, 1], [0, 1], [0, 1], mutation_scale=20,
-            lw=1, arrowstyle="-|>", color="k")
-ax.add_artist(a)
-plt.show()
+x = ca.MX.sym('x',2,2)
+y = x[0][0]
+print(y)
+robot = Bipedal_hybrid()
+massM = robot.MassMatrix(robot.q[1])
+massMX = ca.MX(massM)
+M2 = massM@massM
+print(M2)
+# qinv = ca.inv(robot.q)
+# print(massM)
+print(robot.q)
+# help(ca.MatrixCommon)
+Minv = ca.inv(massM)
+print(Minv)
+print(type(robot.q))
+pass

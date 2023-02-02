@@ -68,7 +68,6 @@ class nlp():
             pass
 
     def Cost(self, walker):
-        # region aim function of optimal control
         CostFun = 0
 
         for i in range(walker.N):

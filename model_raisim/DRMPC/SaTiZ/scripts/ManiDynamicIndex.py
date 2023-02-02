@@ -131,8 +131,6 @@ class Bipedal_hybrid():
 
         return [G1*self.g, G2*self.g]
 
-        pass
-
     def inertia_force(self, q, acc):
         mm = self.MassMatrix(q)
         inertia_force = [mm[i][0]*acc[0]+mm[i][1]*acc[1] for i in range(2)]
@@ -146,6 +144,7 @@ class Bipedal_hybrid():
         inertia_main = [mm[i][i]*acc[i] for i in range(2)]
         inertia_coupling = [inertia_force[i]-inertia_main[i] for i in range(2)]
         return inertia_main, inertia_coupling
+        # endregion
 
 
     @staticmethod
@@ -261,17 +260,18 @@ class nlp():
         xmax = 0.6
         umax = walker.umax
         Amax = 10
+        # endregion
         
         for i in range(walker.N):
-            # Jacobian = [[-l1*s(walker.q[i][0])-l2*s(walker.q[i][0]+walker.q[i][1]), -l2*s(walker.q[i][0]+walker.q[i][1])],
-            #         [l1*c(walker.q[i][0])+l2*c(walker.q[i][0]+walker.q[i][1]), l2*c(walker.q[i][0]+walker.q[i][1])]]
-            # M_matrix = walker.MassMatrix(walker.q[i])
-            # v = Jacobian@[walker.dq[i][0], walker.dq[i][1]]
-            # M_inv = np.linalg.inv(M_matrix)
-            # temp1 = Jacobian@M_inv
-            # temp2 = temp1@Jacobian.T
-            # Mc = np.linalg.inv(temp2)
-            # Lambda = Mc@-v
+            Jacobian = [[-l1*s(walker.q[i][0])-l2*s(walker.q[i][0]+walker.q[i][1]), -l2*s(walker.q[i][0]+walker.q[i][1])],
+                    [l1*c(walker.q[i][0])+l2*c(walker.q[i][0]+walker.q[i][1]), l2*c(walker.q[i][0]+walker.q[i][1])]]
+            M_matrix = walker.MassMatrix(walker.q[i])
+            v = Jacobian@[walker.dq[i][0], walker.dq[i][1]]
+            M_inv = ca.inv(M_matrix)
+            temp1 = Jacobian@M_inv
+            temp2 = temp1@Jacobian.T
+            Mc = np.linalg.inv(temp2)
+            Lambda = Mc@-v
 
             EndPos_y = l1*np.sin(walker.q[i][0])+l2*np.sin(walker.q[i][0]+walker.q[i][1])
             EndPos_x = l1*np.cos(walker.q[i][0])+l2*np.cos(walker.q[i][0]+walker.q[i][1])
@@ -337,6 +337,7 @@ class nlp():
                             walker.u[j][k] == 0 for k in range(2)])
             
             pass
+        # endregion
 
         # region boundary constraint
         for temp_q in walker.q:
@@ -456,6 +457,7 @@ def main(Mass, inertia, armflag, vis_flag):
     save_flag = False
     # armflag = False
     # armflag = True
+    # endregion
 
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
@@ -1317,7 +1319,7 @@ def MOmentCal():
     ax2.set_xlabel("Time (s)")
     ax2.legend()
     ax2.grid()
-
+    # endregion
 
     plt.show()
     pass
