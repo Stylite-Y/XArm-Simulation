@@ -1,6 +1,10 @@
 '''
 1. 2022.12.01:
         - 平面二连杆直线和曲线轨迹的冲量优化（无重力）
+2. 2023.02.02:
+        - 功率最大优化下冲量计算
+3. 2023.02.07:
+        - 考虑力矩和转速等引入减速比后的范围缩放
 '''
 
 from ast import In, walk
@@ -23,13 +27,14 @@ import matplotlib.animation as animation
 
 
 class Bipedal_hybrid():
-    def __init__(self, Mas, inert, cfg):
+    def __init__(self, cfg, gam, Im):
         self.opti = ca.Opti()
         # load config parameter
         # self.CollectionNum = cfg['Controller']['CollectionNum']
+        self.gam = gam
+        self.Im = Im
 
-        self.Pf = [0.2, 0.2]
-        self.Ff = [0.8, 0.8]
+        self.Pf = [0.5, 0.5]
 
         self.qmax = 0.75*np.pi
         self.dqmax = 64
@@ -43,10 +48,10 @@ class Bipedal_hybrid():
         # self.dt = self.T / self.N
         
         # mass and geometry related parameter
-        # self.m = cfg['Robot']['Mass']['mass']
-        # self.I = cfg['Robot']['Mass']['inertia']
-        self.m = Mas
-        self.I = inert
+        self.m = cfg['Robot']['Mass']['mass']
+        self.I = cfg['Robot']['Mass']['inertia']
+        # self.m = Mas
+        # self.I = inert
         self.l = cfg['Robot']['Mass']['massCenter']
         self.I_ = [self.m[i]*self.l[i]**2+self.I[i] for i in range(2)]
 
@@ -68,7 +73,7 @@ class Bipedal_hybrid():
 
         # shank, thigh, body, arm, forearm
         self.q_LB = [-np.pi/2, 0] 
-        self.q_UB = [3*np.pi/4, np.pi]   
+        self.q_UB = [np.pi, np.pi]   
 
         self.dq_LB = [-self.motor_ms, -self.motor_ms]   # arm 
 
@@ -94,12 +99,14 @@ class Bipedal_hybrid():
         L1 = self.L[1]
         I0 = self.I[0]
         I1 = self.I[1]
+        Im = self.Im
+        gam = self.gam
 
-        M11 = I0 + I1 + m0*lc0**2+m1*(L0**2+lc1**2+2*L0*lc1*c(q[1]))
+        M11 = Im*gam**2+I0 + I1 + m0*lc0**2+m1*(L0**2+lc1**2+2*L0*lc1*c(q[1]))
 
         M12 = I1 + m1*(lc1**2+L0*lc1*c(q[1]))
         M21 = M12
-        M22 = I1 + m1*lc1**2
+        M22 = I1 + m1*lc1**2+Im*gam**2
 
         return [[M11, M12],
                 [M21, M22]]
@@ -229,75 +236,39 @@ class nlp():
 
     def initialGuess(self, walker):
         init = walker.opti.set_initial
-        A = 0.6
-        w = 4*np.pi
-        # theta_f = nlp.refTraj(A, w,  walker.dt, walker.N)
-        # vel_f = [0.0]
-        # vel_f2 = [(theta_f[i+1]-theta_f[i]) / walker.dt for i in range(len(theta_f)-1)]
-        # vel_f.extend(vel_f2)
         for i in range(walker.N):
-            # init(walker.q[i][0], theta_f[i][0])
-            # init(walker.q[i][1], theta_f[i][1])
-            init(walker.q[i][0], np.pi/4)
-            init(walker.q[i][1], np.pi/4)
+            init(walker.q[i][0], np.pi/6)
+            # init(walker.q[i][1], np.pi/3)
             # init(walker.dq[i][0], vel_f[i][0])
             # init(walker.dq[i][1], vel_f[i][0])
             pass
 
     def Cost(self, walker):
         # region aim function of optimal control
-        Impact = 0
-        PosTar = 0
-        Ptar = [0, 0]
+        power = 0
+        vel = 0
         l1 = walker.L[0]
         l2 = walker.L[1]
+        ms = walker.motor_ms/walker.gam
 
-        Pf = walker.Pf
-        Ff = walker.Ff
-
-        qmax = walker.qmax
-        dqmax = walker.dqmax
-        xmax = 0.6
-        umax = walker.umax
-        Amax = 10
-        # endregion
-        
         for i in range(walker.N):
-            Jacobian = [[-l1*s(walker.q[i][0])-l2*s(walker.q[i][0]+walker.q[i][1]), -l2*s(walker.q[i][0]+walker.q[i][1])],
-                    [l1*c(walker.q[i][0])+l2*c(walker.q[i][0]+walker.q[i][1]), l2*c(walker.q[i][0]+walker.q[i][1])]]
-            M_matrix = walker.MassMatrix(walker.q[i])
-            v = Jacobian@[walker.dq[i][0], walker.dq[i][1]]
-            M_inv = ca.inv(M_matrix)
-            temp1 = Jacobian@M_inv
-            temp2 = temp1@Jacobian.T
-            Mc = np.linalg.inv(temp2)
-            Lambda = Mc@-v
-
-            EndPos_y = l1*np.sin(walker.q[i][0])+l2*np.sin(walker.q[i][0]+walker.q[i][1])
-            EndPos_x = l1*np.cos(walker.q[i][0])+l2*np.cos(walker.q[i][0]+walker.q[i][1])
-
-            PosTar += (EndPos_x/xmax)**2 * Pf[0] 
-            for j in range(2):
-                Impact += -(walker.dq[i][j]/dqmax)**2 * Ff[j]
+            # q0 = walker.q[i]
+            # Jq = [[-l1*np.sin(q0[0])-l2*np.sin(q0[0]+q0[1]), -l2*np.sin(q0[0]+q0[1])],
+            #         [l1*np.cos(q0[0])+l2*np.cos(q0[0]+q0[1]), l2*np.cos(q0[0]+q0[1])]]
+            # vx_end = Jq[0][0]*walker.dq[i][0]+Jq[0][1]*walker.dq[i][1]
+            # vy_end = Jq[1][0]*walker.dq[i][0]+Jq[1][1]*walker.dq[i][1]
+            # v_end = (vx_end**2+vy_end**2)**0.5
+            # vel -= (v_end/60)**2 * walker.dt
+            for k in range(2):
+                power -= (walker.dq[i][k] * walker.u[i][k])**2 * walker.dt * walker.Pf[k]              
+                pass
             pass
-            
-        if i == walker.N-1:
-            PosTar += (EndPos_x/xmax)**2 * Pf[0] * 20 
-                
+        
         for j in range(2):
-            i = -1
-            # Jacobian = np.array([[-l1*np.sin(walker.q[i][0])-l2*np.sin(walker.q[i][0]+walker.q[i][1]), -l2*np.sin(walker.q[i][0]+walker.q[i][1])],
-            #         [l1*np.cos(walker.q[i][0])+l2*np.cos(walker.q[i][0]+walker.q[i][1]), l2*np.cos(walker.q[i][0]+walker.q[i][1])]])
-            # M_matrix = walker.MassMatrix(walker.q[i])
-            # v = np.dot(Jacobian, [walker.dq[i][0], walker.dq[i][1]])
-            # M_inv = np.linalg.inv(M_matrix)
-            # temp1 = np.dot(Jacobian, M_inv)
-            # temp2 = np.dot(temp1, Jacobian.T)
-            # Mc = np.linalg.inv(temp2)
-            # Lambda = np.dot(Mc, -v) 
+            power -= (walker.dq[-1][j] * walker.u[-1][j])**2 * walker.dt * walker.Pf[j]  * 50
+            pass
+        # endregion
 
-            # PosTar += ((Ptar - walker.q[-1][j])/qmax)**2 * Pf[j]  * 20
-            Impact += -(walker.dq[i][j]/dqmax)**2 * Ff[j] * 100
        
         u = walker.u
 
@@ -305,18 +276,13 @@ class nlp():
         AM = [100, 100]
         for i in range(walker.N-1):
             for k in range(2):
-                smooth += ((u[i+1][k]-u[i][k])/10)**2
+                smooth += ((u[i+1][k]-u[i][k])/5)**2*0.5
                 pass
             pass
-
+        
         res = 0
-        # res = (res + power*self.powerCoeff) if (self.powerCoeff > 1e-6) else res
-        # res = (res + VelTar*self.velCoeff) if (self.velCoeff > 1e-6) else res
-        # res = (res + PosTar*self.trackingCoeff) if (self.trackingCoeff > 1e-6) else res
-        # res = (res + force*self.forceCoeff) if (self.forceCoeff > 1e-6) else res
-        # res = (res + smooth*self.smoothCoeff) if (self.smoothCoeff > 1e-6) else res
-        res = (res + PosTar)
-        res = (res + Impact)
+        res = res + vel
+        # res = res + power
 
         return res
 
@@ -345,19 +311,19 @@ class nlp():
                         temp_q[j], walker.q_UB[j]) for j in range(2)])
             pass
         for temp_dq in walker.dq:
-            ceq.extend([walker.opti.bounded(walker.dq_LB[j],
-                        temp_dq[j], walker.dq_UB[j]) for j in range(2)])
+            ceq.extend([walker.opti.bounded(walker.dq_LB[j]/walker.gam,
+                        temp_dq[j], walker.dq_UB[j]/walker.gam) for j in range(2)])
             pass
         for temp_u in walker.u:
-            ceq.extend([walker.opti.bounded(walker.u_LB[j],
-                        temp_u[j], walker.u_UB[j]) for j in range(2)])
+            ceq.extend([walker.opti.bounded(walker.u_LB[j]*walker.gam,
+                        temp_u[j], walker.u_UB[j]*walker.gam) for j in range(2)])
             pass
         # endregion
 
         # region motor external characteristic curve
-        cs = walker.motor_cs
-        ms = walker.motor_ms
-        mt = walker.motor_mt
+        cs = walker.motor_cs/walker.gam
+        ms = walker.motor_ms/walker.gam
+        mt = walker.gam*walker.motor_mt
         for j in range(len(walker.u)):
             ceq.extend([walker.u[j][k]-ca.fmax(mt - (walker.dq[j][k] -
                                                         cs)/(ms-cs)*mt, 0) <= 0 for k in range(2)])
@@ -366,16 +332,43 @@ class nlp():
             pass
         # endregion
 
-        ceq.extend([walker.q[0][0]==-0.2*np.pi])
-        ceq.extend([walker.q[0][1]==np.pi*0.8])
+        ## line traj 
+        # ceq.extend([walker.q[0][0]== np.pi/10])
+        # ceq.extend([walker.q[0][1]== 8*np.pi/10])
 
-        ceq.extend([walker.dq[0][0]==0])
-        ceq.extend([walker.dq[0][1]==0])
+        ## ellipse traj 
+        ceq.extend([walker.q[0][0]== -np.pi/6])
+        ceq.extend([walker.q[0][1]== np.pi/3])
+        ceq.extend([walker.dq[0][0]==0.0])
+        ceq.extend([walker.dq[0][1]==0.0])
+
+        ## ellipse traj based on same traj and different time
+        # ceq.extend([walker.q[-1][0]== np.pi/6])
+        # ceq.extend([walker.q[-1][1]== 2*np.pi/3])
+
+        
+
+        for k in range(walker.N):
+            # region: line traj contraints
+            # ceq.extend([2*walker.q[k][0]+walker.q[k][1]-np.pi==0])
+            # ceq.extend([2*walker.dq[k][0]+walker.dq[k][1]==0.0])
+            # ceq.extend([walker.dq[k][0]>=0.0])
+            # endregion
+
+            x_end = walker.L[0]*c(walker.q[k][0]) + walker.L[1]*c(walker.q[k][0]+walker.q[k][1])
+            y_end = walker.L[0]*s(walker.q[k][0]) + walker.L[1]*s(walker.q[k][0]+walker.q[k][1])
+            # ellipse traj contraints
+            ceq.extend([x_end**2/0.48+y_end**2/0.16 - 1==0])
+            ceq.extend([walker.dq[k][0]>=0.0])
+
+            # slapse traj contraints
+            # ceq.extend([3*x_end+y_end - 7==0])
+            # ceq.extend([x_end+y_end - 0.7==0])
 
         # region smooth constraint
         for j in range(len(walker.u)-1):
             ceq.extend([(walker.u[j][k]-walker.u
-                        [j+1][k])**2 <= 50 for k in range(2)])
+                        [j+1][k])**2 <= 5 for k in range(2)])
             pass
         # endregion
 
@@ -451,12 +444,13 @@ class nlp():
 
         
 
-def main(Mass, inertia, armflag, vis_flag):
+def main(gamma):
     # region optimization trajectory for bipedal hybrid robot system
-    # vis_flag = True
+    vis_flag = False
     save_flag = False
-    # armflag = False
-    # armflag = True
+    # vis_flag = True
+    # save_flag = True
+    armflag = True
     # endregion
 
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -476,19 +470,49 @@ def main(Mass, inertia, armflag, vis_flag):
     # endregion
 
     # region create robot and NLP problem
-    robot = Bipedal_hybrid(Mass, inertia, cfg)
-    # nonlinearOptimization = nlp(robot, cfg, seed=seed)
-    # nonlinearOptimization = nlp(robot, cfg)
+    print("gamma:", gamma)
+    Im = 5e-4
+    robot = Bipedal_hybrid(cfg, gamma, Im)
     nonlinearOptimization = nlp(robot, cfg, armflag)
     # endregion
     q, dq, ddq, u, t = nonlinearOptimization.solve_and_output(
         robot, flag_save=save_flag, StorePath=StorePath)
 
-    # if save_flag:
-    #     SaveDir = visual.DataSave(save_flag)
-    # visual = DataProcess(cfg, robot, Mass[2], inertia[2], theta, q, dq, ddq, u, F, t, save_dir, save_flag)
+    power = []
+    Lam = []
+    m = cfg['Robot']['Mass']['mass']
+    L = cfg['Robot']['Mass']['massCenter']
+    m1 = m[0]
+    m2 = m[1]
+    l1 = L[0]
+    l2 = L[1]
+    for i in range(len(t)):
+        p1 = q[i][0]*u[i][0]
+        p2 = q[i][1]*u[i][1]
+        power.append([p1, p2])
+
+        q0 = [q[i][0], q[i][1]]
+        dq0 = [dq[i][0], dq[i][1]]
+        Jq = np.array([[-l1*np.sin(q0[0])-l2*np.sin(q0[0]+q0[1]), -l2*np.sin(q0[0]+q0[1])],
+                            [l1*np.cos(q0[0])+l2*np.cos(q0[0]+q0[1]), l2*np.cos(q0[0]+q0[1])]])
+        Mq = np.array([[Im*gamma**2 + m2*l1**2+m1*l1**2/3+m2*l2**2/3+m2*l1*l2*np.cos(q0[1]), m2*l2**2/3+m2*l1*l2*np.cos(q0[1]/2)],
+                    [m2*l2**2/3+m2*l1*l2*np.cos(q0[1])/2, m2*l2**2/3+Im*gamma**2]])
+        M_inv = np.linalg.inv(Mq)
+        Mtmp = Jq @ M_inv @ Jq.T
+        Mc = np.linalg.inv(Mtmp)
+        Ltmp = Mc @ Jq @ dq0
+        Lsmp = np.sqrt(Ltmp[0]**2+Ltmp[1]**2)
+        # Lambda_p.append(Ltmp)
+        Lam.append(Lsmp)
+    
+    power = np.asarray(power)
+
+    visual = DataProcess(cfg, robot, 1.0, 0.0075, np.pi/10, q, dq, ddq, u, t, save_dir, save_flag)
+    if save_flag:
+        SaveDir = visual.DataSave(save_flag)
+
     if vis_flag:
-        # visual.animation(0, save_flag)
+        visual.animationTwoLink(0, save_flag)
 
         import matplotlib.pyplot as plt
         import matplotlib.patches as patches
@@ -509,11 +533,13 @@ def main(Mass, inertia, armflag, vis_flag):
 
         plt.rcParams.update(params)
         cmap = mpl.cm.get_cmap('viridis')
-        fig = plt.figure(figsize=(10, 6), dpi=180, constrained_layout=False)
-        fig2 = plt.figure(figsize=(10, 6), dpi=180, constrained_layout=False)
+
+        fig = plt.figure(figsize=(8, 8), dpi=180, constrained_layout=False)
         gs = fig.add_gridspec(1, 1)
-        gm = fig2.add_gridspec(1, 1)
-        g_data = gs[0].subgridspec(3, 2, wspace=0.3, hspace=0.33)
+        g_data = gs[0].subgridspec(4, 2, wspace=0.3, hspace=0.33)
+        
+        fig2 = plt.figure(figsize=(10, 6), dpi=180, constrained_layout=False)
+        gm = fig2.add_gridspec(1, 1)        
         ax_m = fig2.add_subplot(gm[0])
 
         # gs = fig.add_gridspec(2, 1, height_ratios=[2,1],
@@ -523,7 +549,8 @@ def main(Mass, inertia, armflag, vis_flag):
         # ax_m = fig.add_subplot(gs[0])
         ax_p = [fig.add_subplot(g_data[0, i]) for i in range(2)]
         ax_v = [fig.add_subplot(g_data[1, i]) for i in range(2)]
-        ax_u = [fig.add_subplot(g_data[2, i]) for i in range(2)]
+        ax_u = [fig.add_subplot(g_data[3, i]) for i in range(2)]
+        ax_pow = [fig.add_subplot(g_data[2, i]) for i in range(2)]
 
         # vel = [robot.foot_vel(q[i, :], dq[i, :]) for i in range(len(q[:, 0]))]
 
@@ -553,6 +580,8 @@ def main(Mass, inertia, armflag, vis_flag):
         ax_v[0].set_ylabel('Velocity(m/s)')
         [ax_p[i].plot(t, q[:, i]) for i in range(2)]
         ax_p[0].set_ylabel('Position(m)')
+        [ax_pow[i].plot(t, power[:, i]) for i in range(2)]
+        ax_pow[0].set_ylabel('Power(W)')
 
         # ax_u[0].plot(t[1:], Fx)
         # ax_u[0].plot(t[1:], Fy)
@@ -564,18 +593,28 @@ def main(Mass, inertia, armflag, vis_flag):
         # [ax_u[j].set_title(title_u[j]) for j in range(4)]
         plt.legend()
 
-        # if save_flag:
-        #     savename1 =  SaveDir + "Traj.jpg"
-        #     savename3 =  SaveDir + "Fy.jpg"
-        #     savename2 =  SaveDir + "Pos-Vel-uF.jpg"
-        #     fig.savefig(savename2)
-        #     fig2.savefig(savename1)
+        fig3, axs= plt.subplots(1, 1, figsize=(12, 12))
+        ax1 = axs
+        # print(dq*gamma)
+
+        # ax1.plot(I_l, Lambda,'o-')
+        ax1.plot(t, Lam,'o-')
+        ax1.set_xlabel(r't(s)')
+        ax1.set_ylabel(r'Impact $\Lambda (kg.m.s^{-1})$')
+
+
+        if save_flag:
+            savename1 =  SaveDir + "Lambda_e.jpg"
+            savename2 =  SaveDir + "Pos-Vel-u-P_sl.jpg"
+            fig.savefig(savename2)
+            fig3.savefig(savename1)
         
 
         plt.show()
 
+    print(Lam[-1])
+    return Lam[-1]
 
-        pass
 ## use mean value instead of peak value to analysis force map
 def ForceMapMV():
     import matplotlib.pyplot as plt
@@ -598,147 +637,29 @@ def ForceMapMV():
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
-    # M_arm = [3.0, 4.0, 5.0, 6.0, 6.5, 7.0, 7.5]
-    # M_arm = [4.0, 6.0, 7.0]
-    M_arm = [4.0]
-    M_label = list(map(str, M_arm))
-    # I_arm = [0.012, 0.015, 0.03, 0.04, 0.06, 0.07, 0.09]
-    # I_arm = [0.012, 0.04, 0.09]
-    I_arm = [0.06]
-    I_label = list(map(str, I_arm))
+    gamma = np.linspace(1,20,100)
+    a = [0.7391829172414898, 8.629959311922468, 1.090428632261445, 8.696171764081793, 11.797382802485206, 10.284985857967785, 10.790436976555526, 6.82380214064342, 6.343470544702009, 5.699268691024059, 0.4853355529401927, 6.0588912335885174, 5.301664705901532, 3.346125403398458, 5.962386977423312, 6.1423851827145395, 0.40957449845166927, 4.023094353782245, 6.0670499873104875, 6.046497357730104, 0.3444797272975668, 0.03460014193450017, 6.025142267176906, 2.0027802332707436, 2.591365086183236, 1.0051540825321092, 3.29663959375985, 2.561706319072518, 3.028950376907798, 0.3978105134999365, 2.458299315116831, 2.114404275371611, 1.9399505997398625, 0.392312818080467, 2.5475279441663257, 0.8806550856902968, 2.0287092141832055, 3.9468114547330266, 2.6826519438998524, 0.4620045545566621, 0.13473627536190025, 0.01688709385614996, 1.904116161523963, 2.4640504869963045, 0.45825297527186487, 0.49777608736026563, 0.2100344474841347, 1.274653779076973, 0.1097135218594681, 3.8700202105689145, 0.0713361406848326, 0.4471121831280931, 2.0171248492622076, 0.8166523508580094, 0.5115344160489542, 0.8928387568857716, 1.6894897097054518, 2.2321370892186003, 2.468283489641596, 1.4717957427105606, 2.1113323951755336, 3.609473826060039, 2.085151312240878, 0.15204147213955888, 2.5454053881725947, 0.0847480672141998, 0.31527541293430844, 0.5181675541854049, 0.15445418352862353, 1.2361079937449044, 0.7081207476195355, 0.4000525812160759, 0.5804971631815765, 0.26198173904232913, 2.5963097323213913, 0.6894360498582282, 0.17960434005307163, 1.1419570817295395, 2.8097896778658047, 0.4513630008995404, 0.4570164096504804, 0.992142258945202, 2.6345045119793022, 2.0911437755239755, 1.9492395922868924, 0.7582332762591916, 0.778553146805825, 0.8432010458864161, 1.153363191865712, 0.740882444988961, 0.856576511960253, 0.39157499294462755, 0.49226125957499717, 3.064263853673714, 0.9323647594966182, 2.8853997811130414, 3.1731412367406175, 1.447330968480321, 2.8259299025234927, 0.8385449547772633]
 
-    Mass = [15, 20]
-    inertia = [1.0125, 0.417]
-    # Mass = [25, 30]
-    # inertia = [1.675, 0.625]
+    Lambda_s = []
+    # if saveflag:
+    #     for i in range(len(gamma)):
+    #         print("="*50)
+    #         print("Gamma: ", gamma[i])
+    #         print("="*50)
 
-    Fy = np.array([[0.0]*len(M_arm)])
-    u_h = np.array([[0.0]*len(M_arm)])
-    u_a = np.array([[0.0]*len(M_arm)])
-    u_k = np.array([[0.0]*len(M_arm)])
-    u_s = np.array([[0.0]*len(M_arm)])
-    u_e = np.array([[0.0]*len(M_arm)])
-    t_b = np.array([[0.0]*len(M_arm)])
-    Pcostfun = np.array([[0.0]*len(M_arm)])
-    Vcostfun = np.array([[0.0]*len(M_arm)])
-    Fcostfun = np.array([[0.0]*len(M_arm)])
-    Power = np.array([[0.0]*len(M_arm)])
+    #         Lam = main(gamma[i])
+    #         print("Lam:", Lam)
+    #         Lambda_s.append(Lam)
+    #         pass
 
-    CollectNum = 1000
-    dt = 0.002
-    index = int(1.3 / dt)
-    if saveflag:
-        for i in range(len(I_arm)):
-            temp_i = []
-            temp_i.extend(inertia)
-            temp_i.append(I_arm[i])
-            Fy_max = []
-            u_h_max = []
-            u_a_max = []
-            u_s_max = []
-            t_p = []
+    # print(gamma)
+    # print(Lambda_s)
 
-            P_J = []
-            V_J = []
-            F_J = []
-            Pw_J=[]
-            for j in range(len(M_arm)):
-                temp_m = []
-                temp_m.extend(Mass)
-                temp_m.append(M_arm[j])
+    Lambda_s = np.around(a, 3)
 
-                print("="*50)
-                print("Mass: ", temp_m)
-                print("="*50)
-                print("Inertia: ", temp_i)
-                print("="*50)
-                print("armflag: ", armflag)
-
-                u, F, t, Ptmp, Vtmp, Ftmp, Pwtmp = main(temp_m, temp_i, armflag, vis_flag)
-
-                F_1 = 0
-                num1 = 0
-                for k in range(len(F)):
-                    if F[k] > 1:
-                        F_1 += F[k]
-                        num1 += 1
-                    
-                    if F[k] > F[index]*1.04 and k*dt < 1.2:
-                        tk = k * dt
-
-                F_1 = F_1 / num1
-                # print(F_1)
-
-                temp_fy_max = F_1
-
-                u4 = u[:, 0]
-                temp_ua0_max = np.sum(np.sqrt(u4**2)) / CollectNum
-                temp_ua_max = temp_ua0_max
-
-                u0 = u[:, 1]
-                temp_uh0_max = np.sum(np.sqrt(u0**2)) / CollectNum
-                temp_uh_max = temp_uh0_max
-
-                u1 = u[:, 2]
-                temp_us1_max = np.sum(np.sqrt(u1**2)) / CollectNum
-                temp_us_max = temp_us1_max
-
-                Fy_max.append(temp_fy_max)
-                u_h_max.append(temp_uh_max)
-                u_s_max.append(temp_us_max)
-                u_a_max.append(temp_ua_max)
-                t_p.append(tk)
-                P_J.append(Ptmp)
-                V_J.append(Vtmp)
-                F_J.append(Ftmp)
-                Pw_J.append(Pwtmp)
-
-                pass
-            # print(u0.shape,u_k_max)
-            print(Fy_max)
-            Fy = np.concatenate((Fy, [Fy_max]), axis = 0)
-            u_h = np.concatenate((u_h, [u_h_max]), axis = 0)
-            u_s = np.concatenate((u_s, [u_s_max]), axis = 0)
-            u_a = np.concatenate((u_a, [u_a_max]), axis = 0)
-            t_b = np.concatenate((t_b, [t_p]), axis = 0)
-            Pcostfun = np.concatenate((Pcostfun, [P_J]), axis = 0)
-            Vcostfun = np.concatenate((Vcostfun, [V_J]), axis = 0)
-            Fcostfun = np.concatenate((Fcostfun, [F_J]), axis = 0)
-            Power = np.concatenate((Power, [Pw_J]), axis = 0)
-
-            pass
-        Fy = Fy[1:]
-        u_h = u_h[1:]
-        u_s = u_s[1:]
-        u_a = u_a[1:]
-        t_b = t_b[1:]
-        Pcostfun = Pcostfun[1:]
-        Vcostfun = Vcostfun[1:]
-        Fcostfun = Fcostfun[1:]
-        Power = Power[1:]
-
-        Data = {'Fy': Fy, 'u_h': u_h, "u_s": u_s,"u_a": u_a, "t_b": t_b,
-                'P_J': Pcostfun, 'V_J': Vcostfun, 'F_J': Fcostfun, 'Pw_J': Power}
-        if os.path.exists(os.path.join(save_dir, name)):
-            RandNum = random.randint(0,100)
-            name = "ForceMap" + str(RandNum)+ ".pkl"
-        with open(os.path.join(save_dir, name), 'wb') as f:
-            pickle.dump(Data, f)
-    else:
-        f = open(save_dir+name,'rb')
-        data = pickle.load(f)
-
-        Fy = data['Fy']
-        u_h = data['u_h']
-        u_s = data['u_s']
-        u_a = data['u_a']
-        t_b = data['t_b']
-        Pcostfun = data['P_J']
-        Vcostfun = data['V_J']
-        Fcostfun = data['F_J']
-
-    Sumcostfun = Pcostfun + Vcostfun + Fcostfun
-    print(Sumcostfun)
+    z = np.polyfit(gamma, Lambda_s, 10)
+    p = np.poly1d(z)
+    y = p(gamma)
 
     plt.style.use("science")
     params = {
@@ -747,6 +668,7 @@ def ForceMapMV():
         'font.size': 20,
         'axes.labelsize': 20,
         'axes.titlesize': 22,
+        'lines.linewidth': 1,
         'xtick.labelsize': 20,
         'ytick.labelsize': 20,
         'figure.subplot.wspace': 0.4,
@@ -755,94 +677,13 @@ def ForceMapMV():
 
     plt.rcParams.update(params)
 
-    # region: imshow
-    fig, axs = plt.subplots(2, 2, figsize=(12, 12))
-    ax1 = axs[0][0]
-    ax2 = axs[0][1]
-    ax3 = axs[1][0]
-    ax4 = axs[1][1]
+    fig, axs = plt.subplots(1, 1, figsize=(12, 12))
+    ax1 = axs
 
-    print(t_b)
-    if armflag:
-        pcm1 = ax1.imshow(Fy, vmin = 345, vmax = 420)
-        pcm2 = ax2.imshow(u_h, vmin = 60, vmax = 80)
-        pcm3 = ax3.imshow(u_s, vmin = 3, vmax = 12)
-        pcm4 = ax4.imshow(t_b, vmin = 0.4, vmax = 0.6)
-    else:
-        pcm1 = ax1.imshow(Fy, vmin = 340, vmax = 430)
-        pcm2 = ax2.imshow(u_h, vmin = 70, vmax = 90)
-        pcm3 = ax3.imshow(u_s, vmin = 2, vmax = 15)
-        pcm4 = ax4.imshow(t_b, vmin = 0.7, vmax = 1.2)
-
-    cb1 = fig.colorbar(pcm1, ax=ax1)
-    cb2 = fig.colorbar(pcm2, ax=ax2)
-    cb3 = fig.colorbar(pcm3, ax=ax3)
-    cb4 = fig.colorbar(pcm4, ax=ax4)
-    
-    ax = [[ax1, ax2], [ax3, ax4]]
-    cb = [[cb1, cb2], [cb3, cb4]]
-    title = [["Fy", "Torque-Hip"], ["Torque-shoulder", "balance time"]]
-    Dataset = {"Fy":Fy, "Torque-shoulder":u_s, "Torque-Hip":u_h, "balance time":t_b}
-    for i in range(2):
-        for j in range(2):
-            ax[i][j].set_xticks(np.arange(len(M_label)))
-            ax[i][j].set_xticklabels(M_label)
-            ax[i][j].set_yticks(np.arange(len(I_label)))
-            ax[i][j].set_ylim(-0.5, len(I_label)-0.5)
-            ax[i][j].set_yticklabels(I_label)
-            # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
-            #        labeltop=True, labelbottom=False)
-
-            ax[i][j].set_ylabel("Inertia")
-            ax[i][j].set_xlabel("Mass")
-            ax[i][j].set_title(title[i][j])
-
-            if i==0 and j==0:
-                cb[i][j].set_label("Force(N)")
-            elif i==1 and j==1:
-                cb[i][j].set_label("Time(s)")
-
-            else:
-                cb[i][j].set_label("Torque(N/m)")
-            
-            for k in range(len(M_arm)):
-                for m in range(len(I_arm)):
-                    ids = i*2+1
-                    data = Dataset[title[i][j]]
-                    data = np.round(data, ids)
-                    ax[i][j].text(m,k,data[k][m], ha="center", va="center",color="w",fontsize=10)
-    fig.tight_layout()
-    # endregion
-    
-    fig2, axs2 = plt.subplots(2, 2, figsize=(12, 12), subplot_kw={"projection": "3d"})
-    axes1 = axs2[0][0]
-    axes2 = axs2[0][1]
-    axes3 = axs2[1][0]
-    axes4 = axs2[1][1]
-    M_arm, I_arm = np.meshgrid(M_arm, I_arm)
-
-
-    surf1 = axes1.plot_surface(M_arm, I_arm, Pcostfun)
-    surf2 = axes2.plot_surface(M_arm, I_arm, Vcostfun)
-    surf3 = axes3.plot_surface(M_arm, I_arm, Fcostfun)
-    surf4 = axes4.plot_surface(M_arm, I_arm, Sumcostfun)
-    for i in range(2):
-        for j in range(2):
-            axs2[i][j].set_ylabel("Inertia")
-            axs2[i][j].set_xlabel("Mass")
-            axs2[i][j].set_zlabel(title[i][j])
-            axs2[i][j].set_title(title[i][j])
-
-    # def rotate(angle):
-    #     axes1.view_init(30, angle)
-    #     axes2.view_init(30, angle)
-    #     axes3.view_init(30, angle)
-    #     axes4.view_init(30, angle)
-    # rot_animation = animation.FuncAnimation(fig2, rotate, frames=np.arange(0,362,2), interval=0.1, blit=False)
-    
-    # if ani_flag:
-    #     ani_name = save_dir + "rotation.gif"
-    #     rot_animation.save(ani_name, fps=30, writer='pillow')
+    ax1.plot(gamma, Lambda_s,'o-')
+    ax1.plot(gamma, y, lw = 3)
+    ax1.set_xlabel(r'Reduction ratio $\gamma$')
+    ax1.set_ylabel(r'Impact $\Lambda (kg.m.s^{-1})$')
     plt.show()
     
     pass
@@ -1325,8 +1166,8 @@ def MOmentCal():
     pass
 
 if __name__ == "__main__":
-    # main()
-    ForceMapMV()
+    main(3)
+    # ForceMapMV()
     # MOmentCal()
     # ResCmp()
     # CostFunAnalysis()

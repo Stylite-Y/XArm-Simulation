@@ -15,7 +15,8 @@ import pickle
 
 
 class DataProcess():
-    def __init__(self, cfg, robot, arm_M, arm_I,theta, q, dq, ddq, u, F, t, savepath,save_flag):
+    # def __init__(self, cfg, robot, arm_M, arm_I,theta, q, dq, ddq, u, F, t, savepath,save_flag):
+    def __init__(self, cfg, robot, arm_M, arm_I,theta, q, dq, ddq, u, t, savepath,save_flag):
         self.cfg = cfg
         self.robot = robot
         self.arm_M = arm_M
@@ -25,7 +26,7 @@ class DataProcess():
         self.dq = dq
         self.ddq = ddq
         self.u = u
-        self.F = F
+        # self.F = F
         self.t = t
         self.savepath = savepath
         self.save_flag = save_flag
@@ -55,7 +56,7 @@ class DataProcess():
         impactCoeff = self.cfg["Optimization"]["CostCoeff"]["ImpactCoeff"]
         Vt = self.cfg["Controller"]["Target"]
         Tp = self.cfg["Controller"]["Period"]
-        Tst = self.cfg["Controller"]["Stance"]
+        # Tst = self.cfg["Controller"]["Stance"]
         dt = self.cfg["Controller"]["dt"]
         theta = round(self.theta, 3)
         
@@ -134,6 +135,7 @@ class DataProcess():
     
         plt.show()
 
+    ## Three link
     def animation(self, fileflag, saveflag):
         from numpy import sin, cos
         import matplotlib.pyplot as plt
@@ -203,7 +205,7 @@ class DataProcess():
         
         pass
 
-    def animation2(q, dq, u, t, robot, savepath, cfg, flag):
+    
         from numpy import sin, cos
         import matplotlib.pyplot as plt
         import matplotlib.animation as animation
@@ -286,6 +288,75 @@ class DataProcess():
         for i in range(0, t.size, di):
             print(i // di, '/', t.size // di)
             make_plot(i)
+        
+        pass
+    
+    ## Two Link
+    def animationTwoLink(self, fileflag, saveflag):
+        from numpy import sin, cos
+        import matplotlib.pyplot as plt
+        import matplotlib.animation as animation
+        from collections import deque
+
+        L = self.robot.L
+        q1 = self.q[:,0]
+        q2 = self.q[:,1]
+        L0 = L[0]
+        L1 = L[1]
+        L_max = L0+L1
+        x1 = L0*cos(q1)
+        y1 = L0*sin(q1)
+        x2 = L1*cos(q1 + q2) + x1
+        y2 = L1*sin(q1 + q2) + y1
+
+        history_len = 100
+        
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(autoscale_on=False, xlim=(-L_max, L_max), ylim=(-0.4, (L0+L1)))
+        ax.set_aspect('equal')
+        ax.set_xlabel('X axis ', fontsize = 20)
+        ax.set_ylabel('Y axis ', fontsize = 20)
+        ax.xaxis.set_tick_params(labelsize = 18)
+        ax.yaxis.set_tick_params(labelsize = 18)
+        ax.grid()
+
+        line, = ax.plot([], [], 'o-', lw=3,markersize=8)
+        trace, = ax.plot([], [], '.-', lw=1, ms=1)
+        time_template = 'time = %.2fs'
+        time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes, fontsize=15)
+        history_x, history_y = deque(maxlen=history_len), deque(maxlen=history_len)
+
+        def animate(i):
+            thisx = [0, x1[i], x2[i]]
+            thisy = [0, y1[i], y2[i]]
+
+            if i == 0:
+                history_x.clear()
+                history_y.clear()
+
+            history_x.appendleft(thisx[2])
+            history_y.appendleft(thisy[2])
+
+            alpha = (i / history_len) ** 2
+            line.set_data(thisx, thisy)
+            trace.set_data(history_x, history_y)
+            # trace.set_alpha(alpha)
+            time_text.set_text(time_template % (i*self.dt))
+            return line, trace, time_text
+        
+        ani = animation.FuncAnimation(
+            fig, animate, len(self.t), interval=0.1, save_count = 30, blit=True)
+
+        ## animation save to gif
+        date = self.date
+        name = "traj_ani" + ".gif"
+
+        savename = self.save_dir +date+ name
+
+        if saveflag:
+            ani.save(savename, writer='pillow', fps=30)
+
+        # plt.show()
         
         pass
 
@@ -544,7 +615,8 @@ class DataProcess():
             # #     yaml.dump(self.cfg, file)
             with open(self.save_dir+date+name+"-config.yaml", mode='w') as file:
                 YAML().dump(self.cfg, file)
-            Data = {'F': self.F, 'u': self.u, "q": self.q, "dq": self.dq, "ddq": self.ddq, "t": self.t}
+            # Data = {'F': self.F, 'u': self.u, "q": self.q, "dq": self.dq, "ddq": self.ddq, "t": self.t}
+            Data = {'u': self.u, "q": self.q, "dq": self.dq, "ddq": self.ddq, "t": self.t}
             with open(os.path.join(self.save_dir, date+name+"-sol.pkl"), 'wb') as f:
                 pickle.dump(Data, f)
             pass

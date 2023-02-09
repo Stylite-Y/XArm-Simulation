@@ -8,6 +8,10 @@
         - 给定末端直线轨迹下的二连杆简化模型的冲量方程推导和冲量—减速比结果分析
           (即确定了两个关节角度的位置和速度约束)
         - 给定末端椭圆 轨迹下的二连杆简化模型的冲量方程推导和冲量—减速比结果分析
+5. 2023.02.08:
+        - 给定初始末端轨迹,遍历时间变量,计算不同lambda下的冲量(意义不大?)
+6. 2023.02.09:
+        - 二连杆两个关节均以最大功率运行,但是减速比不同
 '''
 
 import os
@@ -15,11 +19,14 @@ import sympy as sy
 import raisimpy as raisim
 import yaml
 import time
+import pickle
+import datetime
 from cv2 import ellipse2Poly
 import numpy as np
 from scipy.integrate import odeint
-from numpy import sin as s
-from numpy import cos as c
+from numpy import sin 
+from numpy import cos 
+from numpy import sqrt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.patches as mpatches
 from matplotlib.patches import FancyArrowPatch
@@ -1471,7 +1478,7 @@ def ImpactBioFit3():
     # ax1.axis('equal')
     plt.show()
 
-# 基于二连杆动力学减速比-冲量 
+# 二连杆:两个关节均以最大功率运行,但减速比相同
 def TwoLinkImpactFit():
     # link params
     l1 = 0.4
@@ -1587,8 +1594,232 @@ def TwoLinkImpactFit():
     # ax1.axis('equal')
     plt.show()
 
-# 基于二连杆动力学减速比-冲量:给定末端直线轨迹（即确定了两个关节角的约束关系）
+# 二连杆:两个关节均以最大功率运行,但减速比不同
 def TwoLinkImpactFit2():
+    # link params
+    l1 = 0.4
+    l2 = 0.4
+    m1 = 2.0
+    m2 = 2.0
+    g = 9.8
+
+    # motor params
+    U0 = 24.0
+    R = 0.127
+    Kv = 0.6
+    Kt = 0.075
+    Im = 5e-4
+
+    # maxon ec i 52 48v, 420w
+    # U0 = 48.0
+    # R = 0.281
+    # Kv = 0.089
+    # Kt = 0.089
+    # Im = 2.5e-4
+
+    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    todaytime=datetime.date.today()
+    save_dir = StorePath + "/data/" + str(todaytime) + "/"
+    name = "Gam_Lam_12.pkl"
+
+    ts = 0.2
+    Nsample = 200
+    t = np.linspace(0, ts, Nsample)
+    gam = np.linspace(1,20,20)
+    gam2 = np.linspace(1,20,20)
+    
+    Lambda_p = []
+    Lambda_s = np.array([[0.0]*len(gam)])
+    index = []
+    dqmax = np.array([[0.0]*len(gam)])
+    dqmax2 = np.array([[0.0]*len(gam)])
+
+    def Dynamic(w, t, gamma, gamma2, U0, Kt, Kv, R, Im):
+        y11, y12, y21, y22 = w
+        
+        b_f1 = gamma**2*Kt*Kv/R
+        c_f1 = gamma*Kt*U0/R
+        b_f2 = gamma2**2*Kt*Kv/R
+        c_f2 = gamma2*Kt*U0/R
+        
+        m11 = (36*Im*gamma2**2 + 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        m12 = (-18*l1*l2*m2*cos(y21) - 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        m21 = (-18*l1*l2*m2*cos(y21) - 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        m22 = (36*Im*gamma**2 + 12*l1**2*m1 + 36*l1**2*m2 + 36*l1*l2*m2*cos(y21) + 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+
+        cq1 = -m2*l1*l2*np.sin(y21)*y12*y22-m2*l1*l2*np.sin(y21)*y22*y22/2
+        cq2 = m2*l1*l2*np.sin(y21)*y12*y12/2
+
+        dy11 = y12
+        dy12 = m11*(c_f1 - b_f1*y12 - cq1) + m12*(c_f2 - b_f2*y22 - cq2)
+        dy21 = y22
+        dy22 = m21*(c_f1 - b_f1*y12 - cq1) + m22*(c_f2 - b_f2*y22 - cq2)
+
+        ## 肘关节角度固定,不按照最大功率运行: 结果奇怪
+        # dy11 = y12
+        # dy12 = m11*(c_f - b_f*y12) + m12*(c_f - cq2)
+        # dy21 = y22
+        # dy22 = m21*(c_f - b_f*y12) + m22*(c_f - cq2)
+
+        return np.array([dy11, dy12, dy21, dy22])
+
+    for i in range(len(gam)):
+        dqtmp = []
+        dqtmp2 = []
+        LamTmp = []
+        for j in range(len(gam2)):
+            w1 = (np.pi/8, 0.001, np.pi/6, 0.001)
+            qres = odeint(Dynamic, w1, t, args=(gam[i], gam2[j], U0, Kt, Kv, R, Im))
+            
+            q0 = [qres[-1][0], qres[-1][2]]
+            dq0 = np.array([qres[-1][1], qres[-1][3]])
+            Jq = np.array([[-l1*np.sin(q0[0])-l2*np.sin(q0[0]+q0[1]), -l2*np.sin(q0[0]+q0[1])],
+                                [l1*np.cos(q0[0])+l2*np.cos(q0[0]+q0[1]), l2*np.cos(q0[0]+q0[1])]])
+            Mq = np.array([[Im*gam[i]**2 + m2*l1**2+m1*l1**2/3+m2*l2**2/3+m2*l1*l2*np.cos(q0[1]), m2*l2**2/3+m2*l1*l2*np.cos(q0[1]/2)],
+                        [m2*l2**2/3+m2*l1*l2*np.cos(q0[1])/2, m2*l2**2/3+Im*gam2[j]**2]])
+            M_inv = np.linalg.inv(Mq)
+            Mtmp = Jq @ M_inv @ Jq.T
+            Mc = np.linalg.inv(Mtmp)
+            Ltmp = Mc @ Jq @ dq0
+            Lsmp = np.sqrt(Ltmp[0]**2+Ltmp[1]**2)
+            Lambda_p.append(Ltmp)
+            LamTmp.append(Lsmp)
+            dqtmp.append(q0[0])
+            dqtmp2.append(q0[1])
+
+            qindex1 = qres[:, 0]
+            qindex2 = qres[:, 2]
+            if max(qindex2) > np.pi*3/4 or min(qindex2) < 0.0 or max(qindex1) > np.pi*2/3 or min(qindex1) < -np.pi/2:
+                index.append([i,j])
+
+            if i==4 and j==1:
+                print(max(qindex2))
+                L = [l1, l2]
+                q1 = qres[:,0]
+                q2 = qres[:,2]
+                # print(qres[:,2])
+                # print(q2)
+                dt = ts / Nsample
+                animation(L, q1, q2, t, dt, save_dir)
+
+            if i < 5 and j < 5:
+                # print("="*50)
+                # print("q1max: ", q0[0], max(qindex1))
+                # print("q2max: ", q0[1], max(qindex2))
+                pass
+            pass
+        if i < 6:
+            # print("="*50)
+            # print("gamma1: ", gam[i])
+            # print(LamTmp)
+            pass
+        Lambda_s = np.concatenate((Lambda_s, [LamTmp]), axis = 0)
+        dqmax = np.concatenate((dqmax, [dqtmp]), axis = 0)
+        dqmax2 = np.concatenate((dqmax2, [dqtmp2]), axis = 0)
+
+    Lambda_s = Lambda_s[1:,]
+    dqmax = dqmax[1:,]
+    dqmax = np.array(dqmax)
+    dqmax = np.around(dqmax,2)
+    dqmax2 = dqmax2[1:,]
+    dqmax2 = np.array(dqmax2)
+    dqmax2 = np.around(dqmax2,2)
+    Lambda_s = np.around(Lambda_s,2)
+    print("index: ",index)
+    # print(Lambda_s)
+    Data = {'Lambda': Lambda_s, 'dqmax1': dqmax, 'dqmax2': dqmax2}
+    # with open(os.path.join(save_dir, name), 'wb') as f:
+    #     pickle.dump(Data, f)   
+ 
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'font.size': 20,
+        'axes.labelsize': 22,
+        'lines.linewidth': 3,
+        'axes.titlesize': 25,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'axes.titlepad': 3.0,
+        'axes.labelpad': 5.0,
+        'lines.markersize': 15,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.5,
+    }
+
+    plt.rcParams.update(params)
+    plt.rcParams.update(params)
+
+    gam = gam.astype(int) 
+    gam2 = gam2.astype(int)
+    gam_label = list(map(str, gam))
+    gam2_label = list(map(str, gam2))
+    print(gam_label)
+    print(dqmax)
+
+    fig, axs = plt.subplots(1, 1, figsize=(12, 12))
+    ax1 = axs
+
+    pcm1 = ax1.imshow(Lambda_s, cmap='inferno', vmin = 1, vmax = 18)
+    cb1 = fig.colorbar(pcm1, ax=ax1)
+    ax1.set_xticks(np.arange(len(gam2)))
+    ax1.set_xticklabels(gam2_label)
+    ax1.set_yticks(np.arange(len(gam)))
+    ax1.set_ylim(-0.5, len(gam)-0.5)
+    ax1.set_yticklabels(gam_label)
+    # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+    #        labeltop=True, labelbottom=False)
+
+    ax1.set_xlabel(r'Joint 2 Reduction ratio $\gamma_2$')
+    ax1.set_ylabel(r'Joint 1 Reduction ratio $\gamma_1$')
+    cb1.set_label(r'Impact $\Lambda (kg.m.s^{-1})$')
+    for k in range(len(gam)):
+        for m in range(len(gam2)):
+            ax1.text(m,k,Lambda_s[k][m], ha="center", va="center",color="black",fontsize=10)
+
+    fig2, axs2 = plt.subplots(1, 1, figsize=(12, 12))
+    ax2 = axs2
+
+    pcm2 = ax2.imshow(dqmax, cmap='inferno', vmin = 0.2, vmax = 1.6)
+    cb2 = fig2.colorbar(pcm2, ax=ax2)
+    ax2.set_xticks(np.arange(len(gam2)))
+    ax2.set_xticklabels(gam2_label)
+    ax2.set_yticks(np.arange(len(gam)))
+    ax2.set_ylim(-0.5, len(gam)-0.5)
+    ax2.set_yticklabels(gam_label)
+    # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+    #        labeltop=True, labelbottom=False)
+
+    ax2.set_xlabel(r'Joint 2 Reduction ratio $\gamma_2$')
+    ax2.set_ylabel(r'Joint 1 Reduction ratio $\gamma_1$')
+    cb2.set_label(r'Joint 1 Angular Velocity $\omega (rad/s^{-1})$')
+    for k in range(len(gam)):
+        for m in range(len(gam2)):
+            ax2.text(m,k,dqmax[k][m], ha="center", va="center",color="black",fontsize=10)
+    
+    fig3, axs3 = plt.subplots(1, 1, figsize=(12, 12))
+    ax3 = axs3
+
+    pcm3 = ax3.imshow(dqmax2, cmap='inferno', vmin = 0, vmax = np.pi*3/4)
+    cb3 = fig3.colorbar(pcm3, ax=ax3)
+    ax3.set_xticks(np.arange(len(gam2)))
+    ax3.set_xticklabels(gam2_label)
+    ax3.set_yticks(np.arange(len(gam)))
+    ax3.set_ylim(-0.5, len(gam)-0.5)
+    ax3.set_yticklabels(gam_label)
+    # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+    #        labeltop=True, labelbottom=False)
+
+    ax3.set_xlabel(r'Joint 2 Reduction ratio $\gamma_2$')
+    ax3.set_ylabel(r'Joint 1 Reduction ratio $\gamma_1$')
+    cb3.set_label(r'Joint 2 Angular Velocity $\omega (rad/s^{-1})$')
+    for k in range(len(gam)):
+        for m in range(len(gam2)):
+            ax3.text(m,k,dqmax2[k][m], ha="center", va="center",color="black",fontsize=10)
+    plt.show()
+
+# 基于二连杆动力学减速比-冲量:给定末端直线轨迹（即确定了两个关节角的约束关系）
+def TwoLinkImpactLineFit():
     # link params
     l1 = 0.4
     l2 = 0.4
@@ -1707,7 +1938,7 @@ def TwoLinkImpactFit2():
     plt.show()
 
 # 基于二连杆动力学减速比-冲量:给定末端直线轨迹（即确定了两个关节角的约束关系）
-def TwoLinkImpactFit3():
+def TwoLinkImpactLineFit2():
     # link params
     l1 = 0.4
     l2 = 0.4
@@ -1928,6 +2159,160 @@ def TwoLinkImpactFitEllip():
     # ax1.axis('equal')
     plt.show()
 
+# 基于二连杆动力学减速比-冲量:给定末端不同时间下的椭圆轨迹（即确定了两个关节角的约束关系）
+def TwoLinkImpactFitEllip2():
+    # link params
+    L1 = 0.4
+    L2 = 0.4
+    m1 = 2.0
+    m2 = 2.0
+    g = 9.8
+
+    # motor params
+    U0 = 24.0
+    R = 0.127
+    Kv = 0.6
+    Kt = 0.075
+    Im = 5e-4
+
+    # maxon ec i 52 48v, 420w
+    # U0 = 48.0
+    # R = 0.281
+    # Kv = 0.089
+    # Kt = 0.089
+    # Im = 2.5e-4
+
+    # ts = 0.1
+    # t = np.linspace(0, ts, Nsample)
+    Nsample = 20
+    tspan = np.linspace(0.1, 0.4, 15)
+    gamma = np.linspace(1,20,20)
+
+    # k = 1
+    u1mt = []
+    u2mt = []
+    Lam = []
+    umax = 14
+    dqmax = 40
+    for k in range(len(gamma)):
+        for j in range(len(tspan)):
+            ts = tspan[j]
+            t = np.linspace(0, ts, Nsample)
+            print("ts: ", ts)
+
+            # region: dq, ddq cal
+            a = 0.4*np.sqrt(3)
+            b = 0.4
+            w = np.pi/(2*ts*1.1)
+            print("w: ", w)
+            x = a*np.cos(w*t)
+            y = b*np.sin(w*t)
+            dx = -a*w*np.sin(w*t)
+            dy = b*w*np.cos(w*t)
+            a0 = np.sqrt(x**2+y**2)
+            qtmp = np.arctan(y/x)
+            tmp = (x**2+y**2 + L2**2 - L1**2)/(2*a0*L2)
+            q1 = -np.arccos(tmp) + qtmp
+            q2 = np.arccos(tmp) + qtmp - q1
+
+            dq1 = (b*w*sin(t*w)**2/(a*cos(t*w)**2) + b*w/a)/(1 + b**2*sin(t*w)**2/(a**2*cos(t*w)**2)) + ((-2*a**2*w*sin(t*w)*cos(t*w) + 2*b**2*w*sin(t*w)*cos(t*w))/(2*L2*sqrt(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)) + (a**2*w*sin(t*w)*cos(t*w) - b**2*w*sin(t*w)*cos(t*w))*(-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)/(2*L2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**(3/2)))/sqrt(1 - (-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**2/(4*L2**2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)))    
+            dq2 = -2*((-2*a**2*w*sin(t*w)*cos(t*w) + 2*b**2*w*sin(t*w)*cos(t*w))/(2*L2*sqrt(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)) + (a**2*w*sin(t*w)*cos(t*w) - b**2*w*sin(t*w)*cos(t*w))*(-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)/(2*L2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**(3/2)))/sqrt(1 - (-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**2/(4*L2**2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)))
+
+            ddq1 = (2*b*w**2*sin(t*w)**3/(a*cos(t*w)**3) + 2*b*w**2*sin(t*w)/(a*cos(t*w)))/(1 + b**2*sin(t*w)**2/(a**2*cos(t*w)**2)) + (-2*b**2*w*sin(t*w)**3/(a**2*cos(t*w)**3) - 2*b**2*w*sin(t*w)/(a**2*cos(t*w)))*(b*w*sin(t*w)**2/(a*cos(t*w)**2) + b*w/a)/(1 + b**2*sin(t*w)**2/(a**2*cos(t*w)**2))**2 + ((2*a**2*w**2*sin(t*w)**2 - 2*a**2*w**2*cos(t*w)**2 - 2*b**2*w**2*sin(t*w)**2 + 2*b**2*w**2*cos(t*w)**2)/(2*L2*sqrt(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)) + (-2*a**2*w*sin(t*w)*cos(t*w) + 2*b**2*w*sin(t*w)*cos(t*w))*(a**2*w*sin(t*w)*cos(t*w) - b**2*w*sin(t*w)*cos(t*w))/(L2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**(3/2)) + (-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)*(-a**2*w**2*sin(t*w)**2 + a**2*w**2*cos(t*w)**2 + b**2*w**2*sin(t*w)**2 - b**2*w**2*cos(t*w)**2)/(2*L2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**(3/2)) + (a**2*w*sin(t*w)*cos(t*w) - b**2*w*sin(t*w)*cos(t*w))*(3*a**2*w*sin(t*w)*cos(t*w) - 3*b**2*w*sin(t*w)*cos(t*w))*(-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)/(2*L2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**(5/2)))/sqrt(1 - (-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**2/(4*L2**2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2))) + ((-2*a**2*w*sin(t*w)*cos(t*w) + 2*b**2*w*sin(t*w)*cos(t*w))/(2*L2*sqrt(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)) + (a**2*w*sin(t*w)*cos(t*w) - b**2*w*sin(t*w)*cos(t*w))*(-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)/(2*L2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**(3/2)))*((-4*a**2*w*sin(t*w)*cos(t*w) + 4*b**2*w*sin(t*w)*cos(t*w))*(-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)/(8*L2**2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)) + (2*a**2*w*sin(t*w)*cos(t*w) - 2*b**2*w*sin(t*w)*cos(t*w))*(-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**2/(8*L2**2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**2))/(1 - (-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**2/(4*L2**2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)))**(3/2)
+            ddq2 = -2*((2*a**2*w**2*sin(t*w)**2 - 2*a**2*w**2*cos(t*w)**2 - 2*b**2*w**2*sin(t*w)**2 + 2*b**2*w**2*cos(t*w)**2)/(2*L2*sqrt(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)) + (-2*a**2*w*sin(t*w)*cos(t*w) + 2*b**2*w*sin(t*w)*cos(t*w))*(a**2*w*sin(t*w)*cos(t*w) - b**2*w*sin(t*w)*cos(t*w))/(L2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**(3/2)) + (-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)*(-a**2*w**2*sin(t*w)**2 + a**2*w**2*cos(t*w)**2 + b**2*w**2*sin(t*w)**2 - b**2*w**2*cos(t*w)**2)/(2*L2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**(3/2)) + (a**2*w*sin(t*w)*cos(t*w) - b**2*w*sin(t*w)*cos(t*w))*(3*a**2*w*sin(t*w)*cos(t*w) - 3*b**2*w*sin(t*w)*cos(t*w))*(-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)/(2*L2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**(5/2)))/sqrt(1 - (-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**2/(4*L2**2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2))) - 2*((-2*a**2*w*sin(t*w)*cos(t*w) + 2*b**2*w*sin(t*w)*cos(t*w))/(2*L2*sqrt(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)) + (a**2*w*sin(t*w)*cos(t*w) - b**2*w*sin(t*w)*cos(t*w))*(-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)/(2*L2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**(3/2)))*((-4*a**2*w*sin(t*w)*cos(t*w) + 4*b**2*w*sin(t*w)*cos(t*w))*(-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)/(8*L2**2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)) + (2*a**2*w*sin(t*w)*cos(t*w) - 2*b**2*w*sin(t*w)*cos(t*w))*(-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**2/(8*L2**2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**2))/(1 - (-L1**2 + L2**2 + a**2*cos(t*w)**2 + b**2*sin(t*w)**2)**2/(4*L2**2*(a**2*cos(t*w)**2 + b**2*sin(t*w)**2)))**(3/2)
+            
+            q1 = np.asarray(q1)
+            dq1 = np.asarray(dq1)
+            ddq1 = np.asarray(ddq1)
+            # print(q1)
+            # print(dq1)
+            # print(ddq1)
+            # print("="*50)
+            # print(q2)
+            # print(dq2)
+            # print(ddq2)
+            # endregion
+
+            for i in range(len(t)):
+                q0 = [q1[i], q2[i]]
+                Jq = np.array([[-L1*np.sin(q0[0])-L2*np.sin(q0[0]+q0[1]), -L2*np.sin(q0[0]+q0[1])],
+                                    [L1*np.cos(q0[0])+L2*np.cos(q0[0]+q0[1]), L2*np.cos(q0[0]+q0[1])]])
+                Mq = np.array([[Im*gamma[k]**2 + m2*L1**2+m1*L1**2/3+m2*L2**2/3+m2*L1*L2*np.cos(q0[1]), m2*L2**2/3+m2*L1*L2*np.cos(q0[1]/2)],
+                            [m2*L2**2/3+m2*L1*L2*np.cos(q0[1])/2, m2*L2**2/3+Im*gamma[k]**2]])
+                cq1 = -m2*L1*L2*np.sin(q0[1])*dq1[i]*dq2[i]-m2*L1*L2*np.sin(q0[1])*dq2[i]*dq2[i]/2
+                cq2 = m2*L1*L2*np.sin(q0[1])*dq1[i]*dq1[i]/2
+                u1 = Mq[0][0]*ddq1[i]+Mq[0][1]*ddq2[i] + cq1
+                u2 = Mq[1][0]*ddq1[i]+Mq[1][1]*ddq2[i] + cq2
+
+                M_inv = np.linalg.inv(Mq)
+                Mtmp = Jq @ M_inv @ Jq.T
+                Mc = np.linalg.inv(Mtmp)
+                v = np.array([dx[i], dy[i]])
+                Ltmp = Mc@v
+                L_s = np.sqrt(Ltmp[0]**2 + Ltmp[1]**2)
+
+                utmp1 =u1 / gamma[k]
+                utmp2 =u2 / gamma[k]
+                u1mt.append(utmp1)
+                u2mt.append(utmp2)
+                # print("="*50)
+                # print(umt1)
+                # print(umt2)
+                # print(v)
+                # print(Ltmp)
+                pass
+
+            u1max = max(u1mt)
+            u2max = max(u2mt)
+            dq1max = max(dq1)
+            dq2max = max(dq2)
+            print("="*50) 
+            print(u1max)
+            print(u2max)
+            print("="*50) 
+            print(dq1max)
+            print(dq2max)
+            # print(dq2max3)
+
+            if u1max > umax or u2max > umax or dq1max > dqmax or dq2max > dqmax:
+                pass
+            else:
+                Lam.append(L_s)
+                print("="*50)       
+                print(Lam)
+                print(Lam2)
+                break
+
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'font.size': 20,
+        'axes.labelsize': 22,
+        'lines.linewidth': 3,
+        'axes.titlesize': 25,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'axes.titlepad': 3.0,
+        'axes.labelpad': 5.0,
+        'lines.markersize': 15,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.5,
+    }
+
+    plt.rcParams.update(params)
+    fig2, axs = plt.subplots(1, 1, figsize=(12, 12))
+    ax1 = axs
+    # print(dq*gamma)
+
+    # ax1.plot(I_l, Lambda,'o-')
+    # ax1.plot(gamma, Lambda_s,'o-')
+    ax1.set_xlabel(r'Reduction ratio $\gamma$')
+    ax1.set_ylabel(r'Impact $\Lambda (kg.m.s^{-1})$')
+    ax1.set_title('SVD')
+    ax1.axis('equal')
+    plt.show()
+
+
 # 基于二连杆动力学减速比-冲量:给定末端圆轨迹（即确定了两个关节角的约束关系）
 def TwoLinkImpactFitCircle():
     # link params
@@ -2044,6 +2429,7 @@ def TwoLinkImpactFitCircle():
 
 def GammaOpti():
     gamma = sy.symbols('gamma')
+    gamma2 = sy.symbols('gamma2')
     U0 = sy.symbols('U0')
     kv = sy.symbols('kv')
     kt = sy.symbols('kt')
@@ -2065,7 +2451,7 @@ def GammaOpti():
     # ddq2 = dq2.diff(t)
 
     Mq = sy.Matrix([[Im*gamma**2 + m2*l1**2+m1*l1**2/3+m2*l2**2/3+m2*l1*l2*sy.cos(q2), m2*l2**2/3+m2*l1*l2*sy.cos(q2)/2],
-                        [m2*l2**2/3+m2*l1*l2*sy.cos(q2)/2, m2*l2**2/3+Im*gamma**2]])
+                        [m2*l2**2/3+m2*l1*l2*sy.cos(q2)/2, m2*l2**2/3+Im*gamma2**2]])
     # Cq = sy.Matrix([-m2*l1*l2*np.sin(q2)*dq1*dq2-m2*l1*l2*np.sin(q2)*dq2*dq2/2, m2*l1*l2*np.sin(q2)*dq1*dq1/2])
 
     tmp = sy.Matrix([[l1, R],[kt,kv]])
@@ -2081,13 +2467,38 @@ def JointForumOfEllipTraj():
     q2 = sy.symbols('q2')
     L1 = sy.symbols('L1')
     L2 = sy.symbols('L2')
+    t = sy.symbols('t')
+    w = sy.symbols('w')
     a = sy.symbols('a')
     b = sy.symbols('b')
-    x = L1*sy.cos(q1) + L2*sy.cos(q1+q2)
-    y = L1*sy.sin(q1) + L2*sy.sin(q1+q2)
+    # x = sy.Function('y', real=True)(t)
+    # y = sy.Function('y', real=True)(t)
+    # x = L1*sy.cos(q1) + L2*sy.cos(q1+q2)
+    # y = L1*sy.sin(q1) + L2*sy.sin(q1+q2)
+    x = a*sy.cos(w*t)
+    y = b*sy.sin(w*t)
 
-    res = sy.solve(x**2/a**2+y**2/b**2-1, q2)
-    print(res)
+    # res = sy.solve(x**2/a**2+y**2/b**2-1, q2)
+    # print(res)
+
+    a0 = sy.sqrt(x**2+y**2)
+    q0 = sy.atan(y/x)
+    tmp = (x**2+y**2 + L2**2 - L1**2)/(2*a0*L2)
+    q1 = -sy.acos(tmp) + q0
+    q2 = sy.acos(tmp) + q0 - q1
+
+    dq1 = q1.diff(t)
+    ddq1 = dq1.diff(t)
+    dq2 = q2.diff(t)
+    ddq2 = dq2.diff(t)
+    print(dq1)
+    print("="*50)
+    print(dq2)
+    print("="*50)
+    print(ddq1)
+    print("="*50)
+    print(ddq2)
+
     pass
 
 def JointForumOfSlashTraj():
@@ -2105,7 +2516,7 @@ def JointForumOfSlashTraj():
     print(res)
     pass
 
-def animation(L, q1, q2, t, dt):
+def animation(L, q1, q2, t, dt, save_dir):
     from numpy import sin, cos
     import matplotlib.pyplot as plt
     import matplotlib.animation as animation
@@ -2164,8 +2575,8 @@ def animation(L, q1, q2, t, dt):
     # name = "traj_ani" + ".gif"
 
     saveflag = True
-    save_dir = "/home/hyyuan/Documents/Master/Manipulator/XArm-Simulation/model_raisim/DRMPC/SaTiZ/data/2023-02-01/"
-    savename = save_dir + "t_"+str(t[-1])+"-l.gif"
+    # save_dir = "/home/hyyuan/Documents/Master/Manipulator/XArm-Simulation/model_raisim/DRMPC/SaTiZ/data/2023-02-01/"
+    savename = save_dir + "t_"+str(t[-1])+"-pm_5_2.gif"
     # savename = save_dir +date+ name
 
     if saveflag:
@@ -2193,6 +2604,8 @@ if __name__ == "__main__":
     # TwoLinkImpactFit2()
     # TwoLinkImpactFit3()
     # JointForumOfEllipTraj()
-    JointForumOfSlashTraj()
+    # JointForumOfSlashTraj()
     # TwoLinkImpactFitCircle()
+    # TwoLinkImpactFitEllip2()
+    TwoLinkImpactFit2()
     pass

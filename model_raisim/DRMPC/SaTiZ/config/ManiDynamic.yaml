@@ -3,11 +3,11 @@ Optimization:
   RandomSeed: 1
 
   CostCoeff:
-    trackingCoeff: 0.6
-    VelCoeff: 0.1
-    powerCoeff: 0.0
-    forceCoeff: 0.3
-    smoothCoeff: 0.0
+    trackingCoeff: 0.3
+    VelCoeff: 0.0
+    powerCoeff: 0.6
+    forceCoeff: 0.0
+    smoothCoeff: 0.1
     ImpactCoeff: 0.0
 
 Environment:
@@ -17,8 +17,8 @@ Environment:
 
 Controller:
   Target: 5
-  Period: 0.2
-  dt: 0.001
+  Period: 0.12
+  dt: 0.0005
   CollectionNum: 500
   
 
@@ -37,15 +37,15 @@ Ref:
 Robot:
   Mass:
     # body, thigh, shank, arm
-    mass: [1.0, 1.0]
-    inertia: [0.0075, 0.0075]
-    massCenter: [0.15, 0.15]
+    mass: [2.0, 2.0]
+    inertia: [0.026, 0.026]
+    massCenter: [0.2, 0.2]
   Geometry:
-    L1: 0.3
-    L2: 0.3
+    L1: 0.4
+    L2: 0.4
   damping: 0.0
   Motor:
-    MaxTorque: 27
+    MaxTorque: 36
     MaxSpeed: 54
     CriticalSpeed: 30
 

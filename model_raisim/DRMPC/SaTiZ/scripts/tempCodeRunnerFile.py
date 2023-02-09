@@ -1,5 +1,2 @@
-
-    R = 0.281
-    Kv = 0.089
-    Kt = 0.089
-    Im = 2.5e-4
+in(save_dir, name), 'wb') as f:
+    #     pickle.dump(Data,
