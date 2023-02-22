@@ -17,8 +17,8 @@ Environment:
 
 Controller:
   Target: 5
-  Period: 0.12
-  dt: 0.0005
+  Period: 0.2
+  dt: 0.001
   CollectionNum: 500
   
 
