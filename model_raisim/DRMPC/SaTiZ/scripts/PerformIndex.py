@@ -2304,7 +2304,6 @@ def TwoLinkImpactMassGamFit():
     # link params
     l1 = 0.4
     l2 = 0.4
-    M = 5.0
     g = 9.8
 
     # motor params
@@ -2330,25 +2329,25 @@ def TwoLinkImpactMassGamFit():
     ts = 0.2
     Nsample = 200
     t = np.linspace(0, ts, Nsample)
-    gam = np.linspace(1,20,20)
-    gam2 = np.linspace(1,20,20)
-    K = np.linspace(0.1,10,20)
-    m1 = K*M / (K+1)
-    m2 = M / (K+1)
+    # gam = np.linspace(1,20,20)
+    M = 4.0
+    gam2 = 4.0
+    N = np.linspace(0.5,6,20)
+    K = np.linspace(0.8,6,20)
     
     Lambda_p = []
-    Lambda_s = np.array([[0.0]*len(gam)])
+    Lambda_s = np.array([[0.0]*len(K)])
     index = []
-    dqmax = np.array([[0.0]*len(gam)])
-    dqmax2 = np.array([[0.0]*len(gam)])
+    dqmax = np.array([[0.0]*len(K)])
+    dqmax2 = np.array([[0.0]*len(K)])
 
-    def Dynamic(w, t, gamma, gamma2, U0, Kt, Kv, R, Im):
+    def Dynamic(w, t, m1, m2, gamma, gamma2, U0, Kt, Kv, R, Im):
         y11, y12, y21, y22 = w
         
         b_f1 = gamma**2*Kt*Kv/R
-        c_f1 = -gamma*Kt*U0/R
+        c_f1 = gamma*Kt*U0/R
         b_f2 = gamma2**2*Kt*Kv/R
-        c_f2 = -gamma2*Kt*U0/R
+        c_f2 = gamma2*Kt*U0/R
         
         m11 = (36*Im*gamma2**2 + 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
         m12 = (-18*l1*l2*m2*cos(y21) - 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
@@ -2374,20 +2373,23 @@ def TwoLinkImpactMassGamFit():
 
         return np.array([dy11, dy12, dy21, dy22])
 
-    for i in range(len(gam)):
+    for i in range(len(K)):
         dqtmp = []
         dqtmp2 = []
         LamTmp = []
-        for j in range(len(gam2)):
-            w1 = (0.58*np.pi, 0.001, 0.67*np.pi, 0.001)
-            qres = odeint(Dynamic, w1, t, args=(gam[i], gam2[j], U0, Kt, Kv, R, Im))
+        m1 = K[i]*M / (K[i]+1)
+        m2 = M / (K[i]+1)
+        for j in range(len(N)):
+            gam1 = N[j]*gam2
+            w1 = (-np.pi/6,0.001, np.pi/8, 0.001)
+            qres = odeint(Dynamic, w1, t, args=(m1, m2, gam1, gam2, U0, Kt, Kv, R, Im))
             
             q0 = [qres[-1][0], qres[-1][2]]
             dq0 = np.array([qres[-1][1], qres[-1][3]])
             Jq = np.array([[-l1*np.sin(q0[0])-l2*np.sin(q0[0]+q0[1]), -l2*np.sin(q0[0]+q0[1])],
                                 [l1*np.cos(q0[0])+l2*np.cos(q0[0]+q0[1]), l2*np.cos(q0[0]+q0[1])]])
-            Mq = np.array([[Im*gam[i]**2 + m2*l1**2+m1*l1**2/3+m2*l2**2/3+m2*l1*l2*np.cos(q0[1]), m2*l2**2/3+m2*l1*l2*np.cos(q0[1])/2],
-                        [m2*l2**2/3+m2*l1*l2*np.cos(q0[1])/2, m2*l2**2/3+Im*gam2[j]**2]])
+            Mq = np.array([[Im*gam1**2 + m2*l1**2+m1*l1**2/3+m2*l2**2/3+m2*l1*l2*np.cos(q0[1]), m2*l2**2/3+m2*l1*l2*np.cos(q0[1])/2],
+                        [m2*l2**2/3+m2*l1*l2*np.cos(q0[1])/2, m2*l2**2/3+Im*gam2**2]])
             M_inv = np.linalg.inv(Mq)
             Mtmp = Jq @ M_inv @ Jq.T
             Mc = np.linalg.inv(Mtmp)
@@ -2403,7 +2405,7 @@ def TwoLinkImpactMassGamFit():
             if max(qindex2) > np.pi*3/4 or min(qindex2) < 0.0 or max(qindex1) > np.pi/3 or min(qindex1) < -np.pi*3/4:
                 index.append([i,j])
 
-            if i==2and j==2:
+            if i==0 and j==1:
                 print(max(qindex2))
                 L = [l1, l2]
                 q1 = qres[:,0]
@@ -2411,6 +2413,7 @@ def TwoLinkImpactMassGamFit():
                 # print(qres[:,2])
                 # print(q2)
                 dt = ts / Nsample
+                print(N[j],K[i],Lsmp)
                 animation(L, q1, q2, t, dt, save_dir,i, j)
 
             if i < 5 and j < 5:
@@ -2424,6 +2427,7 @@ def TwoLinkImpactMassGamFit():
             # print("gamma1: ", gam[i])
             # print(LamTmp)
             pass
+        print(LamTmp)
         Lambda_s = np.concatenate((Lambda_s, [LamTmp]), axis = 0)
         dqmax = np.concatenate((dqmax, [dqtmp]), axis = 0)
         dqmax2 = np.concatenate((dqmax2, [dqtmp2]), axis = 0)
@@ -2464,73 +2468,328 @@ def TwoLinkImpactMassGamFit():
     plt.rcParams.update(params)
     plt.rcParams.update(params)
 
-    gam = gam.astype(int) 
-    gam2 = gam2.astype(int)
-    gam_label = list(map(str, gam))
-    gam2_label = list(map(str, gam2))
-    print(gam_label)
-    print(dqmax)
+    # N = N.astype(int) 
+    # K = K.astype(int)
+    print(N)
+    print(K)
+    N = np.round(N, 1)
+    K = np.round(K, 1)
+    N_label = list(map(str, N))
+    K_label = list(map(str, K))
+    print(N_label)
+    print(Lambda_s)
 
     fig, axs = plt.subplots(1, 1, figsize=(12, 12))
     ax1 = axs
 
-    pcm1 = ax1.imshow(Lambda_s, cmap='inferno', vmin = -4.0, vmax = 25)
+    # pcm1 = ax1.imshow(Lambda_s, cmap='inferno', vmin = 0.0, vmax = 25)
+    pcm1 = ax1.imshow(Lambda_s, cmap='inferno', vmin = 0.0, vmax = 12)
     cb1 = fig.colorbar(pcm1, ax=ax1)
-    ax1.set_xticks(np.arange(len(gam2)))
-    ax1.set_xticklabels(gam2_label)
-    ax1.set_yticks(np.arange(len(gam)))
-    ax1.set_ylim(-0.5, len(gam)-0.5)
-    ax1.set_yticklabels(gam_label)
+    ax1.set_xticks(np.arange(len(N)))
+    ax1.set_xticklabels(N_label)
+    ax1.set_yticks(np.arange(len(K)))   
+    ax1.set_ylim(-0.5, len(K)-0.5)
+    ax1.set_yticklabels(K_label)
     # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
     #        labeltop=True, labelbottom=False)
 
-    ax1.set_xlabel(r'Joint 2 Reduction ratio $\gamma_2$')
-    ax1.set_ylabel(r'Joint 1 Reduction ratio $\gamma_1$')
+    ax1.set_xlabel(r'Joint Reduction ratio coef N')
+    ax1.set_ylabel(r'Link mass ratio K')
     cb1.set_label(r'Impact $\Lambda (kg.m.s^{-1})$')
-    for k in range(len(gam)):
-        for m in range(len(gam2)):
+    # ax1.text(8, 2, 3.0, ha="center", va="center",color="black",fontsize=10)
+    for k in range(len(K)):
+        for m in range(len(N)):
             ax1.text(m,k,Lambda_s[k][m], ha="center", va="center",color="black",fontsize=10)
 
     fig2, axs2 = plt.subplots(1, 1, figsize=(12, 12))
     ax2 = axs2
 
-    pcm2 = ax2.imshow(dqmax, cmap='inferno', vmin = 0.0, vmax = 2.5)
+    # pcm2 = ax2.imshow(dqmax, cmap='inferno', vmin = -0.2*np.pi, vmax = 0.4*np.pi)
+    pcm2 = ax2.imshow(dqmax, cmap='inferno', vmin = -0.2*np.pi, vmax = 0.3*np.pi)
     cb2 = fig2.colorbar(pcm2, ax=ax2)
-    ax2.set_xticks(np.arange(len(gam2)))
-    ax2.set_xticklabels(gam2_label)
-    ax2.set_yticks(np.arange(len(gam)))
-    ax2.set_ylim(-0.5, len(gam)-0.5)
-    ax2.set_yticklabels(gam_label)
+    ax2.set_xticks(np.arange(len(N)))
+    ax2.set_xticklabels(N_label)
+    ax2.set_yticks(np.arange(len(K)))
+    ax2.set_ylim(-0.5, len(K)-0.5)
+    ax2.set_yticklabels(K_label)
     # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
     #        labeltop=True, labelbottom=False)
 
-    ax2.set_xlabel(r'Joint 2 Reduction ratio $\gamma_2$')
-    ax2.set_ylabel(r'Joint 1 Reduction ratio $\gamma_1$')
+    ax2.set_xlabel(r'Joint Reduction ratio coef N')
+    ax2.set_ylabel(r'Link mass ratio K')
     cb2.set_label(r'Joint 1 Angle $\theta (rad)$')
-    for k in range(len(gam)):
-        for m in range(len(gam2)):
+    for k in range(len(K)):
+        for m in range(len(N)):
             ax2.text(m,k,dqmax[k][m], ha="center", va="center",color="black",fontsize=10)
     
     fig3, axs3 = plt.subplots(1, 1, figsize=(12, 12))
     ax3 = axs3
 
-    pcm3 = ax3.imshow(dqmax2, cmap='inferno', vmin = -2.0, vmax = 0.9*np.pi)
+    pcm3 = ax3.imshow(dqmax2, cmap='inferno', vmin =0.5*np.pi, vmax = 0.72*np.pi)
     cb3 = fig3.colorbar(pcm3, ax=ax3)
-    ax3.set_xticks(np.arange(len(gam2)))
-    ax3.set_xticklabels(gam2_label)
-    ax3.set_yticks(np.arange(len(gam)))
-    ax3.set_ylim(-0.5, len(gam)-0.5)
-    ax3.set_yticklabels(gam_label)
+    ax3.set_xticks(np.arange(len(N)))
+    ax3.set_xticklabels(N_label)
+    ax3.set_yticks(np.arange(len(K)))
+    ax3.set_ylim(-0.5, len(K)-0.5)
+    ax3.set_yticklabels(K_label)
     # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
     #        labeltop=True, labelbottom=False)
 
-    ax3.set_xlabel(r'Joint 2 Reduction ratio $\gamma_2$')
-    ax3.set_ylabel(r'Joint 1 Reduction ratio $\gamma_1$')
+    ax3.set_xlabel(r'Joint Reduction ratio coef N')
+    ax3.set_ylabel(r'Link mass ratio K')
     cb3.set_label(r'Joint 2 Angle $\theta (rad)$')
-    for k in range(len(gam)):
-        for m in range(len(gam2)):
+    for k in range(len(K)):
+        for m in range(len(N)):
             ax3.text(m,k,dqmax2[k][m], ha="center", va="center",color="black",fontsize=10)
     plt.show()
+
+# 二连杆:两个关节均以最大功率运行,但减速比不同，收缩轨迹, 同时优化质量比和减速比
+def TwoLinkImpactMassGamFit2():
+    # link params
+    l1 = 0.4
+    l2 = 0.4
+    g = 9.8
+
+    # motor params
+    U0 = 24.0
+    R = 0.127
+    Kv = 0.6
+    Kt = 0.075
+    Im = 5e-4
+
+    # maxon ec i 52 48v, 420w
+    # U0 = 48.0
+    # R = 0.281
+    # Kv = 0.089
+    # Kt = 0.089
+    # Im = 2.5e-4
+
+    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    todaytime=datetime.date.today()
+    save_dir = StorePath + "/data/" + str(todaytime) + "/"
+    name = "Gam_Lam_18_g.pkl"
+
+    g = 9.8
+    ts = 0.2
+    Nsample = 200
+    t = np.linspace(0, ts, Nsample)
+    # gam = np.linspace(1,20,20)
+    M = 3.0
+    # gam2 = 3.2
+    mm1 = np.linspace(0.5, 5, 20)
+    mm2 = np.linspace(0.5, 5, 20)
+    gamma1 = np.linspace(1.0, 10.0, 20)
+    gamma2 = np.linspace(1.0, 10.0, 20)
+    
+    Lambda_p = []
+    Lambda_s = np.array([[0.0]*len(mm1)])
+    index = []
+    dqmax = np.array([[0.0]*len(mm1)])
+    dqmax2 = np.array([[0.0]*len(mm1)])
+
+    def Dynamic(w, t, m1, m2, gamma, gamma2, U0, Kt, Kv, R, Im):
+        y11, y12, y21, y22 = w
+        
+        b_f1 = gamma**2*Kt*Kv/R
+        c_f1 = gamma*Kt*U0/R
+        b_f2 = gamma2**2*Kt*Kv/R
+        c_f2 = gamma2*Kt*U0/R
+        
+        m11 = (36*Im*gamma2**2 + 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        m12 = (-18*l1*l2*m2*cos(y21) - 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        m21 = (-18*l1*l2*m2*cos(y21) - 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        m22 = (36*Im*gamma**2 + 12*l1**2*m1 + 36*l1**2*m2 + 36*l1*l2*m2*cos(y21) + 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+
+        cq1 = -m2*l1*l2*np.sin(y21)*y12*y22-m2*l1*l2*np.sin(y21)*y22*y22/2
+        cq2 = m2*l1*l2*np.sin(y21)*y12*y12/2
+
+        g1 = (0.5*m1+m2)*g*l1*cos(y11) + 0.5*m2*g*l2*cos(y11+y21)
+        g2 = 0.5*m2*g*l2*cos(y11+y21)
+
+        dy11 = y12
+        dy12 = m11*(c_f1 - b_f1*y12 - cq1) + m12*(c_f2 - b_f2*y22 - cq2)
+        dy21 = y22
+        dy22 = m21*(c_f1 - b_f1*y12 - cq1) + m22*(c_f2 - b_f2*y22 - cq2)
+
+        ## 肘关节角度固定,不按照最大功率运行: 结果奇怪
+        # dy11 = y12
+        # dy12 = m11*(c_f - b_f*y12) + m12*(c_f - cq2)
+        # dy21 = y22
+        # dy22 = m21*(c_f - b_f*y12) + m22*(c_f - cq2)
+
+        return np.array([dy11, dy12, dy21, dy22])
+
+    for i in range(len(mm1)):
+        m1 = mm1[i]
+        for j in range(len(mm2)):
+            dqtmp = []
+            dqtmp2 = []
+            LamTmp = []
+            m2 = mm2[j]
+            for k in range(len(gamma1)):
+                gam1 = gamma1[k]
+                for n in range(len(gamma2)):
+                    gam2 = gamma2[n]
+                    w1 = (-np.pi/6,0.001, np.pi/8, 0.001)
+                    qres = odeint(Dynamic, w1, t, args=(m1, m2, gam1, gam2, U0, Kt, Kv, R, Im))
+                    
+                    q0 = [qres[-1][0], qres[-1][2]]
+                    dq0 = np.array([qres[-1][1], qres[-1][3]])
+                    Jq = np.array([[-l1*np.sin(q0[0])-l2*np.sin(q0[0]+q0[1]), -l2*np.sin(q0[0]+q0[1])],
+                                        [l1*np.cos(q0[0])+l2*np.cos(q0[0]+q0[1]), l2*np.cos(q0[0]+q0[1])]])
+                    Mq = np.array([[Im*gam1**2 + m2*l1**2+m1*l1**2/3+m2*l2**2/3+m2*l1*l2*np.cos(q0[1]), m2*l2**2/3+m2*l1*l2*np.cos(q0[1])/2],
+                                [m2*l2**2/3+m2*l1*l2*np.cos(q0[1])/2, m2*l2**2/3+Im*gam2**2]])
+                    M_inv = np.linalg.inv(Mq)
+                    Mtmp = Jq @ M_inv @ Jq.T
+                    Mc = np.linalg.inv(Mtmp)
+                    Ltmp = Mc @ Jq @ dq0
+                    Lsmp = np.sqrt(Ltmp[0]**2+Ltmp[1]**2)
+                    Lambda_p.append(Ltmp)
+                    LamTmp.append(Lsmp)
+                    dqtmp.append(q0[0])
+                    dqtmp2.append(q0[1])
+
+                    qindex1 = qres[:, 0]
+                    qindex2 = qres[:, 2]
+                    if max(qindex2) > np.pi*3/4 or min(qindex2) < 0.0 or max(qindex1) > np.pi/3 or min(qindex1) < -np.pi*3/4:
+                        index.append([i,j])
+
+                    if i==2and j==3:
+                        print(max(qindex2))
+                        L = [l1, l2]
+                        q1 = qres[:,0]
+                        q2 = qres[:,2]
+                        # print(qres[:,2])
+                        # print(q2)
+                        dt = ts / Nsample
+                        print(N[j],K[i],Lsmp)
+                        animation(L, q1, q2, t, dt, save_dir,i, j)
+
+                    if i < 5 and j < 5:
+                        # print("="*50)
+                        # print("q1max: ", q0[0], max(qindex1))
+                        # print("q2max: ", q0[1], max(qindex2))
+                        pass
+                    pass
+            if i < 6:
+                # print("="*50)
+                # print("gamma1: ", gam[i])
+                # print(LamTmp)
+                pass
+            Lambda_s = np.concatenate((Lambda_s, [LamTmp]), axis = 0)
+            dqmax = np.concatenate((dqmax, [dqtmp]), axis = 0)
+            dqmax2 = np.concatenate((dqmax2, [dqtmp2]), axis = 0)
+
+    Lambda_s = Lambda_s[1:,]
+    dqmax = dqmax[1:,]
+    dqmax = np.array(dqmax)
+    dqmax = np.around(dqmax,2)
+    dqmax2 = dqmax2[1:,]
+    dqmax2 = np.array(dqmax2)
+    dqmax2 = np.around(dqmax2,2)
+    Lambda_s = np.around(Lambda_s,2)
+    print("index: ",index)
+    # print(Lambda_s)
+    Data = {'Lambda': Lambda_s, 'dqmax1': dqmax, 'dqmax2': dqmax2}
+
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)    
+    # with open(os.path.join(save_dir, name), 'wb') as f:
+    #     pickle.dump(Data, f)   
+ 
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'font.size': 20,
+        'axes.labelsize': 22,
+        'lines.linewidth': 3,
+        'axes.titlesize': 25,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'axes.titlepad': 3.0,
+        'axes.labelpad': 5.0,
+        'lines.markersize': 15,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.5,
+    }
+
+    plt.rcParams.update(params)
+    plt.rcParams.update(params)
+
+    # N = N.astype(int) 
+    # K = K.astype(int)
+    print(N)
+    print(K)
+    N = np.round(N, 1)
+    K = np.round(K, 1)
+    N_label = list(map(str, N))
+    K_label = list(map(str, K))
+    print(N_label)
+    # print(Lambda_s)
+
+    fig, axs = plt.subplots(1, 1, figsize=(12, 12))
+    ax1 = axs
+
+    # pcm1 = ax1.imshow(Lambda_s, cmap='inferno', vmin = 0.0, vmax = 25)
+    pcm1 = ax1.imshow(Lambda_s, cmap='inferno', vmin = 0.0, vmax = 18)
+    cb1 = fig.colorbar(pcm1, ax=ax1)
+    ax1.set_xticks(np.arange(len(N)))
+    ax1.set_xticklabels(N_label)
+    ax1.set_yticks(np.arange(len(K)))
+    ax1.set_ylim(-0.5, len(K)-0.5)
+    ax1.set_yticklabels(K_label)
+    # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+    #        labeltop=True, labelbottom=False)
+
+    ax1.set_xlabel(r'Joint Reduction ratio coef $\beta$')
+    ax1.set_ylabel(r'Link mass ratio K')
+    cb1.set_label(r'Impact $\Lambda (kg.m.s^{-1})$')
+    for k in range(len(K)):
+        for m in range(len(N)):
+            ax1.text(m,k,Lambda_s[k][m], ha="center", va="center",color="black",fontsize=10)
+
+    fig2, axs2 = plt.subplots(1, 1, figsize=(12, 12))
+    ax2 = axs2
+
+    # pcm2 = ax2.imshow(dqmax, cmap='inferno', vmin = -0.2*np.pi, vmax = 0.4*np.pi)
+    pcm2 = ax2.imshow(dqmax, cmap='inferno', vmin = -0.2*np.pi, vmax = 0.3*np.pi)
+    cb2 = fig2.colorbar(pcm2, ax=ax2)
+    ax2.set_xticks(np.arange(len(N)))
+    ax2.set_xticklabels(N_label)
+    ax2.set_yticks(np.arange(len(K)))
+    ax2.set_ylim(-0.5, len(K)-0.5)
+    ax2.set_yticklabels(K_label)
+    # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+    #        labeltop=True, labelbottom=False)
+
+    ax2.set_xlabel(r'Joint Reduction ratio coef $\beta$')
+    ax2.set_ylabel(r'Link mass ratio K')
+    cb2.set_label(r'Joint 1 Angle $\theta (rad)$')
+    for k in range(len(K)):
+        for m in range(len(N)):
+            ax2.text(m,k,dqmax[k][m], ha="center", va="center",color="black",fontsize=10)
+    
+    fig3, axs3 = plt.subplots(1, 1, figsize=(12, 12))
+    ax3 = axs3
+
+    pcm3 = ax3.imshow(dqmax2, cmap='inferno', vmin =0.4*np.pi, vmax = 0.72*np.pi)
+    cb3 = fig3.colorbar(pcm3, ax=ax3)
+    ax3.set_xticks(np.arange(len(N)))
+    ax3.set_xticklabels(N_label)
+    ax3.set_yticks(np.arange(len(K)))
+    ax3.set_ylim(-0.5, len(K)-0.5)
+    ax3.set_yticklabels(K_label)
+    # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+    #        labeltop=True, labelbottom=False)
+
+    ax3.set_xlabel(r'Joint Reduction ratio coef $\beta$')
+    ax3.set_ylabel(r'Link mass ratio K')
+    cb3.set_label(r'Joint 2 Angle $\theta (rad)$')
+    for k in range(len(K)):
+        for m in range(len(N)):
+            ax3.text(m,k,dqmax2[k][m], ha="center", va="center",color="black",fontsize=10)
+    plt.show()
+
 
 
 # 基于二连杆动力学减速比-冲量:给定末端直线轨迹（即确定了两个关节角的约束关系）
@@ -3328,5 +3587,6 @@ if __name__ == "__main__":
     # TwoLinkImpactFitEllip2()
     # TwoLinkImpactFit2()
     # TwoLinkImpactFit3()
-    TwoLinkImpactFit4()
+    # TwoLinkImpactFit4()
+    TwoLinkImpactMassGamFit()
     pass

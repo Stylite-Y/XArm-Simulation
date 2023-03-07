@@ -15,12 +15,13 @@ import pickle
 
 
 class DataProcess():
-    # def __init__(self, cfg, robot, arm_M, arm_I,theta, q, dq, ddq, u, F, t, savepath,save_flag):
-    def __init__(self, cfg, robot, arm_M, arm_I,theta, q, dq, ddq, u, t, savepath,save_flag):
+    def __init__(self, cfg, robot,theta, q, dq, ddq, u, F, t, savepath,save_flag):
+    # def __init__(self, cfg, robot, arm_M, arm_I,theta, q, dq, ddq, u, t, savepath,save_flag):
         self.cfg = cfg
         self.robot = robot
-        self.arm_M = arm_M
-        self.arm_I = arm_I
+        self.dt = robot.dt
+        # self.arm_M = arm_M
+        # self.arm_I = arm_I
         self.theta = theta
         self.q = q
         self.dq = dq
@@ -35,7 +36,7 @@ class DataProcess():
         # self.Tp = self.cfg['Controller']['Tp']
         # self.Nc = self.cfg['Controller']['Nc']
         # self.T = self.cfg['Controller']['T']
-        self.dt = self.cfg['Controller']['dt']
+        # self.dt = self.cfg['Controller']['dt']
         # self.PostarCoef = self.cfg["Optimization"]["CostCoef"]["postarCoef"]
         # self.TorqueCoef = self.cfg["Optimization"]["CostCoef"]["torqueCoef"]
         # self.DTorqueCoef = self.cfg["Optimization"]["CostCoef"]["DtorqueCoef"]
@@ -204,92 +205,6 @@ class DataProcess():
         # plt.show()
         
         pass
-
-    
-        from numpy import sin, cos
-        import matplotlib.pyplot as plt
-        import matplotlib.animation as animation
-        from collections import deque
-        from matplotlib.patches import Circle
-
-        ## kinematic equation
-        L0 = robot.L[0]
-        L1 = robot.L[1]
-        L2 = robot.L[2]
-        L_max = L0+L1+L2
-        x1 = L0*sin(q[:, 0])
-        y1 = L0*cos(q[:, 0])
-        x2 = L1*sin(q[:, 0] + q[:, 1]) + x1
-        y2 = L1*cos(q[:, 0] + q[:, 1]) + y1
-        x3 = L2*sin(q[:, 0] + q[:, 1]+q[:, 2]) + x2
-        y3 = L2*cos(q[:, 0] + q[:, 1]+q[:, 2]) + y2
-
-        fig = plt.figure(figsize=(10, 8))
-        # ax = fig.add_subplot(autoscale_on=False, xlim=(-L0, L0), ylim=(-L2, L0+L1))
-        # ax.set_aspect('equal')
-        # ax.set_xlabel('X axis ', fontsize = 15)
-        # ax.set_ylabel('Y axis ', fontsize = 15)
-        # ax.grid()
-
-        # Plotted bob circle radius
-        r = 0.05
-        # This corresponds to max_trail time points.
-        max_trail = int(1.0 / robot.dt)
-
-        def make_plot(i):
-            # Plot and save an image of the double pendulum configuration for time
-            # point i.
-            # The pendulum rods.
-            ax.plot([0, x1[i], x2[i], x3[i]], [0, y1[i], y2[i], y3[i]], lw=2, c='k')
-            # Circles representing the anchor point of rod 1, and bobs 1 and 2.
-            c0 = Circle((0, 0), r/2, fc='k', zorder=10)
-            c1 = Circle((x1[i], y1[i]), r, fc='b', ec='b', zorder=10)
-            c2 = Circle((x2[i], y2[i]), r, fc='r', ec='r', zorder=10)
-            c3 = Circle((x3[i], y3[i]), r, fc='r', ec='r', zorder=10)
-            ax.add_patch(c0)
-            ax.add_patch(c1)
-            ax.add_patch(c2)
-            ax.add_patch(c3)
-
-            # The trail will be divided into ns segments and plotted as a fading line.
-            ns = 20
-            s = max_trail // ns
-
-            for j in range(ns):
-                imin = i - (ns-j)*s
-                if imin < 0:
-                    continue
-                imax = imin + s + 1
-                # The fading looks better if we square the fractional length along the
-                # trail.
-                alpha = (j/ns)**2
-                ax.plot(x3[imin:imax], y3[imin:imax], c='r', solid_capstyle='butt',
-                        lw=2, alpha=alpha)
-
-            # Centre the image on the fixed anchor point, and ensure the axes are equal
-            ax.set_xlabel('X axis ', fontsize = 15)
-            ax.set_ylabel('Y axis ', fontsize = 15)
-            ax.set_xlim(-L0, L0)
-            ax.set_ylim(-L2, L0+L1)
-            ax.set_aspect('equal', adjustable='box')
-            plt.axis('off')
-            # plt.savefig('frames/_img{:04d}.png'.format(i//di), dpi=72)
-            plt.cla()
-
-
-        # Make an image every di time points, corresponding to a frame rate of fps
-        # frames per second.
-        # Frame rate, s-1
-        fps = 10
-        di = int(1/fps/robot.dt)
-        fig = plt.figure(figsize=(8.3333, 6.25), dpi=72)
-        ax = fig.add_subplot(111)
-
-        for i in range(0, t.size, di):
-            print(i // di, '/', t.size // di)
-            make_plot(i)
-        
-        pass
     
     ## Two Link
     def animationTwoLink(self, fileflag, saveflag):
@@ -359,6 +274,80 @@ class DataProcess():
         # plt.show()
         
         pass
+
+    ## Three link
+    def animationFourLink(self, fileflag, saveflag):
+        from numpy import sin, cos
+        import matplotlib.pyplot as plt
+        import matplotlib.animation as animation
+        from collections import deque
+
+        ## kinematic equation
+        L0 = self.robot.L[0]
+        L1 = self.robot.L[1]
+        L2 = self.robot.L[2]
+        L3 = self.robot.L[3]
+        L_max = L0+L1+L2
+        x1 = L0*sin(self.q[:, 0])
+        y1 = L0*cos(self.q[:, 0])
+        x2 = L1*sin(self.q[:, 0] + self.q[:, 1]) + x1
+        y2 = L1*cos(self.q[:, 0] + self.q[:, 1]) + y1
+        x3 = L2*sin(self.q[:, 0] + self.q[:, 1]+self.q[:, 2]) + x2
+        y3 = L2*cos(self.q[:, 0] + self.q[:, 1]+self.q[:, 2]) + y2
+        x4 = L3*sin(self.q[:, 0] + self.q[:, 1]+self.q[:, 2]+self.q[:, 3]) + x3
+        y4 = L3*cos(self.q[:, 0] + self.q[:, 1]+self.q[:, 2]+self.q[:, 3]) + y3
+
+        history_len = 100
+        
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(autoscale_on=False, xlim=(-L0, L0), ylim=(-0.05, (L0+L1)*1.2))
+        ax.set_aspect('equal')
+        ax.set_xlabel('X axis ', fontsize = 20)
+        ax.set_ylabel('Y axis ', fontsize = 20)
+        ax.xaxis.set_tick_params(labelsize = 18)
+        ax.yaxis.set_tick_params(labelsize = 18)
+        ax.grid()
+
+        line, = ax.plot([], [], 'o-', lw=3,markersize=8)
+        trace, = ax.plot([], [], '.-', lw=1, ms=1)
+        time_template = 'time = %.1fs'
+        time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes, fontsize=15)
+        history_x, history_y = deque(maxlen=history_len), deque(maxlen=history_len)
+
+        def animate(i):
+            thisx = [0, x1[i], x2[i], x3[i], x4[i]]
+            thisy = [0, y1[i], y2[i], y3[i], y4[i]]
+
+            if i == 0:
+                history_x.clear()
+                history_y.clear()
+
+            history_x.appendleft(thisx[4])
+            history_y.appendleft(thisy[4])
+
+            alpha = (i / history_len) ** 2
+            line.set_data(thisx, thisy)
+            trace.set_data(history_x, history_y)
+            # trace.set_alpha(alpha)
+            time_text.set_text(time_template % (i*self.dt))
+            return line, trace, time_text
+        
+        ani = animation.FuncAnimation(
+            fig, animate, len(self.t), interval=0.1, save_count = 30, blit=True)
+
+        ## animation save to gif
+        date = self.date
+        name = "traj_ani" + ".gif"
+
+        savename = self.save_dir +date+ name
+
+        if saveflag:
+            ani.save(savename, writer='pillow', fps=30)
+
+        # plt.show()
+        
+        pass
+    
 
     def ForceCal(self):
         robot = self.robot    # create robot
@@ -603,7 +592,7 @@ class DataProcess():
 
         pass
 
-    def DataSave(self, saveflag):
+    def DataSave(self, saveflag, com_x, com_y):
         date = self.date
         name = self.name
 
@@ -616,7 +605,7 @@ class DataProcess():
             with open(self.save_dir+date+name+"-config.yaml", mode='w') as file:
                 YAML().dump(self.cfg, file)
             # Data = {'F': self.F, 'u': self.u, "q": self.q, "dq": self.dq, "ddq": self.ddq, "t": self.t}
-            Data = {'u': self.u, "q": self.q, "dq": self.dq, "ddq": self.ddq, "t": self.t}
+            Data = {'u': self.u, "q": self.q, "dq": self.dq, "ddq": self.ddq, "t": self.t, "com_x": com_x, "com_y": com_y}
             with open(os.path.join(self.save_dir, date+name+"-sol.pkl"), 'wb') as f:
                 pickle.dump(Data, f)
             pass

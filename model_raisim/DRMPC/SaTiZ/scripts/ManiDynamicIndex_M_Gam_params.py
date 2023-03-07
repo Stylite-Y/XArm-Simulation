@@ -9,7 +9,8 @@
         - 二连杆两个关节减速比作为优化变量，目标函数不需要速度项也可
 5. 2023.02.24:
         - 二连杆两个关节减速比作为优化变量，伸展轨迹优化计算
-
+6. 2023.03.01:
+        - 二连杆两个关节减速比不同优化, 收缩轨迹, 同时加入质量比k作为优化参数之一
 '''
 
 from ast import In, walk
@@ -55,15 +56,17 @@ class Bipedal_hybrid():
         # self.dt = self.T / self.N
         
         # mass and geometry related parameter
-        self.m = cfg['Robot']['Mass']['mass']
-        self.I = cfg['Robot']['Mass']['inertia']
+        # self.m = cfg['Robot']['Mass']['mass']
+        # self.I = cfg['Robot']['Mass']['inertia']
         # self.m = Mas
         # self.I = inert
+        self.m = self.opti.variable(2)
         self.l = cfg['Robot']['Mass']['massCenter']
-        self.I_ = [self.m[i]*self.l[i]**2+self.I[i] for i in range(2)]
+        # self.I_ = [self.m[i]*self.l[i]**2+self.I[i] for i in range(2)]
 
         self.L = [cfg['Robot']['Geometry']['L1'],
                   cfg['Robot']['Geometry']['L2']]
+        self.I = [self.m[0]*self.L[0]**2/12, self.m[1]*self.L[1]**2/12]
 
         # motor parameter
         self.motor_cs = cfg['Robot']['Motor']['CriticalSpeed']
@@ -245,12 +248,23 @@ class nlp():
 
     def initialGuess(self, walker):
         init = walker.opti.set_initial
-        # init(walker.gam[0], 5.0)
-        # init(walker.gam[1], 7.0) # 5.2-7.12
-        # init(walker.gam[1], 3.3)    # 4.7-5.57
-        # init(walker.gam[1], 4.3)    # 5.13-3.47
-        init(walker.gam[0], 5.0)
-        init(walker.gam[1], 2.6)    # 3.24-3.42
+        # region: sol1
+        # gam: 3.25, 3.7
+        # m: 0.5, 1.24
+        # init(walker.gam[0], 4.0)
+        # init(walker.gam[1], 3.5)
+        # init(walker.m[0], 2.5)
+        # init(walker.m[1], 1.5)
+        # endregion
+        
+        # region: sol2
+        # gam: 
+        # m: 
+        init(walker.gam[0], 4.5)
+        init(walker.gam[1], 3.5)
+        init(walker.m[0], 2.4)
+        init(walker.m[1], 2.0)
+        # endregion
         for i in range(walker.N):
             init(walker.q[i][0], np.pi/6)
             # init(walker.q[i][0], np.pi*0.4)
@@ -353,6 +367,10 @@ class nlp():
                         walker.gam[0], 20.0)])
         ceq.extend([walker.opti.bounded(1.0,
                         walker.gam[1], 20.0)])
+        ceq.extend([walker.opti.bounded(0.5,
+                        walker.m[0], 10.0)])
+        ceq.extend([walker.opti.bounded(0.5,
+                        walker.m[1], 10.0)])
         # endregion
 
         # region motor external characteristic curve
@@ -439,9 +457,11 @@ class nlp():
         u = []
         t = []
         gamma = []
+        m = []
         try:
             sol1 = robot.opti.solve()
             gamma.append(sol1.value(robot.gam))
+            m.append(sol1.value(robot.m))
             for j in range(robot.N):
                 t.append(j*robot.dt)
                 q.append([sol1.value(robot.q[j][k]) for k in range(2)])
@@ -462,6 +482,7 @@ class nlp():
         except:
             value = robot.opti.debug.value
             gamma.append(value(robot.gam))
+            m.append(value(robot.m))
             for j in range(robot.N):
                 t.append(j*robot.dt)
                 q.append([value(robot.q[j][k])
@@ -487,8 +508,9 @@ class nlp():
             u = np.asarray(u)
             t = np.asarray(t).reshape([-1, 1])
             gamma = np.asarray(gamma)
+            m = np.asarray(m)
 
-            return q, dq, ddq, u, t, gamma
+            return q, dq, ddq, u, t, gamma, m
 
         
 
@@ -526,11 +548,13 @@ def main():
     # endregion
     # q, dq, ddq, u, t = nonlinearOptimization.solve_and_output(
     #     robot, flag_save=save_flag, StorePath=StorePath)
-    q, dq, ddq, u, t, gamma = nonlinearOptimization.solve_and_output(
+    q, dq, ddq, u, t, gamma, m = nonlinearOptimization.solve_and_output(
         robot, flag_save=save_flag, StorePath=StorePath)
 
     print("="*50)
     print("gamma:", gamma)
+    print("="*50)
+    print("m:", m)
     print("="*50)
     print("qmax:", q[-1])
     gam1 = gamma[0][0]
@@ -542,11 +566,10 @@ def main():
 
     power = []
     Lam = []
-    m = cfg['Robot']['Mass']['mass']
     L = [cfg['Robot']['Geometry']['L1'],
         cfg['Robot']['Geometry']['L2']]
-    m1 = m[0]
-    m2 = m[1]
+    m1 = m[0][0]
+    m2 = m[0][1]
     l1 = L[0]
     l2 = L[1]
     for i in range(len(t)):

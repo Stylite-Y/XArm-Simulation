@@ -3,11 +3,11 @@ Optimization:
   RandomSeed: 1
 
   CostCoeff:
-    trackingCoeff: 0.3
-    VelCoeff: 0.0
-    powerCoeff: 0.6
-    forceCoeff: 0.0
-    smoothCoeff: 0.1
+    trackingCoeff: 0.6
+    VelCoeff: 0.1
+    powerCoeff: 0.0
+    forceCoeff: 0.3
+    smoothCoeff: 0.0
     ImpactCoeff: 0.0
 
 Environment:
@@ -16,9 +16,12 @@ Environment:
   ForceRatio: 50000
 
 Controller:
+  # Forward: False
+  FrontForward: true
+  HindForward: true
   Target: 5
-  Period: 0.2
-  dt: 0.001
+  Period: 2.0
+  dt: 0.002
   CollectionNum: 500
   
 
@@ -27,6 +30,8 @@ Controller:
     dx: [-20, 20]
     y: [0.2, 2.0]
     dy: [-20, 20]
+    Fx: [-2000, 2000]
+    Fy: [0, 2000]
 
 Ref:
   delta: 0.05
@@ -37,12 +42,14 @@ Ref:
 Robot:
   Mass:
     # body, thigh, shank, arm
-    # mass: [2.0, 2.0]
-    # inertia: [0.026, 0.026]
-    massCenter: [0.2, 0.2]
+    # mass: [15, 20]
+    # inertia: [1.0125, 0.417]
+    massCenter: [0.5, 0.25, 0.2, 0.2]
   Geometry:
-    L1: 0.4
-    L2: 0.4
+    L_leg: 0.9
+    L_body: 0.5
+    L_arm: 0.4
+    L_farm: 0.4
   damping: 0.0
   Motor:
     MaxTorque: 36
