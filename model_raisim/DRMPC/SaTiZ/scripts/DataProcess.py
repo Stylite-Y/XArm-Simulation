@@ -592,7 +592,7 @@ class DataProcess():
 
         pass
 
-    def DataSave(self, saveflag, com_x, com_y):
+    def DataSave(self, saveflag, com_x, com_y, W_k, W_w, P_k, P_w, I_k, I_w, I_s, I_e):
         date = self.date
         name = self.name
 
@@ -605,7 +605,8 @@ class DataProcess():
             with open(self.save_dir+date+name+"-config.yaml", mode='w') as file:
                 YAML().dump(self.cfg, file)
             # Data = {'F': self.F, 'u': self.u, "q": self.q, "dq": self.dq, "ddq": self.ddq, "t": self.t}
-            Data = {'u': self.u, "q": self.q, "dq": self.dq, "ddq": self.ddq, "t": self.t, "com_x": com_x, "com_y": com_y}
+            Data = {'u': self.u, "q": self.q, "dq": self.dq, "ddq": self.ddq, "t": self.t, "com_x": com_x, "com_y": com_y,\
+                    "W_k":W_k, "W_w":W_w, "P_k":P_k, "P_w":P_w,"I_k":I_k, "I_w":I_w, "I_s":I_s, "I_e":I_e}
             with open(os.path.join(self.save_dir, date+name+"-sol.pkl"), 'wb') as f:
                 pickle.dump(Data, f)
             pass

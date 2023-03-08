@@ -56,10 +56,16 @@ class Bipedal_hybrid():
         # self.m = cfg['Robot']['Mass']['mass']
         # self.I = cfg['Robot']['Mass']['inertia']
         self.mm1 = [10, 15]
-        self.mm2 = [3.0, 3.7]
-        self.gam = [2.0, 3.13, 2.5]
-        # self.gamhip = self.opti.variable(1)
-        # self.gamhip = [1.5]
+        ## model test
+        # self.mm2 = [3.5, 4.4]
+        # self.gam = [2.0, 3.2, 4.0]
+        ## traj-opt test
+        # self.mm2 = [3.0, 3.75]
+        # self.gam = [2.0, 2.9, 4.2]
+        ## noarm test
+        self.mm2 = [3.0, 3.75]
+        self.gam = [2.0, 3.0, 4.0]
+
 
         self.L = [cfg['Robot']['Geometry']['L_leg'],
                   cfg['Robot']['Geometry']['L_body'],             
@@ -88,12 +94,13 @@ class Bipedal_hybrid():
         # self.F_UB = [self.bound_fx[1], self.bound_fy[1]]
 
         # t_f = self.gamhip[0]
-        self.qmax = [0.5*np.pi, 0.9*np.pi, 1.4*np.pi, 0.9*np.pi]
-        self.dqmax = [24, 54/self.gam[0], 54/self.gam[1], 54/self.gam[2]]
-        self.umax = [12, 36*self.gam[0], 36*self.gam[1], 36*self.gam[2]]
+        tor_k = 12
+        self.qmax = [0.5*np.pi, 0.9*np.pi, 1.2*np.pi, 0.9*np.pi]
+        self.dqmax = [36, 54/self.gam[0], 54/self.gam[1], 54/self.gam[2]]
+        self.umax = [tor_k, 36*self.gam[0], 36*self.gam[1], 36*self.gam[2]]
 
-        self.u_LB = [-12] + [-self.motor_mt]*3
-        self.u_UB = [12] + [self.motor_mt]*3
+        self.u_LB = [-tor_k] + [-self.motor_mt]*3
+        self.u_UB = [tor_k] + [self.motor_mt]*3
 
         # shank, thigh, body, arm, forearm
         self.q_LB = [-np.pi/10, -np.pi/30, 0, -np.pi*0.8] 
@@ -747,8 +754,8 @@ def main():
     # region optimization trajectory for bipedal hybrid robot system
     vis_flag = True
     save_flag = True
-    # armflag = False
-    armflag = True
+    armflag = False
+    # armflag = True
     # endregion
 
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -784,22 +791,22 @@ def main():
     print("="*50)
 
     # region: support force cal
-    Fx = np.array([0.0])
-    Fy = np.array([0.0])
-    for i in range(robot.N-1):
-        AccF = robot.SupportForce2(robot.mm2,q[i], dq[i], ddq[i])
-        tempx = AccF[0]
-        tempy = AccF[1]
-        Fx = np.concatenate((Fx, [tempx]))
-        Fy = np.concatenate((Fy, [tempy]))
-        if i == robot.N-2:
-            Fx = np.concatenate((Fx, [tempx]))
-            Fy = np.concatenate((Fy, [tempy]))
-    Fx = Fx[1:]
-    Fy = Fy[1:]
-    F = np.concatenate(([Fx], [Fy]), axis=1)
-    b,a = signal.butter(3, 0.12, 'lowpass')
-    Fy2 = signal.filtfilt(b, a, Fy)
+    # Fx = np.array([0.0])
+    # Fy = np.array([0.0])
+    # for i in range(robot.N-1):
+    #     AccF = robot.SupportForce2(robot.mm2,q[i], dq[i], ddq[i])
+    #     tempx = AccF[0]
+    #     tempy = AccF[1]
+    #     Fx = np.concatenate((Fx, [tempx]))
+    #     Fy = np.concatenate((Fy, [tempy]))
+    #     if i == robot.N-2:
+    #         Fx = np.concatenate((Fx, [tempx]))
+    #         Fy = np.concatenate((Fy, [tempy]))
+    # Fx = Fx[1:]
+    # Fy = Fy[1:]
+    # F = np.concatenate(([Fx], [Fy]), axis=1)
+    # b,a = signal.butter(3, 0.12, 'lowpass')
+    # Fy2 = signal.filtfilt(b, a, Fy)
     # endregion
 
     #region: costfun cal
@@ -828,17 +835,42 @@ def main():
     mass = [robot.mm1[0], robot.mm1[1], robot.mm2[0], robot.mm2[1]]
     for i in range(robot.N):
         pos = Bipedal_hybrid.get_compos(q[i, :])
-        comtmp_x = (mass[0]*pos[0]+mass[1]*pos[2]+mass[2]*pos[4]+mass[3]*pos[6])/(mass[0]+mass[1]+mass[2]+mass[3])
-        comtmp_y = (mass[0]*pos[1]+mass[1]*pos[3]+mass[2]*pos[5]+mass[3]*pos[7])/(mass[0]+mass[1]+mass[2]+mass[3])
+        comtmp_x = (mass[0]*pos[0][1]+mass[1]*pos[2][1]+mass[2]*pos[4][1]+mass[3]*pos[6][1])/(mass[0]+mass[1]+mass[2]+mass[3])
+        comtmp_y = (mass[0]*pos[1][1]+mass[1]*pos[3][1]+mass[2]*pos[5][1]+mass[3]*pos[7][1])/(mass[0]+mass[1]+mass[2]+mass[3])
         com_x.append(comtmp_x)
         com_y.append(comtmp_y)
         pass
+
+    # 做功和功率计算
+    W_k = 0
+    W_w = 0
+    I_k = 0
+    I_w = 0
+    I_s = 0
+    I_e = 0
+    P_k = []
+    P_w = []
+    for i in range(robot.N):
+        I_k += u[i][0]*robot.dt
+        I_w += u[i][1]*robot.dt
+        I_s += u[i][2]*robot.dt
+        I_e += u[i][3]*robot.dt
+        P1 = u[i][0]*dq[i][0]
+        P2 = u[i][1]*dq[i][1]
+        W_k += P1 * robot.dt
+        W_w += P2 * robot.dt
+        P_k.append(P1)
+        P_w.append(P2)
+        pass
+
+    # print("="*50)
+    # print("com_x: ", com_x)
 
     theta = np.pi/40
     F = 0
     visual = DataProcess(cfg, robot, theta, q, dq, ddq, u, F, t, save_dir, save_flag)
     if save_flag:
-        SaveDir = visual.DataSave(save_flag, com_x, com_y)
+        SaveDir = visual.DataSave(save_flag, com_x, com_y, W_k, W_w, P_k, P_w, I_k, I_w, I_s, I_e)
 
     if vis_flag:
         visual.animationFourLink(0, save_flag)
@@ -946,12 +978,13 @@ def main():
         pass
 
 def COMPos():
+    
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
     save_dir = StorePath + "/data/" + str(todaytime) + "/"
-    name1 = "ForceMap3-7-noarm-cfun.pkl"
-    name2 = "ForceMap3-7-noarm-cfun.pkl"
-    name3 = "ForceMap3-7-noarm-cfun.pkl"
+    name1 = "model_test/model.pkl"
+    name2 = "traj_test/traj.pkl"
+    name3 = "noarm/noarm.pkl"
 
     f1 = open(save_dir+name1,'rb')
     data1 = pickle.load(f1)
@@ -964,36 +997,200 @@ def COMPos():
 
     com_x1 = data1['com_x']
     com_y1 = data1['com_y']
+    u1 = data1['u']
+    W_k1 = round(data1['W_k'], 2)
+    W_w1 = round(data1['W_w'], 2)
+    I_k1 = round(data1['I_k'], 2)
+    I_w1 = round(data1['I_w'], 2)
+    I_s1 = round(data1['I_s'], 2)
+    I_e1 = round(data1['I_e'], 2)
+    P_k1 = data1['P_k']
+    P_w1 = data1['P_w']
     t1 = data1['t']
 
     com_x2 = data2['com_x']
     com_y2 = data2['com_y']
+    u2 = data2['u']
+    W_k2 = round(data2['W_k'], 2)
+    W_w2 = round(data2['W_w'], 2)
+    I_k2 = round(data2['I_k'], 2)
+    I_w2 = round(data2['I_w'], 2)
+    I_s2 = round(data2['I_s'], 2)
+    I_e2 = round(data2['I_e'], 2)
+    P_k2 = data2['P_k']
+    P_w2 = data2['P_w']
     t2 = data2['t']
 
     com_x3 = data3['com_x']
     com_y3 = data3['com_y']
+    u3 = data3['u']
+    W_k3 = round(data3['W_k'], 2)
+    W_w3 = round(data3['W_w'], 2)
+    I_k3 = round(data3['I_k'], 2)
+    I_w3 = round(data3['I_w'], 2)
+    I_s3 = round(data3['I_s'], 2)
+    I_e3 = round(data3['I_e'], 2)
+    P_k3 = data3['P_k']
+    P_w3 = data3['P_w']
     t3 = data3['t']
+
+    u11 = I_k1 / 2.0
+    u12 = I_w1 / 2.0
+    u21 = I_k2 / 2.0
+    u22 = I_w2 / 2.0
+    u31 = I_k3 / 2.0
+    u32 = I_w3 / 2.0
+
+    F11 = 0
+    F12 = 0
+    Ws_k = [0, 0, 0]
+    Ws_w = [0, 0, 0]
+    for i in range(len(t1)):
+        F11 += u1[i][0]
+        F12 += u1[i][1]
+        Ws_k[0] += np.abs(P_k1[i]*2.0/500)
+        Ws_k[1] += np.abs(P_k2[i]*2.0/500)
+        Ws_k[2] += np.abs(P_k3[i]*2.0/500)
+        Ws_w[0] += np.abs(P_w1[i]*2.0/500)
+        Ws_w[1] += np.abs(P_w2[i]*2.0/500)
+        Ws_w[2] += np.abs(P_w3[i]*2.0/500)
+    F11 = F11 / 500
+    F12 = F12 / 500
+    print(F11, F12)
   
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    import matplotlib as mpl
+    from matplotlib.patches import ConnectionPatch
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'image.cmap': 'inferno',
+        'lines.linewidth': 1.5,
+        'font.size': 15,
+        'axes.labelsize': 15,
+        'axes.titlesize': 22,
+        'xtick.labelsize': 15,
+        'ytick.labelsize': 15,
+        'legend.fontsize': 15,
+    }
+    plt.rcParams.update(params)
 
     fig1 = plt.figure(figsize=(10, 6), dpi=180, constrained_layout=False)
-    plt.plot(t1, com_x1, label = 'X COM')
-    plt.plot(t2, com_x2, label = 'X COM')
-    plt.plot(t3, com_x3, label = 'X COM')
+    plt.plot(t1, com_x1, label = 'X COM of Model res')
+    plt.plot(t2, com_x2, label = 'X COM of traj-opt res')
+    plt.plot(t3, com_x3, label = 'X COM of noarm res')
     plt.xlabel("time (s)")
     plt.ylabel("Position (m)")
     plt.legend()
 
     fig2 = plt.figure(figsize=(10, 6), dpi=180, constrained_layout=False)
-    plt.plot(t1, com_y1, label = 'Y COM')
-    plt.plot(t2, com_y2, label = 'Y COM')
-    plt.plot(t3, com_y3, label = 'Y COM')
+    plt.plot(t1, com_y1, label = 'Y COM of Model res')
+    plt.plot(t2, com_y2, label = 'Y COM of traj-opt res')
+    plt.plot(t3, com_y3, label = 'Y COM of noarm res')
     plt.xlabel("time (s)")
     plt.ylabel("Position (m)")
     plt.legend()
+
+    fig3 = plt.figure(figsize=(10, 6), dpi=180, constrained_layout=False)
+    plt.plot(t1, P_k1, label = 'Knee Power of Model res')
+    plt.plot(t2, P_k2, label = 'Knee Power of traj-opt res')
+    plt.plot(t3, P_k3, label = 'Knee Power of noarm res')
+    plt.xlabel("time (s)")
+    plt.ylabel("Power")
+    plt.legend()
+
+    fig4 = plt.figure(figsize=(10, 6), dpi=180, constrained_layout=False)
+    plt.plot(t1, P_w1, label = 'Waist Power of Model res')
+    plt.plot(t2, P_w2, label = 'Waist Power of traj-opt res')
+    plt.plot(t3, P_w3, label = 'Waist Power of noarm res')
+    plt.xlabel("time (s)")
+    plt.ylabel("Power")
+    plt.legend()
+
+
+    species = ("Knee", "Waist", "shoulder", "elbow")
+    penguin_means = {
+        'Work of Model': (I_k1, I_w1, I_s1, I_e1),
+        'Work of traj-opt': (I_k2, I_w2, I_s2, I_e2),
+        'Work of noarm': (I_k3, I_w3, I_s3, I_e3),
+    }
+    x = np.array([0, 0.5, 1.0, 1.5])  # the label locations
+    width = 0.05  # the width of the bars
+    multiplier = 0
+
+    fig5, ax = plt.subplots(layout='constrained')
+
+    for attribute, measurement in penguin_means.items():
+        offset = width * multiplier
+        rects = ax.bar(x + offset, measurement, width, label=attribute)
+        ax.bar_label(rects, padding=-20, fontsize = 15)
+        multiplier += 1
+
+    ax.set_ylabel('Work (J)', fontsize = 15)
+    ax.set_title('Work', fontsize = 20)
+    ax.set_xticks(x + width, species , fontsize = 15)
+    ax.legend(loc='upper left')
+    # ax.invert_yaxis()
+    # ax.set_ylim(0, 250)
+
+    species = ("Knee", "Waist")
+    # penguin_means = {
+    #     'Work of Model': (Ws_k[0], Ws_w[0]),
+    #     'Work of traj-opt': (Ws_k[1], Ws_w[1]),
+    #     'Work of noarm': (Ws_k[2], Ws_w[2]),
+    # }
+
+    penguin_means = {
+        'Work of Model': (W_k1, W_w1),
+        'Work of traj-opt': (W_k2, W_w2),
+        'Work of noarm': (W_k3, W_w3),
+    }
+    x = np.array([0, 0.2])  # the label locations
+    width = 0.05  # the width of the bars
+    multiplier = 0
+
+    fig6, ax1 = plt.subplots(layout='constrained')
+
+    for attribute, measurement in penguin_means.items():
+        offset = width * multiplier
+        rects = ax1.bar(x + offset, measurement, width, label=attribute)
+        ax1.bar_label(rects, padding=-20, fontsize = 15)
+        multiplier += 1
+
+    ax1.set_ylabel('Work (J)', fontsize = 15)
+    ax1.set_title('Work', fontsize = 20)
+    ax1.set_xticks(x + width, species , fontsize = 15)
+    ax1.legend(loc='upper left')
+
+    species = ("Knee", "Waist")
+    penguin_means = {
+        'Force of Model': (u11, u12),
+        'Force of traj-opt': (u21, u22),
+        'Force of noarm': (u31, u32),
+    }
+    x = np.array([0, 0.2])  # the label locations
+    width = 0.05  # the width of the bars
+    multiplier = 0
+
+    fig6, ax2 = plt.subplots(layout='constrained')
+
+    for attribute, measurement in penguin_means.items():
+        offset = width * multiplier
+        rects = ax2.bar(x + offset, measurement, width, label=attribute)
+        ax2.bar_label(rects, padding=-20, fontsize = 15)
+        multiplier += 1
+
+    ax2.set_ylabel('Force (N)', fontsize = 15)
+    ax2.set_title('Force', fontsize = 20)
+    ax2.set_xticks(x + width, species , fontsize = 15)
+    ax2.legend(loc='upper left')
+    ax2.invert_yaxis()
 
     plt.show()
     pass
 
 if __name__ == "__main__":
-    main()
+    # main()
+    COMPos()
     pass

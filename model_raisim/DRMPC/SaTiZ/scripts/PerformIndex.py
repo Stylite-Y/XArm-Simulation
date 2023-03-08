@@ -2329,7 +2329,6 @@ def TwoLinkImpactMassGamFit():
     ts = 0.2
     Nsample = 200
     t = np.linspace(0, ts, Nsample)
-    # gam = np.linspace(1,20,20)
     M = 4.0
     gam2 = 4.0
     N = np.linspace(0.5,6,20)
