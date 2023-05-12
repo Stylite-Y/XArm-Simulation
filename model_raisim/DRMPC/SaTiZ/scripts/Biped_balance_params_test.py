@@ -981,7 +981,8 @@ def COMPos():
     
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
-    save_dir = StorePath + "/data/" + str(todaytime) + "/"
+    save_dir = StorePath + "/data/" +"2023-03-07" + "/"
+    # save_dir = StorePath + "/data/" + str(todaytime) + "/"
     name1 = "model_test/model.pkl"
     name2 = "traj_test/traj.pkl"
     name3 = "noarm/noarm.pkl"
@@ -1057,6 +1058,10 @@ def COMPos():
     F11 = F11 / 500
     F12 = F12 / 500
     print(F11, F12)
+    print(W_k1, W_k2, W_k3)
+    print(W_w1, W_w2, W_w3)
+    print(Ws_k)
+    print(Ws_w)
   
     import matplotlib.pyplot as plt
     import matplotlib.patches as patches
@@ -1119,7 +1124,7 @@ def COMPos():
     width = 0.05  # the width of the bars
     multiplier = 0
 
-    fig5, ax = plt.subplots(layout='constrained')
+    fig5, ax = plt.subplots()
 
     for attribute, measurement in penguin_means.items():
         offset = width * multiplier

@@ -1416,9 +1416,9 @@ def VelAndPos(q, dq):
 def MOmentCal():
     StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     todaytime=datetime.date.today()
-    save_dir = StorePath + "/data/" + str(todaytime) + "/"
-    name1 = "arm.pkl"
-    name2 = "noarm.pkl"
+    save_dir = StorePath + "/data/"+"/2022-09-22/" + "/"
+    name1 = "Momt_arm.pkl"
+    name2 = "Momt_noarm.pkl"
     
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
@@ -1470,6 +1470,7 @@ def MOmentCal():
     LegMomt2 = LegMomt2[1:]
     BodyMomt2 = BodyMomt2[1:]
     ArmMomt2 = ArmMomt2[1:]
+    print(ArmMomt2[1:100])
 
     plt.style.use("science")
     params = {
@@ -1492,18 +1493,20 @@ def MOmentCal():
     ax1 = axs[0]
     ax2 = axs[1]
 
-    ax1.plot(t, LegMomt, label="Leg Momt")
-    ax1.plot(t, BodyMomt, label="Body Momt")
+    # ax1.plot(t, LegMomt, label="Leg Momt")
     ax1.plot(t, ArmMomt, label="Arm Momt")
+    ax1.plot(t, BodyMomt+LegMomt, label="Body Momt")
     ax1.set_ylabel("Angular Momentum (Kg.m2/s)")
+    ax1.set_ylim(-80, 210)
     ax1.legend()
     ax1.grid()
 
-    ax2.plot(t, LegMomt2, label="Leg Momt")
-    ax2.plot(t, BodyMomt2, label="Body Momt")
+    # ax2.plot(t, LegMomt2, label="Leg Momt")
     ax2.plot(t, ArmMomt2, label="Arm Momt")
+    ax2.plot(t, BodyMomt2+LegMomt2, label="Body Momt")
     ax2.set_ylabel("Angular Momentum (Kg.m2/s)")
     ax2.set_xlabel("Time (s)")
+    ax2.set_ylim(-80, 210)
     ax2.legend()
     ax2.grid()
 
@@ -1513,8 +1516,8 @@ def MOmentCal():
 
 if __name__ == "__main__":
     # main()
-    ForceMapMV()
-    # MOmentCal()
+    # ForceMapMV()
+    MOmentCal()
     # ResCmp()
     # CostFunAnalysis()
     # CharactTime()

@@ -20,11 +20,19 @@ author: Yanyan Yuan
         - 二连杆两个关节均以最大功率运行,但是减速比不同,分析伸展轨迹, U0->-U0
 9. 2023.02.28:
         - 二连杆两个关节减速比不同, 收缩轨迹, 同时加入质量比k作为优化参数之一
+10. 2023.03.28:
+        - 冲量公式改为动量最大化同时考虑重力: TwoLinkMomtMassGamFit()
+11. 2023.05.10:
+        - 双足速度汇总图: BipedRunSpeed()
+12. 2023.05.11:
+        - 动量最大化轨迹作图: TrajPlot()
 '''
 
 
 import os
 import sympy as sy
+import pandas as pd
+import seaborn as sns
 import raisimpy as raisim
 import yaml
 import time
@@ -1213,6 +1221,7 @@ def DIPImpactModel():
     
     pass
 
+# 各种运动接触时间
 def ContTimePlot():
     mball = [0.0027, 0.005, 0.045, 0.057, 0.145, 0.27, 0.4]
     dtball = np.array([1.4, 4.0, 0.42, 5.2, 0.8, 12.7, 9.3])
@@ -1255,6 +1264,7 @@ def ContTimePlot():
 
     pass
 
+# 各种运动手臂摆动时间
 def SwingTimePlot():
     mball = [0.0027, 0.005, 0.045, 0.057, 0.145, 0.27, 0.4]
     dtball = np.array([150, 80, 250, 140, 200, 260, 150])
@@ -1278,6 +1288,7 @@ def SwingTimePlot():
         'figure.subplot.hspace': 0.5,
     }
 
+
     plt.rcParams.update(params)
     fig, axs = plt.subplots(1, 1, figsize=(12, 12))
     ax1 = axs
@@ -1293,7 +1304,79 @@ def SwingTimePlot():
 
     pass
 
+# 双足奔跑的速度
+def BipedRunSpeed():
+    # agility, asimo, Altas, tesla, 优必选, DLR TORO, 丰田 T-HR3, 小米Cyberone, LOLA, 早稻田Kobian, IIT Walkman, TALOS, HUBO2
+    BipedMass = [65.0, 50.0, 89.0, 57, 77, 76, 75, 52, 68, 62, 102, 95, 45]
+    BipedHeig = np.array([1.75, 1.3, 1.5, 1.73, 1.45, 1.74, 1.5, 1.77, 1.76, 1.4, 1.85, 1.75, 1.25])
+    Speed = np.array([4.0, 2.5, 2.5, 2.22, 0.83, 0.5, 0.83, 1.0, 1.38, 0.5, 0.3, 0.83, 1.0])
 
+    pf = np.polyfit(BipedHeig, Speed, 1)
+    fn = np.poly1d(pf)
+    x_h = np.arange(1.2,2,0.1)
+    y_speed = fn(x_h)
+
+    data_mean = np.mean(Speed)
+    data_std = np.std(Speed)
+    data_var = np.var(Speed)
+    data_max = np.max(Speed)
+    data_min = np.min(Speed)
+
+    # BipedHeig = BipedHeig.flatten()
+    # Speed = Speed.flatten()
+    # data = np.column_stack((BipedHeig, Speed))
+    # df = pd.DataFrame(data, columns=['Height','Speed'])
+    # sns.relplot(x='Height', y='Speed', data=df)
+    # plt.plot(x_h, y_speed)
+    # plt.fill_between(BipedHeig, data_min, data_max)
+    # plt.show()
+
+    # BipedHeig = BipedHeig.reshape(-1, 1)
+    # Speed = Speed.reshape(-1, 1)
+
+    # Dataset = np.concatenate((BipedHeig, Speed), axis=1)
+    # print(Dataset)
+
+    MaxHeight = [1.95]
+    MaxSpeed = [12.44]
+
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'font.size': 20,
+        'axes.labelsize': 22,
+        'lines.linewidth': 3,
+        'axes.titlesize': 25,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'axes.titlepad': 3.0,
+        'axes.labelpad': 5.0,
+        'lines.markersize': 15,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.5,
+    }
+
+    plt.rcParams.update(params)
+
+
+    fig, axs = plt.subplots(1, 1, figsize=(12, 12))
+    ax1 = axs
+
+    # ax1.semilogy(BipedHeig, Speed, 's', c='C0')
+    # ax1.semilogy(MaxHeight, MaxSpeed, '^', c='C2')
+    ax1.scatter(BipedHeig, Speed, marker='s', c='C0')
+    ax1.scatter(MaxHeight, MaxSpeed, marker='^', c='C2')
+    ax1.plot(x_h, y_speed)
+    # ax1.set_ylim(0.001, 100)
+    ax1.set_xlabel('Height (m)')
+    ax1.set_ylabel('Running Speed (m/s)')
+    # ax1.set_title('SVD')
+    # ax1.axis('equal')
+    plt.show()
+
+    pass
+
+# |----------------------------------------------------------------------------------------|
 # 减速比-冲量
 def ImpactBioFit():
     # gamma = 4
@@ -2299,7 +2382,7 @@ def TwoLinkImpactFit4():
             ax3.text(m,k,dqmax2[k][m], ha="center", va="center",color="black",fontsize=10)
     plt.show()
 
-# 二连杆:两个关节均以最大功率运行,但减速比不同，收缩轨迹, 同时优化质量比K
+# 二连杆冲量:两个关节均以最大功率运行,但减速比不同，收缩轨迹, 同时优化质量比K和N
 def TwoLinkImpactMassGamFit():
     # link params
     l1 = 0.4
@@ -2393,6 +2476,7 @@ def TwoLinkImpactMassGamFit():
             Mtmp = Jq @ M_inv @ Jq.T
             Mc = np.linalg.inv(Mtmp)
             Ltmp = Mc @ Jq @ dq0
+            # Ltmp = Mq @ dq0
             Lsmp = np.sqrt(Ltmp[0]**2+Ltmp[1]**2)
             Lambda_p.append(Ltmp)
             LamTmp.append(Lsmp)
@@ -2426,7 +2510,7 @@ def TwoLinkImpactMassGamFit():
             # print("gamma1: ", gam[i])
             # print(LamTmp)
             pass
-        print(LamTmp)
+        # print(LamTmp)
         Lambda_s = np.concatenate((Lambda_s, [LamTmp]), axis = 0)
         dqmax = np.concatenate((dqmax, [dqtmp]), axis = 0)
         dqmax2 = np.concatenate((dqmax2, [dqtmp2]), axis = 0)
@@ -2438,7 +2522,7 @@ def TwoLinkImpactMassGamFit():
     dqmax2 = dqmax2[1:,]
     dqmax2 = np.array(dqmax2)
     dqmax2 = np.around(dqmax2,2)
-    Lambda_s = np.around(Lambda_s,2)
+    Lambda_s = np.around(Lambda_s,1)
     print("index: ",index)
     # print(Lambda_s)
     Data = {'Lambda': Lambda_s, 'dqmax1': dqmax, 'dqmax2': dqmax2}
@@ -2451,7 +2535,7 @@ def TwoLinkImpactMassGamFit():
     plt.style.use("science")
     params = {
         'text.usetex': True,
-        'font.size': 20,
+        'font.size': 15,
         'axes.labelsize': 22,
         'lines.linewidth': 3,
         'axes.titlesize': 25,
@@ -2469,21 +2553,25 @@ def TwoLinkImpactMassGamFit():
 
     # N = N.astype(int) 
     # K = K.astype(int)
-    print(N)
-    print(K)
+    # print(N)
+    # print(K)
     N = np.round(N, 1)
     K = np.round(K, 1)
     N_label = list(map(str, N))
     K_label = list(map(str, K))
-    print(N_label)
-    print(Lambda_s)
+    # print(N_label)
+    # print(Lambda_s)
 
     fig, axs = plt.subplots(1, 1, figsize=(12, 12))
     ax1 = axs
 
+    # im, cbar = heatmap(Lambda_s, K_label, N_label, ax=ax1,
+    #                 cmap="YlGn", cbarlabel="Momentum (kg.m.s-1)")
+
     # pcm1 = ax1.imshow(Lambda_s, cmap='inferno', vmin = 0.0, vmax = 25)
-    pcm1 = ax1.imshow(Lambda_s, cmap='inferno', vmin = 0.0, vmax = 12)
+    pcm1 = ax1.imshow(Lambda_s, cmap='inferno', vmin = 0.0, vmax = 6.5)
     cb1 = fig.colorbar(pcm1, ax=ax1)
+    # texts = annotate_heatmap(pcm1, valfmt="{x:.1f}")
     ax1.set_xticks(np.arange(len(N)))
     ax1.set_xticklabels(N_label)
     ax1.set_yticks(np.arange(len(K)))   
@@ -2494,11 +2582,11 @@ def TwoLinkImpactMassGamFit():
 
     ax1.set_xlabel(r'Joint Reduction ratio coef N')
     ax1.set_ylabel(r'Link mass ratio K')
-    cb1.set_label(r'Impact $\Lambda (kg.m.s^{-1})$')
+    cb1.set_label(r'Momentum $\Lambda (kg.m.s^{-1})$')
     # ax1.text(8, 2, 3.0, ha="center", va="center",color="black",fontsize=10)
     for k in range(len(K)):
         for m in range(len(N)):
-            ax1.text(m,k,Lambda_s[k][m], ha="center", va="center",color="black",fontsize=10)
+            ax1.text(m,k,Lambda_s[k][m], ha="center", va="center",color="black")
 
     fig2, axs2 = plt.subplots(1, 1, figsize=(12, 12))
     ax2 = axs2
@@ -2519,7 +2607,7 @@ def TwoLinkImpactMassGamFit():
     cb2.set_label(r'Joint 1 Angle $\theta (rad)$')
     for k in range(len(K)):
         for m in range(len(N)):
-            ax2.text(m,k,dqmax[k][m], ha="center", va="center",color="black",fontsize=10)
+            ax2.text(m,k,dqmax[k][m], ha="center", va="center",color="black",fontsize=15)
     
     fig3, axs3 = plt.subplots(1, 1, figsize=(12, 12))
     ax3 = axs3
@@ -2541,6 +2629,258 @@ def TwoLinkImpactMassGamFit():
         for m in range(len(N)):
             ax3.text(m,k,dqmax2[k][m], ha="center", va="center",color="black",fontsize=10)
     plt.show()
+
+# 二连杆动量:两个关节均以最大功率运行,但减速比不同，收缩轨迹, 同时优化质量比K和N, 考虑重力
+def TwoLinkMomtMassGamFit():
+    # link params
+    l1 = 0.4
+    l2 = 0.4
+    g = 9.8
+
+    # motor params
+    U0 = 24.0
+    R = 0.127
+    Kv = 0.6
+    Kt = 0.075
+    Im = 5e-4
+
+    # maxon ec i 52 48v, 420w
+    # U0 = 48.0
+    # R = 0.281
+    # Kv = 0.089
+    # Kt = 0.089
+    # Im = 2.5e-4
+
+    StorePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    todaytime=datetime.date.today()
+    save_dir = StorePath + "/data/" + str(todaytime) + "/"
+    name = "Gam_Lam_18_g.pkl"
+
+    g = 9.8
+    ts = 0.2
+    Nsample = 200
+    t = np.linspace(0, ts, Nsample)
+    M = 4.0
+    gam2 = 4.0
+    N = np.linspace(0.5,6,20)
+    K = np.linspace(0.8,6,20)
+    
+    Lambda_p = []
+    Lambda_s = np.array([[0.0]*len(K)])
+    index = []
+    dqmax = np.array([[0.0]*len(K)])
+    dqmax2 = np.array([[0.0]*len(K)])
+
+    def Dynamic(w, t, m1, m2, gamma, gamma2, U0, Kt, Kv, R, Im):
+        y11, y12, y21, y22 = w
+        
+        b_f1 = gamma**2*Kt*Kv/R
+        c_f1 = gamma*Kt*U0/R
+        b_f2 = gamma2**2*Kt*Kv/R
+        c_f2 = gamma2*Kt*U0/R
+        
+        m11 = (36*Im*gamma2**2 + 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        m12 = (-18*l1*l2*m2*cos(y21) - 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        m21 = (-18*l1*l2*m2*cos(y21) - 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+        m22 = (36*Im*gamma**2 + 12*l1**2*m1 + 36*l1**2*m2 + 36*l1*l2*m2*cos(y21) + 12*l2**2*m2)/(36*Im**2*gamma**2*gamma2**2 + 12*Im*gamma**2*l2**2*m2 + 12*Im*gamma2**2*l1**2*m1 + 36*Im*gamma2**2*l1**2*m2 + 36*Im*gamma2**2*l1*l2*m2*cos(y21) + 12*Im*gamma2**2*l2**2*m2 + 4*l1**2*l2**2*m1*m2 - 9*l1**2*l2**2*m2**2*cos(y21)**2 + 12*l1**2*l2**2*m2**2)
+
+        cq1 = -m2*l1*l2*np.sin(y21)*y12*y22-m2*l1*l2*np.sin(y21)*y22*y22/2
+        cq2 = m2*l1*l2*np.sin(y21)*y12*y12/2
+
+        g1 = (0.5*m1+m2)*g*l1*cos(y11) + 0.5*m2*g*l2*cos(y11+y21)
+        g2 = 0.5*m2*g*l2*cos(y11+y21)
+
+        dy11 = y12
+        dy12 = m11*(c_f1 - b_f1*y12 - cq1 - g1) + m12*(c_f2 - b_f2*y22 - cq2 - g2)
+        dy21 = y22
+        dy22 = m21*(c_f1 - b_f1*y12 - cq1 - g1) + m22*(c_f2 - b_f2*y22 - cq2 - g2)
+
+        ## 肘关节角度固定,不按照最大功率运行: 结果奇怪
+        # dy11 = y12
+        # dy12 = m11*(c_f - b_f*y12) + m12*(c_f - cq2)
+        # dy21 = y22
+        # dy22 = m21*(c_f - b_f*y12) + m22*(c_f - cq2)
+
+        return np.array([dy11, dy12, dy21, dy22])
+
+    for i in range(len(K)):
+        dqtmp = []
+        dqtmp2 = []
+        LamTmp = []
+        m1 = K[i]*M / (K[i]+1)
+        m2 = M / (K[i]+1)
+        for j in range(len(N)):
+            gam1 = N[j]*gam2
+            w1 = (-np.pi/6,0.001, np.pi/8, 0.001)
+            qres = odeint(Dynamic, w1, t, args=(m1, m2, gam1, gam2, U0, Kt, Kv, R, Im))
+            
+            q0 = [qres[-1][0], qres[-1][2]]
+            dq0 = np.array([qres[-1][1], qres[-1][3]])
+            Jq = np.array([[-l1*np.sin(q0[0])-l2*np.sin(q0[0]+q0[1]), -l2*np.sin(q0[0]+q0[1])],
+                                [l1*np.cos(q0[0])+l2*np.cos(q0[0]+q0[1]), l2*np.cos(q0[0]+q0[1])]])
+            Mq = np.array([[Im*gam1**2 + m2*l1**2+m1*l1**2/3+m2*l2**2/3+m2*l1*l2*np.cos(q0[1]), m2*l2**2/3+m2*l1*l2*np.cos(q0[1])/2],
+                        [m2*l2**2/3+m2*l1*l2*np.cos(q0[1])/2, m2*l2**2/3+Im*gam2**2]])
+            M_inv = np.linalg.inv(Mq)
+            # Mtmp = Jq @ M_inv @ Jq.T
+            # Mc = np.linalg.inv(Mtmp)
+            # Ltmp = Mc @ Jq @ dq0
+            Ltmp = Mq @ dq0
+            Lsmp = np.sqrt(Ltmp[0]**2+Ltmp[1]**2)
+            Lambda_p.append(Ltmp)
+            LamTmp.append(Lsmp)
+            dqtmp.append(q0[0])
+            dqtmp2.append(q0[1])
+
+            qindex1 = qres[:, 0]
+            qindex2 = qres[:, 2]
+            if max(qindex2) > np.pi*3/4 or min(qindex2) < 0.0 or max(qindex1) > np.pi/3 or min(qindex1) < -np.pi*3/4:
+                index.append([i,j])
+
+            if i==0 and j==2:
+                print(max(qindex2))
+                L = [l1, l2]
+                q1 = qres[:,0]
+                q2 = qres[:,2]
+                # print(qres[:,2])
+                # print(q2)
+                dt = ts / Nsample
+                print(N[j],K[i],Lsmp)
+                animation(L, q1, q2, t, dt, save_dir,i, j)
+                TrajPlot(L, q1, q2, t)
+
+            if i < 5 and j < 5:
+                # print("="*50)
+                # print("q1max: ", q0[0], max(qindex1))
+                # print("q2max: ", q0[1], max(qindex2))
+                pass
+            pass
+        if i < 6:
+            # print("="*50)
+            # print("gamma1: ", gam[i])
+            # print(LamTmp)
+            pass
+        # print(LamTmp)
+        Lambda_s = np.concatenate((Lambda_s, [LamTmp]), axis = 0)
+        dqmax = np.concatenate((dqmax, [dqtmp]), axis = 0)
+        dqmax2 = np.concatenate((dqmax2, [dqtmp2]), axis = 0)
+
+    Lambda_s = Lambda_s[1:,]
+    dqmax = dqmax[1:,]
+    dqmax = np.array(dqmax)
+    dqmax = np.around(dqmax,2)
+    dqmax2 = dqmax2[1:,]
+    dqmax2 = np.array(dqmax2)
+    dqmax2 = np.around(dqmax2,2)
+    Lambda_s = np.around(Lambda_s,1)
+    print("index: ",index)
+    # print(Lambda_s)
+    Data = {'Lambda': Lambda_s, 'dqmax1': dqmax, 'dqmax2': dqmax2}
+
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)    
+    # with open(os.path.join(save_dir, name), 'wb') as f:
+    #     pickle.dump(Data, f)   
+    
+    # region plot
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'font.size': 15,
+        'axes.labelsize': 22,
+        'lines.linewidth': 3,
+        'axes.titlesize': 25,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'axes.titlepad': 3.0,
+        'axes.labelpad': 5.0,
+        'lines.markersize': 15,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.5,
+    }
+
+    plt.rcParams.update(params)
+    plt.rcParams.update(params)
+
+    # N = N.astype(int) 
+    # K = K.astype(int)
+    # print(N)
+    # print(K)
+    N = np.round(N, 1)
+    K = np.round(K, 1)
+    N_label = list(map(str, N))
+    K_label = list(map(str, K))
+    # print(N_label)
+    # print(Lambda_s)
+
+    fig, axs = plt.subplots(1, 1, figsize=(12, 12))
+    ax1 = axs
+
+    # im, cbar = heatmap(Lambda_s, K_label, N_label, ax=ax1,
+    #                 cmap="YlGn", cbarlabel="Momentum (kg.m.s-1)")
+
+    # pcm1 = ax1.imshow(Lambda_s, cmap='inferno', vmin = 0.0, vmax = 25)
+    pcm1 = ax1.imshow(Lambda_s, cmap='inferno', vmin = 0.2, vmax = 5.5)
+    cb1 = fig.colorbar(pcm1, ax=ax1)
+    # texts = annotate_heatmap(pcm1, valfmt="{x:.1f}")
+    ax1.set_xticks(np.arange(len(N)))
+    ax1.set_xticklabels(N_label)
+    ax1.set_yticks(np.arange(len(K)))   
+    ax1.set_ylim(-0.5, len(K)-0.5)
+    ax1.set_yticklabels(K_label)
+    # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+    #        labeltop=True, labelbottom=False)
+
+    ax1.set_xlabel(r'Joint Reduction ratio coef N')
+    ax1.set_ylabel(r'Link mass ratio K')
+    cb1.set_label(r'Momentum $\Lambda (kg.m.s^{-1})$')
+    # ax1.text(8, 2, 3.0, ha="center", va="center",color="black",fontsize=10)
+    for k in range(len(K)):
+        for m in range(len(N)):
+            ax1.text(m,k,Lambda_s[k][m], ha="center", va="center",color="black")
+
+    fig2, axs2 = plt.subplots(1, 1, figsize=(12, 12))
+    ax2 = axs2
+
+    # pcm2 = ax2.imshow(dqmax, cmap='inferno', vmin = -0.2*np.pi, vmax = 0.4*np.pi)
+    pcm2 = ax2.imshow(dqmax, cmap='inferno', vmin = -0.2*np.pi, vmax = 0.3*np.pi)
+    cb2 = fig2.colorbar(pcm2, ax=ax2)
+    ax2.set_xticks(np.arange(len(N)))
+    ax2.set_xticklabels(N_label)
+    ax2.set_yticks(np.arange(len(K)))
+    ax2.set_ylim(-0.5, len(K)-0.5)
+    ax2.set_yticklabels(K_label)
+    # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+    #        labeltop=True, labelbottom=False)
+
+    ax2.set_xlabel(r'Joint Reduction ratio coef N')
+    ax2.set_ylabel(r'Link mass ratio K')
+    cb2.set_label(r'Joint 1 Angle $\theta (rad)$')
+    for k in range(len(K)):
+        for m in range(len(N)):
+            ax2.text(m,k,dqmax[k][m], ha="center", va="center",color="black",fontsize=15)
+    
+    fig3, axs3 = plt.subplots(1, 1, figsize=(12, 12))
+    ax3 = axs3
+
+    pcm3 = ax3.imshow(dqmax2, cmap='inferno', vmin =0.5*np.pi, vmax = 0.72*np.pi)
+    cb3 = fig3.colorbar(pcm3, ax=ax3)
+    ax3.set_xticks(np.arange(len(N)))
+    ax3.set_xticklabels(N_label)
+    ax3.set_yticks(np.arange(len(K)))
+    ax3.set_ylim(-0.5, len(K)-0.5)
+    ax3.set_yticklabels(K_label)
+    # ax[i][j].xaxis.set_tick_params(top=True, bottom=False,
+    #        labeltop=True, labelbottom=False)
+
+    ax3.set_xlabel(r'Joint Reduction ratio coef N')
+    ax3.set_ylabel(r'Link mass ratio K')
+    cb3.set_label(r'Joint 2 Angle $\theta (rad)$')
+    for k in range(len(K)):
+        for m in range(len(N)):
+            ax3.text(m,k,dqmax2[k][m], ha="center", va="center",color="black",fontsize=10)
+    plt.show()
+    # endregion
+
 
 # 二连杆:两个关节均以最大功率运行,但减速比不同，收缩轨迹, 同时优化质量比和减速比
 def TwoLinkImpactMassGamFit2():
@@ -3561,6 +3901,204 @@ def animation(L, q1, q2, t, dt, save_dir, gam1, gam2):
 
     # plt.show()
 
+def TrajPlot(L, q1, q2, t):
+    from numpy import sin, cos
+    import matplotlib.pyplot as plt
+    import matplotlib.animation as animation
+    from collections import deque
+
+
+    ## kinematic equation
+    L0 = L[0]
+    L1 = L[1]
+    L_max = L0+L1
+    x1 = L0*cos(q1)
+    y1 = L0*sin(q1)
+    x2 = L1*cos(q1 + q2) + x1
+    y2 = L1*sin(q1 + q2) + y1
+
+    x2_samp = []
+    y2_samp = []
+    for i in range(len(t)):
+        if i % 4 == 0 or i ==199:
+            x2_samp.append(x2[i])
+            y2_samp.append(y2[i])
+
+    plt.style.use("science")
+    params = {
+        'text.usetex': True,
+        'font.size': 20,
+        'axes.labelsize': 22,
+        'lines.linewidth': 2,
+        'axes.titlesize': 25,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'axes.titlepad': 3.0,
+        'axes.labelpad': 5.0,
+        'lines.markersize': 6,
+        'figure.subplot.wspace': 0.4,
+        'figure.subplot.hspace': 0.5,
+    }
+
+    plt.rcParams.update(params)
+    
+    fig = plt.figure(figsize=(10, 8))
+    # ax = fig.add_subplot(autoscale_on=False, xlim=(-L_max, L_max), ylim=(-0.5, (L0+L1)*1.0))
+    ax = fig.add_subplot(autoscale_on=False, xlim=(-L_max*0.4, L_max*1.2), ylim=(-L_max*0.4, (L0+L1)*0.8))
+    ax.set_aspect('equal')
+    ax.set_xlabel('X(m) ', fontsize = 20)
+    ax.set_ylabel('Z(m) ', fontsize = 20)
+    ax.xaxis.set_tick_params(labelsize = 18)
+    ax.yaxis.set_tick_params(labelsize = 18)
+    ax.grid()
+
+    num_frame = 6
+    for i in np.linspace(0, 199, num_frame):
+        id = np.int(i)
+        ax.plot([0, x1[id]], [0, y1[id]], 'o-', color = 'C0', ms=1, alpha=i/200*0.8+0.2)
+        ax.plot([x1[id], x2[id]], [y1[id], y2[id]], 'o-', color = 'C0', ms=1, alpha=i/200*0.8+0.2)
+
+    ax.plot(x2_samp,y2_samp)
+    ax.scatter(x2_samp,y2_samp)
+    # ## animation save to gif
+    # # date = self.date
+    # # name = "traj_ani" + ".gif"
+    # if not os.path.isdir(save_dir):
+    #     os.makedirs(save_dir)  
+
+    # saveflag = True
+    # # save_dir = "/home/hyyuan/Documents/Master/Manipulator/XArm-Simulation/model_raisim/DRMPC/SaTiZ/data/2023-02-01/"
+    # # savename = save_dir + "t_"+str(t[-1])+"-pm_"+str(gam1+1)+"-"+str(gam2+1)+".gif"
+    # savename = save_dir + "t_"+str(t[-1])+"-pm_"+str(gam1+1)+"-"+str(gam2+1)+"_0.67.gif"
+    # # savename = save_dir +date+ name
+
+    # if saveflag:
+    #     ani.save(savename, writer='pillow', fps=30)
+
+
+def heatmap(data, row_labels, col_labels, ax=None,
+            cbar_kw=None, cbarlabel="", **kwargs):
+    """
+    Create a heatmap from a numpy array and two lists of labels.
+
+    Parameters
+    ----------
+    data
+        A 2D numpy array of shape (M, N).
+    row_labels
+        A list or array of length M with the labels for the rows.
+    col_labels
+        A list or array of length N with the labels for the columns.
+    ax
+        A `matplotlib.axes.Axes` instance to which the heatmap is plotted.  If
+        not provided, use current axes or create a new one.  Optional.
+    cbar_kw
+        A dictionary with arguments to `matplotlib.Figure.colorbar`.  Optional.
+    cbarlabel
+        The label for the colorbar.  Optional.
+    **kwargs
+        All other arguments are forwarded to `imshow`.
+    """
+
+    if ax is None:
+        ax = plt.gca()
+
+    if cbar_kw is None:
+        cbar_kw = {}
+
+    # Plot the heatmap
+    im = ax.imshow(data, **kwargs)
+
+    # Create colorbar
+    cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
+    cbar.ax.set_ylabel(cbarlabel, rotation=0, va="bottom")
+
+    # Show all ticks and label them with the respective list entries.
+    ax.set_xticks(np.arange(data.shape[1]))
+    ax.set_xticklabels(col_labels)
+    ax.set_yticks(np.arange(data.shape[0]))
+    ax.set_yticklabels(row_labels)
+
+    # Let the horizontal axes labeling appear on top.
+    ax.tick_params(top=True, bottom=False,
+                   labeltop=True, labelbottom=False)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
+             rotation_mode="anchor")
+
+    # Turn spines off and create white grid.
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.spines["bottom"].set_visible(False)
+
+    ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
+    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
+    ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    return im, cbar
+
+
+def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
+                     textcolors=("black", "white"),
+                     threshold=None, **textkw):
+    """
+    A function to annotate a heatmap.
+
+    Parameters
+    ----------
+    im
+        The AxesImage to be labeled.
+    data
+        Data used to annotate.  If None, the image's data is used.  Optional.
+    valfmt
+        The format of the annotations inside the heatmap.  This should either
+        use the string format method, e.g. "$ {x:.2f}", or be a
+        `matplotlib.ticker.Formatter`.  Optional.
+    textcolors
+        A pair of colors.  The first is used for values below a threshold,
+        the second for those above.  Optional.
+    threshold
+        Value in data units according to which the colors from textcolors are
+        applied.  If None (the default) uses the middle of the colormap as
+        separation.  Optional.
+    **kwargs
+        All other arguments are forwarded to each call to `text` used to create
+        the text labels.
+    """
+    import matplotlib
+    if not isinstance(data, (list, np.ndarray)):
+        data = im.get_array()
+
+    # Normalize the threshold to the images color range.
+    if threshold is not None:
+        threshold = im.norm(threshold)
+    else:
+        threshold = im.norm(data.max())/2.
+
+    # Set default alignment to center, but allow it to be
+    # overwritten by textkw.
+    kw = dict(horizontalalignment="center",
+              verticalalignment="center")
+    kw.update(textkw)
+
+    # Get the formatter in case a string is supplied
+    if isinstance(valfmt, str):
+        valfmt = matplotlib.ticker.StrMethodFormatter(valfmt)
+
+    # Loop over the data and create a `Text` for each "pixel".
+    # Change the text's color depending on the data.
+    texts = []
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            kw.update(color=textcolors[int(im.norm(data[i, j]) < threshold)])
+            text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
+            texts.append(text)
+
+    return texts
+
 if __name__ == "__main__":
     # EigAndSVD()
     # EigAndSVD2()
@@ -3587,5 +4125,7 @@ if __name__ == "__main__":
     # TwoLinkImpactFit2()
     # TwoLinkImpactFit3()
     # TwoLinkImpactFit4()
-    TwoLinkImpactMassGamFit()
+    # TwoLinkImpactMassGamFit()
+    # BipedRunSpeed()
+    TwoLinkMomtMassGamFit()
     pass
