@@ -1,0 +1,49 @@
+Optimization:
+  MaxLoop: 500
+  RandomSeed: 1
+
+  CostCoeff:
+    trackingCoeff: 0.3
+    VelCoeff: 0.0
+    powerCoeff: 0.6
+    forceCoeff: 0.0
+    smoothCoeff: 0.1
+    ImpactCoeff: 0.0
+
+Environment:
+  Gravity: 9.8
+  Friction_Coeff: 0.8
+  ForceRatio: 50000
+
+Controller:
+  Target: 5
+  Period: 0.1
+  dt: 0.001
+  CollectionNum: 500
+  
+
+  Boundary:
+    x: [-20, 20]
+    dx: [-20, 20]
+    y: [0.2, 2.0]
+    dy: [-20, 20]
+
+Ref:
+  delta: 0.05
+  offset: 0.4
+  alpha: 0.15
+  beta: -200
+
+Robot:
+  Mass:
+    massCenter: [0.175, 0.175]
+  Geometry:
+    L1: 0.35
+    L2: 0.35
+  damping: 0.0
+  Motor:
+    MaxTorque: 36
+    MaxSpeed: 54
+    CriticalSpeed: 30
+
+  

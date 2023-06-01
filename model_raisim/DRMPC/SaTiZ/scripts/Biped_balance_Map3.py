@@ -1428,8 +1428,8 @@ def MOmentCal():
     f2 = open(save_dir+name2,'rb')
     data2 = pickle.load(f2)
 
-    I = [15, 20, 4.0]
-    m = [1.0125, 0.417, 0.03]
+    m = [15, 20, 4.0]
+    I = [1.0125, 0.417, 0.03]
     q = data['q']
     dq = data['dq']
     t = data['t']
@@ -1497,16 +1497,16 @@ def MOmentCal():
     ax1.plot(t, ArmMomt, label="Arm Momt")
     ax1.plot(t, BodyMomt+LegMomt, label="Body Momt")
     ax1.set_ylabel("Angular Momentum (Kg.m2/s)")
-    ax1.set_ylim(-80, 210)
+    # ax1.set_ylim(-80, 210)
     ax1.legend()
     ax1.grid()
 
     # ax2.plot(t, LegMomt2, label="Leg Momt")
-    ax2.plot(t, ArmMomt2, label="Arm Momt")
+    ax2.plot(t, ArmMomt2, label="NoArm Momt")
     ax2.plot(t, BodyMomt2+LegMomt2, label="Body Momt")
     ax2.set_ylabel("Angular Momentum (Kg.m2/s)")
     ax2.set_xlabel("Time (s)")
-    ax2.set_ylim(-80, 210)
+    # ax2.set_ylim(-80, 210)
     ax2.legend()
     ax2.grid()
 

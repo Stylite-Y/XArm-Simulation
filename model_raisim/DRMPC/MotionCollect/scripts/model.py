@@ -24,6 +24,8 @@ left_forearm = 15
 left_hand = 16
 head = 17
 
+help(p.getQuaternionSlerp)
+
 
 class control_compute(object):
     def __init__(self, robotid):

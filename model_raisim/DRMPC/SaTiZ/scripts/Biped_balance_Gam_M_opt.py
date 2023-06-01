@@ -102,9 +102,9 @@ class Bipedal_hybrid():
         self.q_LB = [-np.pi/10, -np.pi/30, 0, -np.pi*0.9] 
         self.q_UB = [np.pi/2, np.pi*0.9, 1.2*np.pi, 0]   
 
-        self.dq_LB = [-self.motor_ms]*4   # arm 
+        self.dq_LB = [-36] + [-self.motor_ms]*3   # arm 
 
-        self.dq_UB = [self.motor_ms]*4 # arm 
+        self.dq_UB = [36] + [self.motor_ms]*3 # arm 
 
         # * define variable
         self.q = [self.opti.variable(4) for _ in range(self.N)]
@@ -499,6 +499,9 @@ class nlp():
         Pf = [0.3]*4
         Vf = [0.6]*4
         Ff = [0.1]*4
+        # Pf = [0.3]*4
+        # Vf = [0.4]*4
+        # Ff = [0.3]*4
         # Pwf = [0.05, 0.05, 0.05]
 
         qmax = walker.qmax
